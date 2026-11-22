@@ -177,9 +177,9 @@ fn sled_ledger_is_written_only_from_the_tracker_commit() {
 ///   made; the tracker's own checkpoints emit these notices, so tracking a
 ///   wake would recurse. runtime_mqtt_auth: kick on revoked authority.
 /// * mqtt_doorbell_relay, tls_door: byte transport on the door ingress.
-/// * Known exceptions, recorded in the spec (owner decision / container repo):
-///   compliance_http (/compliance/api proxy to the compliance app) and
-///   chat_link (ChatLink worker handoff, task 25.3).
+/// * Accepted untracked, recorded in the spec: compliance_http (the
+///   /compliance/api proxy, behind the verified door identity since the owner
+///   decision of 2026-11-22) and chat_link (ChatLink worker handoff, 25.3).
 #[test]
 fn real_egress_sites_are_the_audited_set() {
     let live = live(&sources());
@@ -249,4 +249,45 @@ fn generic_cozo_refuses_personal_relations_before_opening_the_store() {
     let open = body.find(".cozo_shuttle()").expect("store open");
     let native = body.find("dispatch_cozo_method(").expect("native dispatch");
     assert!(guard < open && guard < native);
+}
+
+fn source(name: &str) -> String {
+    std::fs::read_to_string(
+        PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+            .join("src")
+            .join(name),
+    )
+    .unwrap()
+}
+
+/// Owner rule 2026-11-22: personal memory lives inside `identity-<session>`
+/// but apart from the sled. The sled ledger and its finalize/vectorization
+/// read only `ledger/` (non-recursively); the personal store is `memory/cozo`;
+/// nothing else in the live bridge names or walks an identity volume.
+#[test]
+fn personal_store_is_outside_every_sled_reader() {
+    let ledger = source("runtime_sled_ledger.rs");
+    let cognitive = source("runtime_cognitive.rs");
+    assert!(ledger.contains("let ledger = sled.join(\"ledger\");"));
+    assert!(!ledger.contains("\"memory\""));
+    assert_eq!(ledger.matches("read_dir(").count(), 1);
+    assert!(ledger.contains("std::fs::read_dir(&ledger)?"));
+    assert!(cognitive.contains("let memory = volume.join(\"memory\");"));
+    assert!(!cognitive.contains("join(\"ledger\")"));
+    let live = live(&sources());
+    assert_eq!(
+        files_containing(&live, "default_identity-"),
+        [
+            "runtime_cognitive.rs",
+            "runtime_identity_owner.rs",
+            "runtime_sled_ledger.rs"
+        ]
+    );
+}
+
+#[test]
+fn compliance_api_is_mounted_only_behind_the_door_identity() {
+    let server = source("server.rs");
+    assert!(server.contains("crate::compliance_http::authenticated_compliance_api_proxy("));
+    assert!(!server.contains("compliance_http::compliance_api_proxy"));
 }

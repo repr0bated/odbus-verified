@@ -3314,7 +3314,8 @@ fixed. `tracker_hub_tests.rs` fails if a core operation, `BackendContext`,
 - Generation workers (`runtime_chat_generations.rs`): provider egress started
   by the tracked `start_generation`; the stream outlives that record and its
   end is committed as generation state, not as a tracker transition.
-- Open (27.9): `/compliance/api` proxy and the ChatLink handoff.
+- Accepted untracked (27.9): `/compliance/api` proxy, behind the verified
+  door identity (401 otherwise); the ChatLink handoff (25.3).
 
 **Personal routing.** Excluded from the sled (and so from end-of-session
 vectors): calls while the session's effective mode is Personal (stored

@@ -159,6 +159,31 @@ pub async fn compliance_api_proxy(request: Request) -> Response {
     proxy_request(request, &cozo_upstream()).await
 }
 
+/// Owner decision 2026-11-22: the `/compliance/api` proxy requires the same
+/// verified door identity as every other door call (exactly one SID1 or oracle
+/// assertion, `BridgeService::authenticate`). Unauthenticated requests get 401
+/// and never reach the upstream. It stays an accepted untracked proxy (the
+/// compliance app is not a sealed plugin; no new subid or reseal).
+pub(crate) async fn authenticated_compliance_api_proxy(
+    service: crate::service::BridgeService,
+    request: Request,
+) -> Response {
+    authenticated_proxy(&service, request, &cozo_upstream()).await
+}
+
+async fn authenticated_proxy(
+    service: &crate::service::BridgeService,
+    request: Request,
+    upstream: &str,
+) -> Response {
+    let mut probe = tonic::Request::new(());
+    *probe.metadata_mut() = tonic::metadata::MetadataMap::from_headers(request.headers().clone());
+    if service.authenticate(&probe).await.is_err() {
+        return json_error(StatusCode::UNAUTHORIZED, "verified door identity required");
+    }
+    proxy_request(request, upstream).await
+}
+
 fn cozo_upstream() -> String {
     std::env::var("CC_COZO_UPSTREAM")
         .ok()
@@ -406,6 +431,36 @@ mod tests {
         assert_eq!(
             resolve_compliance_static_dir(Some("   "), "/var/www/dashboard"),
             PathBuf::from("/var/www/dashboard/compliance")
+        );
+    }
+
+    #[tokio::test]
+    async fn api_proxy_rejects_unauthenticated_requests_before_the_upstream() {
+        let core = crate::BridgeCore::new(crate::Catalog::from_entries(Vec::new()).unwrap());
+        let service = crate::service::BridgeService::new(core);
+        let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let upstream = format!("http://{}", listener.local_addr().unwrap());
+        for request in [
+            Request::builder()
+                .method("POST")
+                .uri("/compliance/api/query")
+                .body(Body::from("{}"))
+                .unwrap(),
+            Request::builder()
+                .method("GET")
+                .uri("/compliance/api/query")
+                .header(op_identity::sealed_id::HTTP_HEADER_NAME, "AAAA")
+                .body(Body::empty())
+                .unwrap(),
+        ] {
+            let response = authenticated_proxy(&service, request, &upstream).await;
+            assert_eq!(response.status(), StatusCode::UNAUTHORIZED);
+        }
+        assert!(
+            tokio::time::timeout(Duration::from_millis(200), listener.accept())
+                .await
+                .is_err(),
+            "an unauthenticated request must never reach the compliance upstream"
         );
     }
 

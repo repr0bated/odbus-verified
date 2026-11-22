@@ -77,6 +77,8 @@ pub async fn bind_production(
     // Exchange point (task 27.5): set variables / receive schema, zero logic.
     let exchange_read = service.clone();
     let exchange_set = service.clone();
+    // /compliance/api requires the verified door identity (owner, 2026-11-22).
+    let compliance_service = service.clone();
     let web = tonic_web::GrpcWebLayer::new();
     let app = tonic::service::Routes::new(web.layer(StateSyncServer::new(service.clone())))
         .add_service(web.layer(PluginServiceServer::new(service.clone())))
@@ -103,8 +105,13 @@ pub async fn bind_production(
             .unwrap_or_else(|_| "/usr/local/share/op-dbus/dashboard-release".to_string()),
     );
     let compliance_static = crate::compliance_http::compliance_static_service(&compliance_dir);
-    let compliance_api =
-        axum::Router::new().fallback(crate::compliance_http::compliance_api_proxy);
+    let compliance_service = compliance_service.clone();
+    let compliance_api = axum::Router::new().fallback(move |request: axum::extract::Request| {
+        crate::compliance_http::authenticated_compliance_api_proxy(
+            compliance_service.clone(),
+            request,
+        )
+    });
     let app = axum::Router::new()
         .route(
             "/mqtt",
@@ -115,9 +122,11 @@ pub async fn bind_production(
             axum::routing::get(move |headers: axum::http::HeaderMap| {
                 crate::exchange_point::read(exchange_read.clone(), headers)
             })
-            .post(move |headers: axum::http::HeaderMap, body: axum::Json<serde_json::Value>| {
-                crate::exchange_point::set(exchange_set.clone(), headers, body)
-            }),
+            .post(
+                move |headers: axum::http::HeaderMap, body: axum::Json<serde_json::Value>| {
+                    crate::exchange_point::set(exchange_set.clone(), headers, body)
+                },
+            ),
         )
         .nest_service("/compliance/api", compliance_api)
         .nest_service("/compliance", compliance_static)

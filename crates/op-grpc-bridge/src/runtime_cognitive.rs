@@ -182,6 +182,11 @@ fn personal_store_path(session: &str) -> anyhow::Result<PathBuf> {
         .mode(0o700)
         .recursive(true)
         .create(&memory)?;
+    // Kept apart from the sled: a real directory, never a link into ledger/.
+    ensure!(
+        std::fs::symlink_metadata(&memory)?.file_type().is_dir(),
+        "personal memory path is not a plain directory"
+    );
     Ok(memory.join("cozo"))
 }
 

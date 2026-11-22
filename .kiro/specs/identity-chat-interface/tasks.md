@@ -1109,15 +1109,27 @@ implement the stated interim behaviour now; the remainder is gated.
     naming `memory_entries`, `memory_namespaces`, `soul_memories` or
     `agent_namespace_bindings`; whole-database backups; all restores. Tests:
     `personal_relation_tests`, `tracker_hub_tests`.
-  - [ ] 27.9 Egress audit, second pass (2026-11-22). Every live real-egress
+  - [x] 27.9 Egress audit, second pass (2026-11-22). Every live real-egress
     site is pinned by `tracker_hub_tests::real_egress_sites_are_the_audited_set`.
-    Open, not routable without a new sealed method (no new subids/reseal in
-    this batch), owner decision needed:
-    - `/compliance/api/*` (`compliance_http.rs`): unauthenticated door proxy
-      (any HTTP method) to the compliance app on 127.0.0.1:8787; untracked.
-    - ChatLink (`chat_link.rs:108-112`): the turn is handed to the configured
-      worker child without a tracker record; tracked only once the worker
-      starts generation through a sealed method (25.3, container repo).
+    Accepted untracked (no new sealed method, subid or reseal):
+    - `/compliance/api/*` (`compliance_http.rs`): owner decision 2026-11-22,
+      behind the verified door identity (`authenticated_compliance_api_proxy`,
+      `BridgeService::authenticate`, 401 before the upstream). Static
+      `/compliance` files stay public (a browser navigation carries no SID1).
+    - ChatLink (`chat_link.rs:108-112`): tracked once the worker starts
+      generation through a sealed method (25.3, container repo).
+  - [x] 27.10 Personal store inside `identity-<session>` but apart from the
+    sled (owner, 2026-11-22). Sled ledger writes and finalize/vectorization
+    read only `<volume>/ledger` (`runtime_sled_ledger.rs` `ledger_dir`, one
+    non-recursive `read_dir` of `finalizing-*.jsonl`); personal memory is
+    `<volume>/memory/cozo` (`runtime_cognitive.rs` `personal_store_path`,
+    refused unless a plain directory). Snowball/chain vectors use
+    `/var/lib/opdbus/snowball`; `code_index` takes in-memory content;
+    `blob_vectors`/`rag_pipeline` walk no directory; op-cognitive's directory
+    walker (`grpc_service.rs`) is not served by the bridge. Adoption and clean
+    provisioning read only named files. In the container `/agent/user` readers
+    read named files only, and `memory/` is 0700 host root (unmapped in the
+    container). Test: `tracker_hub_tests::personal_store_is_outside_every_sled_reader`.
   - [x] 27.6 Control-plane chatbot re-adoption under a new native UUID (commit aba5937); permanence verification pending the golden build
   - Open: D4 (ChatMode onto ChatMode)
 
