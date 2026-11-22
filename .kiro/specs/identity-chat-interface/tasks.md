@@ -1096,6 +1096,22 @@ implement the stated interim behaviour now; the remainder is gated.
     `RuntimeResult`; no staging map. The FUSE pre-dispatch fallback now commits
     `ReceiptCompleted` through the tracker too (the one bypass found).
     Enforced by `tracker_hub_tests.rs` (source checks that fail on a bypass).
+  - [x] 27.8 Generic Cozo plugin cannot reach personal memory or soul. It
+    opens the cognitive store (`runtime_misc_cozo.rs`), which now holds
+    personal memory and soul (27.3). `refuse_personal_relations` refuses,
+    before the store opens: raw queries, imports, exports and descriptions
+    naming `memory_entries`, `memory_namespaces`, `soul_memories` or
+    `agent_namespace_bindings`; whole-database backups; all restores. Tests:
+    `personal_relation_tests`, `tracker_hub_tests`.
+  - [ ] 27.9 Egress audit, second pass (2026-11-22). Every live real-egress
+    site is pinned by `tracker_hub_tests::real_egress_sites_are_the_audited_set`.
+    Open, not routable without a new sealed method (no new subids/reseal in
+    this batch), owner decision needed:
+    - `/compliance/api/*` (`compliance_http.rs`): unauthenticated door proxy
+      (any HTTP method) to the compliance app on 127.0.0.1:8787; untracked.
+    - ChatLink (`chat_link.rs:108-112`): the turn is handed to the configured
+      worker child without a tracker record; tracked only once the worker
+      starts generation through a sealed method (25.3, container repo).
   - [x] 27.6 Control-plane chatbot re-adoption under a new native UUID (commit aba5937); permanence verification pending the golden build
   - Open: D4 (ChatMode onto ChatMode)
 

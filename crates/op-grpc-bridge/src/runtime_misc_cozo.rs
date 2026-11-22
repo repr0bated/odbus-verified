@@ -53,6 +53,79 @@ const GRAPH_STATE_PLUGINS: &[&str] = &[
     "ovsdb_bridge",
 ];
 
+/// Personal memory and soul live in the cognitive store this generic plugin
+/// opens (owner rule 2026-11-22: personal chat and soul never leave the
+/// personal store). Raw Datalog, relation archives and imports therefore never
+/// name these relations; the scoped cognitive memory methods remain their only
+/// readers and writers.
+pub(crate) const PERSONAL_RELATIONS: &[&str] = &[
+    "memory_entries",
+    "memory_namespaces",
+    "soul_memories",
+    "agent_namespace_bindings",
+];
+
+fn names_personal_relation(text: &str) -> bool {
+    text.split(|c: char| !(c.is_ascii_alphanumeric() || c == '_'))
+        .any(|word| PERSONAL_RELATIONS.contains(&word))
+}
+
+fn string_list(args: &Value, field: &str) -> Vec<String> {
+    args.get(field)
+        .and_then(Value::as_array)
+        .map(|items| {
+            items
+                .iter()
+                .map(|item| item.as_str().unwrap_or_default().to_owned())
+                .collect()
+        })
+        .unwrap_or_default()
+}
+
+/// Refuse, before any effect, every generic Cozo request that could read or
+/// write personal memory or soul. A whole-database backup or restore would
+/// include them, so only an explicit, non-personal relation list may be
+/// archived and restore is refused.
+pub(crate) fn refuse_personal_relations(method: &str, args: &Value) -> Result<()> {
+    let named: Vec<String> = match method {
+        "run_query" => vec![
+            args.get("query")
+                .and_then(Value::as_str)
+                .unwrap_or_default()
+                .to_owned(),
+        ],
+        "import_relations" => args
+            .get("data")
+            .and_then(Value::as_object)
+            .map(|data| data.keys().cloned().collect())
+            .unwrap_or_default(),
+        "export_relations" => string_list(args, "relations"),
+        "backup" => {
+            let relations = string_list(args, "relations");
+            ensure!(
+                !relations.is_empty(),
+                "a whole-database cozo backup would include personal memory; name the relations"
+            );
+            relations
+        }
+        "restore" => anyhow::bail!(
+            "cozo restore is refused: an archive could overwrite personal memory or soul"
+        ),
+        "describe_relation" => vec![
+            args.get("name")
+                .and_then(Value::as_str)
+                .unwrap_or_default()
+                .to_owned(),
+        ],
+        _ => Vec::new(),
+    };
+    ensure!(
+        !named.iter().any(|text| names_personal_relation(text)),
+        "personal memory and soul relations are not available through the generic cozo plugin"
+    );
+    Ok(())
+}
+
 pub(super) fn supports(method: &str) -> bool {
     METHODS.contains(&method)
 }
@@ -62,6 +135,7 @@ pub(super) async fn dispatch(
     method: &str,
     args: &Value,
 ) -> Result<BackendOutcome, RuntimeError> {
+    refuse_personal_relations(method, args).map_err(RuntimeError::before_effect)?;
     let store = ctx.runtime.cognitive().cognitive().await?.cozo_shuttle();
     store
         .ensure_distinct_from(ctx.runtime.identity_store())
@@ -308,4 +382,70 @@ fn committed_system_graph(runtime: &crate::runtime::Runtime) -> Result<GraphSnap
 
 fn canonical_path(plugin: &str) -> String {
     op_plugins::canonical::plugin_path(plugin)
+}
+
+#[cfg(test)]
+mod personal_relation_tests {
+    use super::refuse_personal_relations;
+    use serde_json::json;
+
+    #[test]
+    fn generic_cozo_cannot_read_or_write_personal_memory_or_soul() {
+        for (method, args) in [
+            (
+                "run_query",
+                json!({"query": "?[v] := *memory_entries{namespace, value: v}"}),
+            ),
+            (
+                "run_query",
+                json!({"query": "?[s] := *soul_memories:by_key{s}"}),
+            ),
+            (
+                "run_query",
+                json!({"query": "?[n] <- [['x']] :put memory_namespaces {n}"}),
+            ),
+            (
+                "run_query",
+                json!({"query": "::remove agent_namespace_bindings"}),
+            ),
+            ("export_relations", json!({"relations": ["soul_memories"]})),
+            (
+                "import_relations",
+                json!({"data": {"memory_entries": {"headers": [], "rows": []}}}),
+            ),
+            ("backup", json!({"path": "all"})),
+            (
+                "backup",
+                json!({"path": "x", "relations": ["graph_node", "memory_entries"]}),
+            ),
+            ("restore", json!({"path": "x"})),
+            ("describe_relation", json!({"name": "soul_memories"})),
+        ] {
+            assert!(
+                refuse_personal_relations(method, &args).is_err(),
+                "{method} {args} must be refused"
+            );
+        }
+    }
+
+    #[test]
+    fn generic_cozo_keeps_non_personal_relations() {
+        for (method, args) in [
+            ("run_query", json!({"query": "?[id] := *graph_node{id}"})),
+            ("run_query", json!({"query": "::relations"})),
+            ("export_relations", json!({"relations": ["graph_node"]})),
+            (
+                "backup",
+                json!({"path": "g", "relations": ["graph_node", "graph_edge"]}),
+            ),
+            ("describe_relation", json!({"name": "system_graph_nodes"})),
+            ("list_relations", json!({})),
+            ("traverse_system_graph", json!({})),
+        ] {
+            assert!(
+                refuse_personal_relations(method, &args).is_ok(),
+                "{method} {args} must stay available"
+            );
+        }
+    }
 }

@@ -3291,6 +3291,30 @@ pre-dispatch fallback (`call_owned` without a `ReceiptCompleted` commit), now
 fixed. `tracker_hub_tests.rs` fails if a core operation, `BackendContext`,
 `call_owned` call or sled write appears outside this path.
 
+**Egress audit (2026-11-22, second pass).** Background owners started by
+`run_from_env` (`runtime_bootstrap.rs`) and every live egress primitive:
+- Network observer (`runtime_network.rs` `observe`): republishes the proxy
+  owner's in-process snapshot as committed state (`publish_backend_state`) for
+  a caller admitted by a tracked call; no external effect, never the sled.
+- MQTT ExHook (`runtime_mqtt.rs`, hooks/auth): answers the broker's
+  authentication/authorization callbacks (reads only). Revocation kicks a
+  client whose authority no longer validates (`runtime_mqtt_auth.rs`).
+- Committed wake (`runtime_mqtt_wake.rs`): a content-free notice (event
+  sequence only) after a commit the tracker already made. The tracker's own
+  checkpoints emit these notices (`core_checkpoint.rs`), so tracking each wake
+  would recurse; it is transport of a tracked commit. The responder wake in
+  `submit_turn` runs inside the tracked call.
+- Door tunnel (`runtime_tunnel.rs`) and `/mqtt` relay
+  (`mqtt_doorbell_relay.rs`): byte transport of door ingress; open/close is
+  the tracked sealed `tunnel` plugin; EMQX authenticates every CONNECT.
+- State projections (`publish_backend_state`): all callers are inside a
+  tracked call or its admitted background worker (generation stream, OVS
+  monitor, network observer); core state only, never the sled.
+- Generation workers (`runtime_chat_generations.rs`): provider egress started
+  by the tracked `start_generation`; the stream outlives that record and its
+  end is committed as generation state, not as a tracker transition.
+- Open (27.9): `/compliance/api` proxy and the ChatLink handoff.
+
 **Personal routing.** Excluded from the sled (and so from end-of-session
 vectors): calls while the session's effective mode is Personal (stored
 selection, else the kind's default), writes naming

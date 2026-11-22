@@ -87,11 +87,20 @@ fn core_operations_begin_and_complete_only_in_the_tracked_call() {
         files_containing(&live, ".begin_operation_attributed("),
         ["runtime.rs"]
     );
+    // core_operations.rs: the core's own `complete_operation` wrapper, which
+    // nothing outside the core calls (asserted below).
     assert_eq!(
         files_containing(&live, ".complete_operation_with_updates("),
-        ["runtime.rs"]
+        ["core_operations.rs", "runtime.rs"]
     );
-    assert_eq!(files_containing(&live, "call_owned("), ["runtime.rs"]);
+    assert!(files_containing(&live, ".complete_operation(").is_empty());
+    assert!(files_containing(&live, ".begin_operation(").is_empty());
+    // decoy_network.rs: the separate op-decoy-network process admitting a call
+    // the bridge already tracked (runtime_network -> decoy_network::dispatch).
+    assert_eq!(
+        files_containing(&live, "call_owned("),
+        ["decoy_network.rs", "runtime.rs"]
+    );
 }
 
 #[test]
@@ -152,4 +161,92 @@ fn sled_ledger_is_written_only_from_the_tracker_commit() {
         commit < append,
         "sled append must follow the tracker commit"
     );
+}
+
+/// Every live site of a real-egress primitive, audited 2026-11-22. A new site
+/// fails here until it is routed through `Runtime::call` (or classified).
+///
+/// * Inside a tracked call (`BackendContext`, after the `Running` commit):
+///   chat_router_*, model_registry_dispatch, runtime_agent_provider (provider
+///   HTTP), runtime_platform (emqx plugin), proxy_methods (forwarder configured
+///   by a tracked call), runtime_lungs (lungs socket), nlm_cli (via
+///   runtime_cognitive), responder_wake + runtime_chat_conversations (wake in
+///   submit_turn), runtime_misc_cozo (generic cozo), publish_backend_state
+///   callers (state projections of tracked operations; never the sled).
+/// * runtime_mqtt_wake: content-free wake for a commit the tracker already
+///   made; the tracker's own checkpoints emit these notices, so tracking a
+///   wake would recurse. runtime_mqtt_auth: kick on revoked authority.
+/// * mqtt_doorbell_relay, tls_door: byte transport on the door ingress.
+/// * Known exceptions, recorded in the spec (owner decision / container repo):
+///   compliance_http (/compliance/api proxy to the compliance app) and
+///   chat_link (ChatLink worker handoff, task 25.3).
+#[test]
+fn real_egress_sites_are_the_audited_set() {
+    let live = live(&sources());
+    let audited: &[(&str, &[&str])] = &[
+        (
+            "dispatch_emqx_method(",
+            &[
+                "responder_wake.rs",
+                "runtime_mqtt_auth.rs",
+                "runtime_mqtt_wake.rs",
+                "runtime_platform.rs",
+            ],
+        ),
+        (
+            "publish_responder_wake(",
+            &["responder_wake.rs", "runtime_chat_conversations.rs"],
+        ),
+        (
+            "publish_backend_state(",
+            &[
+                "runtime.rs",
+                "runtime_chat.rs",
+                "runtime_chat_conversations.rs",
+                "runtime_chat_generations.rs",
+                "runtime_creation.rs",
+                "runtime_network.rs",
+            ],
+        ),
+        ("Command::new(", &["chat_link.rs", "nlm_cli.rs"]),
+        (
+            "reqwest::",
+            &[
+                "chat_router_agent_route.rs",
+                "chat_router_catalog_binding.rs",
+                "chat_router_generation.rs",
+                "chat_router_runtime.rs",
+                "compliance_http.rs",
+                "model_registry_dispatch.rs",
+                "runtime_agent_provider.rs",
+            ],
+        ),
+        (
+            "TcpStream::connect",
+            &["mqtt_doorbell_relay.rs", "proxy_methods.rs", "tls_door.rs"],
+        ),
+        ("UnixStream::connect", &["runtime_lungs.rs"]),
+        ("dispatch_cozo_method(", &["runtime_misc_cozo.rs"]),
+    ];
+    for (needle, expected) in audited {
+        assert_eq!(&files_containing(&live, needle), expected, "{needle}");
+    }
+}
+
+#[test]
+fn generic_cozo_refuses_personal_relations_before_opening_the_store() {
+    let cozo = std::fs::read_to_string(
+        PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("src/runtime_misc_cozo.rs"),
+    )
+    .unwrap();
+    let dispatch = cozo
+        .find("pub(super) async fn dispatch(")
+        .expect("dispatch");
+    let body = &cozo[dispatch..];
+    let guard = body
+        .find("refuse_personal_relations(method, args)")
+        .expect("personal relation guard");
+    let open = body.find(".cozo_shuttle()").expect("store open");
+    let native = body.find("dispatch_cozo_method(").expect("native dispatch");
+    assert!(guard < open && guard < native);
 }
