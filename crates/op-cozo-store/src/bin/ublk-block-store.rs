@@ -1,10 +1,14 @@
 //! Set up and check the ublk Cozo block store. Touches only the database:
 //! no ublk device, no btrfs, no mounts, no Incus.
 //!
-//! usage: ublk-block-store <init|verify|status>
+//! usage: ublk-block-store <init|verify|status|migrate>
 //!   init    create/open the store, register `pool-default-persist` (500 GiB)
 //!   verify  write, read back and delete one scratch chunk; print row counts
 //!   status  print the device row and row counts
+//!   migrate copy legacy Cozo `blocks` envelopes that have no raw key into the
+//!           raw chunk keyspace (offline: stop the ublk service first; it holds
+//!           the RocksDB locks). Optional: reads already fall through to the
+//!           legacy relation. Never deletes or rewrites a legacy row.
 //!
 //! Path: $OP_UBLK_COZO_DB_PATH, else /var/lib/op-dbus/ublk-cozo. Refuses a
 //! path on btrfs: the store must never live in the pool it backs.
@@ -22,7 +26,8 @@ fn main() -> ExitCode {
         "init" => init(),
         "verify" => verify(),
         "status" => status(),
-        _ => Err("usage: ublk-block-store <init|verify|status>".to_string()),
+        "migrate" => migrate(),
+        _ => Err("usage: ublk-block-store <init|verify|status|migrate>".to_string()),
     };
     match result {
         Ok(()) => ExitCode::SUCCESS,
@@ -40,6 +45,7 @@ fn open() -> Result<CozoBlockStore, String> {
     // Re-check the created directory itself, not just its parent.
     refuse_btrfs(store.path())?;
     println!("store: {}", store.path().display());
+    println!("raw keyspace: {}", store.raw_path().display());
     Ok(store)
 }
 
@@ -109,6 +115,18 @@ fn status() -> Result<(), String> {
     let store = open()?;
     print_device(&persist_device(&store)?);
     print_counts("now", &store)
+}
+
+fn migrate() -> Result<(), String> {
+    let store = open()?;
+    let device = persist_device(&store)?;
+    print_device(&device);
+    print_counts("before", &store)?;
+    let (copied, already) = store
+        .migrate_legacy_blocks(&device)
+        .map_err(|e| e.to_string())?;
+    println!("migrate: copied {copied} legacy chunks; {already} already had a raw key");
+    print_counts("after", &store)
 }
 
 fn verify() -> Result<(), String> {

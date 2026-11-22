@@ -14,6 +14,9 @@ nix = { version = "0.28", features = ["fs", "user"] }
 anyhow = { workspace = true }
 chrono = { workspace = true }
 cozo = { workspace = true }
+# Same pinned cozorocks that cozo 0.7.6 links; used directly for the raw
+# ublk chunk keyspace (get / put / write batch, synced WAL barrier).
+cozorocks = "=0.1.7"
 serde_json = { workspace = true }
 thiserror = { workspace = true }
 tracing = { workspace = true }

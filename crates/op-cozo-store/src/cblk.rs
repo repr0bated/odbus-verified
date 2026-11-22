@@ -29,7 +29,7 @@
 //! ```
 //!
 //! Integrity is CRC32C only; no blake3 anywhere in the chunk path. Compression
-//! happens only here (zstd level 3 per chunk, flagged in the header, raw when
+//! happens only here (zstd level 1 per chunk, flagged in the header, raw when
 //! zstd would not shrink it); the RocksDB options profile disables compression
 //! at every level so stored bytes are exactly these envelopes.
 //!
@@ -50,6 +50,10 @@ pub const CBLK_SCHEMA_ID: u32 = 1;
 pub const CBLK_CHUNK_SIZE: u32 = 64 * 1024;
 /// Fixed header size including the CRC field.
 pub const CBLK_FIXED_HEADER_LEN: usize = 56;
+/// zstd level for chunk payloads. Level 1 keeps the per-chunk encode cost low
+/// on the ublk write path; decode is level-independent, so chunks written at
+/// any earlier level stay readable.
+pub const CBLK_ZSTD_LEVEL: i32 = 1;
 /// Inline the schema description on the first write after open and every Nth write.
 pub const CBLK_SCHEMA_INLINE_INTERVAL: u64 = 256;
 
@@ -167,7 +171,7 @@ pub fn encode(
 
     let mut flags = 0u16;
     let mut stored = payload.to_vec();
-    if let Ok(compressed) = zstd::bulk::compress(payload, 3)
+    if let Ok(compressed) = zstd::bulk::compress(payload, CBLK_ZSTD_LEVEL)
         && compressed.len() < payload.len()
     {
         stored = compressed;

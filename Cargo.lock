@@ -6123,6 +6123,7 @@ dependencies = [
  "blake3",
  "chrono",
  "cozo",
+ "cozorocks",
  "crc32c",
  "hex",
  "nix 0.28.0",
