@@ -1,6 +1,8 @@
 [Unit]
 Description=Container loopback address for the gRPC door
-After=network-pre.target
+# Owner rule: dbus first, then both FUSE units, then everything else.
+# network-pre.target is passive (nothing pulls it in), so it does not order.
+After=network-pre.target dbus.service 3tchedfs.service threetchedfs.service
 Before=op-grpc-bridge.service
 
 [Service]

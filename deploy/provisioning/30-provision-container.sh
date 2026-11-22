@@ -50,8 +50,11 @@ wire_devices() { # name
   # /run is its own Incus tmpfs disk (same fix as shm below): systemd finds /run
   # already mounted and does not cover the nested /run/mounts/opdbus binds with
   # its own tmpfs. Incus orders disks by path, so /run comes first.
-  # (deploy/runit/libexec-3tched/op-identity-root:554, incus.rs runtime-run)
-  dev_add "$n" runtime-run disk source=tmpfs: path=/run initial.mode=0755
+  # Exactly the trusted shape {type:disk, source:tmpfs:, path:/run}
+  # (crates/op-plugins/src/state_plugins/incus.rs:1612): the sealed typed Incus
+  # device contract cannot carry initial.mode, and the host bridge refuses to
+  # adopt an identity whose device has it (incus.rs:142).
+  dev_add "$n" runtime-run disk source=tmpfs: path=/run
   dev_add "$n" opdbus-run disk source="$RUNDIR" path=/run/mounts/opdbus shift=true
   dev_add "$n" lungs disk source=/run/opdbus/lungs path=/run/mounts/opdbus/lungs readonly=true shift=true
   dev_add "$n" shm disk source="$SHM" path=/dev/shm shift=true

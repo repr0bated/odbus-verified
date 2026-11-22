@@ -16,8 +16,10 @@ profile has only the root disk (on 3tched-pool) and the shared lungs socket.
   the container over the **host's** `lungs.sock`.
 - `3tchedfs.service.d/10-fuse-first.conf`,
   `threetchedfs.service.d/10-fuse-first.conf`: order is dbus, then both FUSE
-  units (the base units keep `After=dbus.service`), then everything that needs
-  FUSE (`op-grpc-bridge` Requires/After them). No `DefaultDependencies=no` /
+  units (the base units keep `After=dbus.service`), then everything else:
+  `opdbus-lo.service` and `door-tls-init.service` are `After=dbus.service 3tchedfs.service
+  threetchedfs.service` (`network-pre.target` is passive and did not order them, so opdbus-lo
+  used to start before dbus), and `op-grpc-bridge` Requires/After FUSE, lo and TLS. No `DefaultDependencies=no` /
   `Before=sysinit.target`: antiX dbus starts after sysinit, so that made an
   ordering cycle and systemd dropped both units. Each checks `/dev/fuse`, the catalog manifest, and the
   lungs socket, and is only treated as started once the FUSE is mounted.

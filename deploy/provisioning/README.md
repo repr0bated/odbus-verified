@@ -162,7 +162,7 @@ The Ubuntu/systemd `@seed` already carries the systemd versions of these units
 | device | source (host) | path (container) |
 |---|---|---|
 | `fuse` | `/dev/fuse` | `/dev/fuse` |
-| `runtime-run` | `tmpfs:` (Incus tmpfs, `initial.mode=0755`) | `/run` |
+| `runtime-run` | `tmpfs:` (Incus tmpfs; exactly `{type:disk, source:tmpfs:, path:/run}`, no `initial.mode`: the sealed typed device contract cannot carry it and adoption refuses it, `incus.rs:142,1612`) | `/run` |
 | `opdbus-run` | `/run/opdbus/ct/<name>` | `/run/mounts/opdbus` (shift) |
 | `lungs` | `/run/opdbus/lungs` | `/run/mounts/opdbus/lungs` (ro, shift) |
 | `shm` | `/run/opdbus/shm/<name>` (1777, `opdbus/plugin-blobs` pre-created) | `/dev/shm` (shift) |
