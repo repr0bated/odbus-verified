@@ -1,8 +1,9 @@
-#!/bin/sh
+#!/bin/bash
 # Project the kiroween subsidiary's own 3tchedFS and threetchedFS into the tmpfs its LXD
 # container receives as /run. The container gets call files only, no host
 # socket. Only the container's mapped root may write them.
 exec 2>&1
+set -euo pipefail
 SESSION=$(cat /etc/op-dbus/env/subsidiary-kiroween-session) || exit 78
 case $SESSION in ''|*[!0-9a-f-]*) echo 'invalid session'; exit 78;; esac
 BASE=/run/opdbus/subsidiary
@@ -13,14 +14,18 @@ install -d -m 0700 "$BASE" "$BASE/$SESSION" || exit 1
 install -d -m 0755 "$RUN" || exit 1
 OWNER=$(cat /etc/op-dbus/env/subsidiary-kiroween-call-owner-uid 2>/dev/null) || { echo 'waiting for the container uid map'; exec sleep 10; }
 case $OWNER in ''|0|*[!0-9]*) echo 'invalid mapped root uid'; exit 78;; esac
+GROUP=$(cat /etc/op-dbus/env/subsidiary-kiroween-call-owner-gid 2>/dev/null) || { echo 'waiting for the container gid map'; exec sleep 10; }
+case $GROUP in ''|0|*[!0-9]*) echo 'invalid mapped root gid'; exit 78;; esac
+EGRESS_GROUP=$(getent group ct-egress | cut -d: -f3)
+case $EGRESS_GROUP in ''|*[!0-9]*) echo 'egress group absent'; exit 78;; esac
 STATE=/var/lib/opdbus-subsidiary/$SESSION/empty-state
 # Same sealed catalog as the host. The threetched view uses the host's store;
 # the 3tchedFS view leaves out Incus, which is not a subsidiary's to see.
 STORES=/dev/shm/3tchedfs
 OWN=/dev/shm/3tchedfs-subsidiary-kiroween
 i=0
-until [ -S /run/opdbus/lungs/lungs.sock ] && [ -d /dev/shm/opdbus/plugin-blobs ] && [ -d "$STORES-threetched" ]; do
-    i=$((i + 1)); [ "$i" -lt 120 ] || { echo 'lungs socket, catalog or host stores not ready'; exit 1; }
+until [ -S /run/opdbus/lungs/lungs.sock ] && [ -d /dev/shm/opdbus/plugin-blobs ] && [ -d "$STORES-threetched" ] && [ -S /run/ct-egress/proxy.sock ]; do
+    i=$((i + 1)); [ "$i" -lt 120 ] || { echo 'lungs, catalog, host store or egress proxy not ready'; exit 1; }
     sleep 1
 done
 install -d -m 0755 "$STATE"
@@ -28,8 +33,9 @@ install -d -m 0755 "$STATE"
 # tree a guest has already held: every run detaches the old tmpfs and prepares
 # a fresh one. A running container keeps its old view until it is restarted.
 if mountpoint -q "$RUN"; then umount -R -l "$RUN" || exit 1; fi
-mount -t tmpfs -o "nosuid,nodev,size=256m,mode=0755,uid=$OWNER,gid=$OWNER" tmpfs "$RUN" || exit 1
+mount -t tmpfs -o "nosuid,nodev,size=256m,mode=0755,uid=$OWNER,gid=$GROUP" tmpfs "$RUN" || exit 1
 install -d -m 0755 "$RUN/mounts" "$RUN/mounts/3tchedFS" "$RUN/mounts/threetchedFS" || exit 1
+install -d -o "$OWNER" -g "$GROUP" -m 0700 "$RUN/opdbus-egress"
 BIN=/usr/local/libexec/op-dbus/bin/3tched-fs
 "$BIN" --store "$OWN" capture --schema-only --catalog /dev/shm/opdbus/plugin-blobs \
     --state "$STATE" --exclude-plugin threetched,incus || exit 1
@@ -38,11 +44,27 @@ view() { # store, fs name, surface, mount directory
         --catalog /dev/shm/opdbus/plugin-blobs --lungs-socket /run/opdbus/lungs/lungs.sock \
         --lungs-session "$SESSION" --call-owner-uid "$OWNER" --allow-other --auto-unmount "$RUN/mounts/$4"
 }
-view "$OWN" 3tchedFS 3tched 3tchedFS & A=$!
-view "$STORES-threetched" threetched threetched threetchedFS & B=$!
-# Losing either view ends both, so runit restores the pair together.
-trap 'kill "$A" "$B" 2>/dev/null; wait; exit 0' TERM INT HUP
-while kill -0 "$A" 2>/dev/null && kill -0 "$B" 2>/dev/null; do sleep 2 & wait $!; done
-kill "$A" "$B" 2>/dev/null
-wait
+PIDS=()
+cleanup() {
+    trap - EXIT TERM INT HUP
+    if [ "${#PIDS[@]}" -gt 0 ]; then kill "${PIDS[@]}" 2>/dev/null || :; fi
+    wait || :
+}
+trap cleanup EXIT
+trap 'exit 0' TERM INT HUP
+view "$OWN" 3tchedFS 3tched 3tchedFS & PIDS+=("$!")
+view "$STORES-threetched" threetched threetched threetchedFS & PIDS+=("$!")
+# Neither relay runs as host root or accepts a caller-selected host target.
+# The DNS carrier preserves end-to-end TLS to the identity's sealed NextDNS
+# endpoint; the proxy enforces public-internet-only destinations.
+setpriv --reuid "$OWNER" --regid "$GROUP" --groups "$EGRESS_GROUP" \
+    --inh-caps=-all --ambient-caps=-all --bounding-set=-all --no-new-privs \
+    socat "UNIX-LISTEN:$RUN/opdbus-egress/proxy.sock,mode=0600,fork" \
+    UNIX-CONNECT:/run/ct-egress/proxy.sock & PIDS+=("$!")
+setpriv --reuid "$OWNER" --regid "$GROUP" --clear-groups \
+    --inh-caps=-all --ambient-caps=-all --bounding-set=-all --no-new-privs \
+    socat "UNIX-LISTEN:$RUN/opdbus-egress/nextdns.sock,mode=0600,fork" \
+    TCP4:45.90.28.0:443 & PIDS+=("$!")
+# Losing a view or carrier tears down the entire unit; no liveness polling.
+wait -n "${PIDS[@]}" || :
 exit 1

@@ -10,6 +10,15 @@ exec 2>&1
 CONFIG=/etc/ct-egress/xray.json
 NFT=/etc/ct-egress/ct_egress.nft
 SOCK_DIR=/run/ct-egress
+BIN=/usr/local/libexec/op-dbus/bin/xray
+RELEASE=/run/opdbus-os-live
+PIN=$RELEASE/usr/share/op-dbus/egress/xray.json
+SHA=$(jq -er '.binary_sha256 | select(test("^[0-9a-f]{64}$"))' "$PIN") || exit 78
+printf '%s  %s\n' "$SHA" "$BIN" | sha256sum -c - >/dev/null || exit 78
+for ASSET in geoip.dat geosite.dat; do
+    SHA=$(jq -er --arg asset "$ASSET" '.assets[$asset] | select(test("^[0-9a-f]{64}$"))' "$PIN") || exit 78
+    printf '%s  %s\n' "$SHA" "$RELEASE/usr/local/share/xray/$ASSET" | sha256sum -c - >/dev/null || exit 78
+done
 
 if ! nft -f "$NFT"; then
     echo "nft $NFT failed; refusing to start without the egress filter"
@@ -20,12 +29,12 @@ fi
 install -d -o ct-egress -g ct-egress -m 0750 "$SOCK_DIR"
 rm -f "$SOCK_DIR/proxy.sock" "$SOCK_DIR/proxy.sock.lock"
 
-export XRAY_LOCATION_ASSET=/usr/local/share/xray
-if ! chpst -u ct-egress:ct-egress /usr/local/bin/xray run -test -config "$CONFIG" >/dev/null; then
+export XRAY_LOCATION_ASSET=$RELEASE/usr/local/share/xray
+if ! chpst -u ct-egress:ct-egress "$BIN" run -test -config "$CONFIG" >/dev/null; then
     echo "Xray config test failed: $CONFIG"
     sleep 30
     exit 1
 fi
 
 echo "starting container egress proxy on $SOCK_DIR/proxy.sock"
-exec chpst -u ct-egress:ct-egress /usr/local/bin/xray run -config "$CONFIG"
+exec chpst -u ct-egress:ct-egress "$BIN" run -config "$CONFIG"

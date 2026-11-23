@@ -1,5 +1,6 @@
 {
   "log": {"loglevel": "warning", "access": "none"},
+  "dns": {"servers": ["https+local://1.1.1.1/dns-query"], "queryStrategy": "UseIPv4"},
   "inbounds": [{
     "tag": "ct-egress", "listen": "/run/ct-egress/proxy.sock,0660",
     "protocol": "http", "settings": {}

@@ -107,9 +107,12 @@ pub(super) async fn prove_exec(engine: &NativeOwner, store: &IdentitySledStore, 
 }
 
 /// One POST; every failure after this call starts is an unknown outcome.
-pub(super) async fn exec(row: &LxdSubsidiary, command: &[String]) -> anyhow::Result<(i64, String, String)> {
+pub(super) async fn exec(row: &LxdSubsidiary, mut command: Vec<String>) -> anyhow::Result<(i64, String, String)> {
+    // The image supplies this launcher; only the guest's own per-file settings
+    // and secrets enter its process. Reuse the admitted argv allocation.
+    command.insert(0, "/usr/local/libexec/op-dbus/guest-env".into());
     let (code, stdout, stderr) = native_lxd::Client::local(Path::new(SOCKET))?
-        .exec_recorded(&row.name, command).await?;
+        .exec_recorded(&row.name, &command).await?;
     Ok((code, String::from_utf8_lossy(&stdout).into_owned(), String::from_utf8_lossy(&stderr).into_owned()))
 }
 

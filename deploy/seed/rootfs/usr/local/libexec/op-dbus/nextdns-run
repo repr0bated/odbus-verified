@@ -22,5 +22,11 @@ echo "$PROFILE" | grep -Eq '^[0-9a-f]{6}$' && echo "$DEVICE" | grep -Eq '^[A-Za-
   || { echo "sealed NextDNS context absent or malformed"; exit 1; }
 echo "starting nextdns for device $DEVICE (profile from the sealed identity)"
 # nextdns has no device-name flag; the device name rides on the DoH path.
+forwarder="https://dns.nextdns.io/$PROFILE/$DEVICE"
+if [ -r /etc/op-dbus/env/nextdns-bootstrap ]; then
+    bootstrap=$(cat /etc/op-dbus/env/nextdns-bootstrap)
+    [ "$bootstrap" = 127.0.0.3 ] || { echo 'unexpected guest DNS carrier address'; exit 1; }
+    forwarder="$forwarder#$bootstrap"
+fi
 exec /usr/bin/nextdns run -listen 127.0.0.1:53 -report-client-info \
-  -profile "$PROFILE" -forwarder "https://dns.nextdns.io/$PROFILE/$DEVICE"
+  -profile "$PROFILE" -forwarder "$forwarder"

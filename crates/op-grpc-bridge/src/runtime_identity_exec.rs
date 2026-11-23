@@ -174,7 +174,7 @@ pub(super) async fn execute(engine: &NativeOwner, store: &IdentitySledStore, arg
     prove_target(engine, store, &input.session_id, Some(&request)).await?;
     ensure!(strict_identity_contract()?.schema_hash == request.schema_hash, "guest execution schema pin changed");
     let outcome = match &lxd {
-        Some(row) => lxd_subsidiary::exec(row, &input.command).await,
+        Some(row) => lxd_subsidiary::exec(row, input.command).await,
         None => incus_exec(&instance.name, &input.command).await,
     };
     let result = match outcome {

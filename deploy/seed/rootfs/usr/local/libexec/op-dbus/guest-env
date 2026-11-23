@@ -1,0 +1,9 @@
+#!/bin/sh
+# Apply only this guest's existing per-setting/per-secret store to its argv.
+set -eu
+[ "$#" -gt 0 ] || { echo 'guest-env: command is required' >&2; exit 64; }
+. /etc/profile.d/op-dbus-env.sh
+[ -z "${HTTP_PROXY:-}" ] || export http_proxy="$HTTP_PROXY"
+[ -z "${HTTPS_PROXY:-}" ] || export https_proxy="$HTTPS_PROXY"
+[ -z "${NO_PROXY:-}" ] || export no_proxy="$NO_PROXY"
+exec "$@"

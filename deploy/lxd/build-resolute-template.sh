@@ -3,7 +3,9 @@
 # private mount+pid namespace. No network service, keys, machine id or login.
 set -euo pipefail
 umask 022
-W=/var/lib/op-dbus/lxd-template-build; OUT=/var/lib/op-dbus/lxd-images/ubuntu-resolute-template-20261123.tar.zst
+REPO=$(cd -- "$(dirname -- "$0")/../.." && pwd)
+W=${1:-/var/lib/op-dbus/lxd-template-build-$(date -u +%Y%m%dT%H%M%SZ)}
+OUT=${2:-/var/lib/op-dbus/lxd-images/ubuntu-resolute-template-$(date -u +%Y%m%dT%H%M%SZ).tar.zst}
 U=https://cdimage.ubuntu.com/ubuntu-base/releases/26.04/release; T=ubuntu-base-26.04.1-base-amd64.tar.gz
 KR=/mnt/cozo-btrfs-lxd/seeds/@ubuntu-subsidiary/rootfs/usr/share/keyrings/ubuntu-archive-keyring.gpg
 BUILD=/mnt/@opdbus-system-a/opt/op-build
@@ -32,7 +34,7 @@ grep -rhoE 'https?://[^ ]+' "$R/etc/apt/sources.list.d" "$R/etc/apt/sources.list
 X="env -i PATH=/usr/sbin:/usr/bin:/sbin:/bin HOME=/root LANG=C.UTF-8 DEBIAN_FRONTEND=noninteractive chroot $R"
 $X apt-get -o Acquire::Retries=3 update
 $X apt-get -y -o Dpkg::Options::=--force-confold dist-upgrade
-$X apt-get -y --no-install-recommends install systemd systemd-sysv dbus accountsservice packagekit btrfs-progs libssl3 ca-certificates jq less nano iproute2 procps fuse3
+$X apt-get -y --no-install-recommends install systemd systemd-sysv dbus accountsservice packagekit btrfs-progs libssl3t64 libudev1 libgcc-s1 libstdc++6 ca-certificates jq curl less nano iproute2 procps fuse3 socat
 $X apt-get clean
 $X systemctl mask systemd-networkd-wait-online.service getty@.service systemd-udevd.service >/dev/null 2>&1 || true
 $X dpkg-query -W -f '${Package} ${Version}\n' >"$W/packages.txt"
@@ -41,35 +43,4 @@ rm -rf "$R"/var/lib/apt/lists/* "$R"/var/log/*.log "$R"/var/log/apt/* "$R"/root/
 : >"$R/etc/machine-id"; : >"$R/etc/resolv.conf"; : >"$R/etc/hostname"
 install -d -m 0755 "$R/agent/user" "$R/run"
 umount -R "$R/dev"; umount "$R/proc"; umount "$R"
-install -d -m 0755 "$R/usr/local/bin"
-install -m 0755 "$ZCALL" "$R/usr/local/bin/zcall"
-printf '%s  %s\n' "$ZCALL_SHA" "$R/usr/local/bin/zcall" | sha256sum -c -
-install -d -m 0755 "$R/usr/local/libexec/op-dbus"
-install -m 0755 "$GUEST_BACKEND" "$R/usr/local/libexec/op-dbus/op-guest-backend"
-printf '%s  %s\n' "$GUEST_BACKEND_SHA" "$R/usr/local/libexec/op-dbus/op-guest-backend" | sha256sum -c -
-awk -F: 'length($2)>3{print "password set: "$1; b=1}END{exit b}' "$R/etc/shadow"
-install -d "$W/img/templates"
-printf '{{ container.name }}\n' >"$W/img/templates/hostname.tpl"
-printf '127.0.0.1 localhost\n127.0.1.1 {{ container.name }}\n::1 localhost ip6-localhost ip6-loopback\n' >"$W/img/templates/hosts.tpl"
-cat >"$W/img/metadata.yaml" <<Y
-architecture: x86_64
-creation_date: $(date +%s)
-properties:
-  description: Ubuntu 26.04 LTS minimal LXC template
-  os: ubuntu
-  release: "26.04"
-  codename: resolute
-  opdbus.zcall.sha256: "$ZCALL_SHA"
-  opdbus.guest-backend.sha256: "$GUEST_BACKEND_SHA"
-templates:
-  /etc/hostname:
-    when: [create, copy]
-    template: hostname.tpl
-  /etc/hosts:
-    when: [create, copy]
-    template: hosts.tpl
-Y
-tar --numeric-owner --xattrs --xattrs-include='*' --acls -C "$W/img" -cf - metadata.yaml templates rootfs | zstd -q -T4 -10 -o "$OUT.part"
-chown 0:0 "$OUT.part"; chmod 600 "$OUT.part"; mv "$OUT.part" "$OUT"
-sha256sum "$OUT"; du -h "$OUT"; du -sh "$W/img/rootfs"; wc -l <"$W/packages.txt"
-grep -E '^(PRETTY_NAME|VERSION_CODENAME)' "$W/img/rootfs/usr/lib/os-release"
+"$REPO/deploy/lxd/finish-resolute-template.sh" "$W" "$OUT"

@@ -73,6 +73,23 @@ pub(crate) async fn dispatch(ctx: &BackendContext<'_>, method: &str, args: &Valu
     if method == "create_image" {
         return import_image(&client, args).await;
     }
+    if method == "create_instance" {
+        let instance = instance_request(args).map_err(RuntimeError::before_effect)?;
+        ctx.caller.authority.revalidate().await
+            .map_err(|error| RuntimeError::denied(error.to_string()))?;
+        let operation = client.create_instance(&instance).await
+            .map_err(|error| RuntimeError::unknown(error.into()))?;
+        return serde_json::to_value(native_lxd::methods::CreateInstanceOutput {
+            operation: operation.operation().clone(),
+        }).map_err(|error| RuntimeError::unknown(error.into()));
+    }
+    if method == "get_instance" {
+        let input: native_lxd::methods::GetInstanceInput =
+            serde_json::from_value(args.clone()).map_err(|error| RuntimeError::before_effect(error.into()))?;
+        let (instance, etag) = client.get_instance(&input.name).await
+            .map_err(|error| RuntimeError::backend(error.into()))?;
+        return instance_response(instance, etag).map_err(RuntimeError::backend);
+    }
     let mut result = native_lxd::dispatch_lxd_method(&client, method, args).await.map_err(|error| {
         if mutates(method) { RuntimeError::unknown(error.into()) }
         else { RuntimeError::backend(error.into()) }
@@ -83,6 +100,29 @@ pub(crate) async fn dispatch(ctx: &BackendContext<'_>, method: &str, args: &Valu
             .retain(|name| name.as_str().is_some_and(|name| scope.iter().any(|row| row.name == name)));
     }
     Ok(result)
+}
+
+// The plugin contract uses typed NamedDevice arrays. Native client serde
+// uses LXD's name-keyed wire map. Keep the conversion at this boundary rather
+// than requiring callers to author a second, schema-incompatible format.
+fn instance_request(args: &Value) -> Result<native_lxd::types::InstancesPost> {
+    let mut instance = args.get("instance").context("instance is absent")?.clone();
+    let devices = instance.as_object_mut().context("instance is not an object")?
+        .remove("devices").context("instance devices are absent")?;
+    let devices: Vec<native_lxd::devices::NamedDevice> = serde_json::from_value(devices)?;
+    let mut instance: native_lxd::types::InstancesPost = serde_json::from_value(instance)?;
+    instance.instance_put.devices = devices;
+    Ok(instance)
+}
+
+fn instance_response(mut instance: native_lxd::types::Instance, etag: String) -> Result<Value> {
+    let devices = std::mem::take(&mut instance.devices);
+    let expanded = std::mem::take(&mut instance.expanded_devices);
+    let mut response = serde_json::to_value(native_lxd::methods::GetInstanceOutput { result: instance, etag })?;
+    let instance = response["result"].as_object_mut().context("instance response is not an object")?;
+    instance.insert("devices".into(), serde_json::to_value(devices)?);
+    instance.insert("expanded_devices".into(), serde_json::to_value(expanded)?);
+    Ok(response)
 }
 
 /// The LXD containers a subsidiary may see: its own and those it parents.
