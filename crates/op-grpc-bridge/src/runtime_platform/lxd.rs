@@ -64,15 +64,54 @@ pub(crate) async fn dispatch(ctx: &BackendContext<'_>, method: &str, args: &Valu
             _ => {}
         }
     }
+    let scope = subsidiary_scope(ctx).await?;
+    if let Some(scope) = &scope {
+        ensure_in_scope(scope, method, args).map_err(|error| RuntimeError::denied(error.to_string()))?;
+    }
     let client = native_lxd::Client::local(Path::new(SOCKET))
         .map_err(|error| RuntimeError::backend(error.into()))?;
     if method == "create_image" {
         return import_image(&client, args).await;
     }
-    native_lxd::dispatch_lxd_method(&client, method, args).await.map_err(|error| {
+    let mut result = native_lxd::dispatch_lxd_method(&client, method, args).await.map_err(|error| {
         if mutates(method) { RuntimeError::unknown(error.into()) }
         else { RuntimeError::backend(error.into()) }
-    })
+    })?;
+    if let (Some(scope), "get_instance_names") = (&scope, method) {
+        result["result"].as_array_mut()
+            .ok_or_else(|| RuntimeError::backend(anyhow::anyhow!("LXD instance names are not a list")))?
+            .retain(|name| name.as_str().is_some_and(|name| scope.iter().any(|row| row.name == name)));
+    }
+    Ok(result)
+}
+
+/// The LXD containers a subsidiary may see: its own and those it parents.
+/// `None` when the caller is not an LXD subsidiary. The rows are the durable
+/// parent-authorized intents, never a label or a name the caller supplies.
+async fn subsidiary_scope(ctx: &BackendContext<'_>)
+    -> Result<Option<Vec<op_cozo_store::LxdSubsidiary>>, RuntimeError> {
+    let store = ctx.runtime.identity_store().clone();
+    let rows = tokio::task::spawn_blocking(move || store.lxd_subsidiaries()).await
+        .map_err(|error| RuntimeError::backend(error.into()))?
+        .map_err(|error| RuntimeError::backend(error.into()))?;
+    let own = &ctx.caller.session_id;
+    if !rows.iter().any(|row| &row.session_id == own) { return Ok(None) }
+    Ok(Some(rows.into_iter().filter(|row| &row.session_id == own
+        || row.actor_id == ctx.caller.principal_id).collect()))
+}
+
+/// A subsidiary reads only its own containers and sled volumes. Pool, volume
+/// list and operation reads would name other identities, so they are refused.
+fn ensure_in_scope(scope: &[op_cozo_store::LxdSubsidiary], method: &str, args: &Value) -> Result<()> {
+    let name = args["name"].as_str().unwrap_or_default();
+    ensure!(match method {
+        "get_images" | "get_image" | "get_image_fingerprints" | "get_instance_names" => true,
+        "get_instance" | "get_instance_state" => scope.iter().any(|row| row.name == name),
+        "get_storage_pool_volume" => args["pool"] == POOL && args["vol_type"] == "custom"
+            && scope.iter().any(|row| name == format!("identity-{}", row.session_id)),
+        _ => false,
+    }, "a subsidiary sees only its own containers");
+    Ok(())
 }
 
 async fn require_human(ctx: &BackendContext<'_>) -> Result<(), RuntimeError> {

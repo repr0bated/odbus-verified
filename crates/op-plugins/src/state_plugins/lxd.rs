@@ -2448,7 +2448,7 @@ pub mod types {
             fn json_schema(_gen: &mut schemars::generate::SchemaGenerator) -> schemars::Schema {
                 serde_json::from_value(serde_json::json!({
             "type": "string",
-            "oneOf": [
+            "anyOf": [
                 { "type": "string", "enum": ["", "container", "virtual-machine", "microvm"] },
                 { "type": "string" },
             ],
@@ -2509,7 +2509,7 @@ pub mod types {
             fn json_schema(_gen: &mut schemars::generate::SchemaGenerator) -> schemars::Schema {
                 serde_json::from_value(serde_json::json!({
             "type": "string",
-            "oneOf": [
+            "anyOf": [
                 { "type": "string", "enum": ["migration", "conversion", "image", "copy", "none"] },
                 { "type": "string" },
             ],
@@ -6652,7 +6652,7 @@ pub mod types {
             fn json_schema(_gen: &mut schemars::generate::SchemaGenerator) -> schemars::Schema {
                 serde_json::from_value(serde_json::json!({
                     "type": "string",
-                    "oneOf": [
+                    "anyOf": [
                         { "type": "string", "enum": ["sync", "async", "error"] },
                         { "type": "string" },
                     ],

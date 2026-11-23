@@ -6,22 +6,23 @@ set -euo pipefail
 
 fail() { printf 'subsidiary: %s\n' "$*" >&2; exit 1; }
 usage() {
-    printf '%s\n' 'Usage: 30-provision-container.sh --subsidiary PARENT_PRINCIPAL_ID --name NAME --pubkey WG_PUBKEY --image SHA256 --seed-uuid UUID [--dry-run]'
+    printf '%s\n' 'Usage: 30-provision-container.sh --subsidiary PARENT_PRINCIPAL_ID --name NAME --pubkey WG_PUBKEY --image SHA256 (--seed-uuid UUID | --template NAME) [--dry-run]'
 }
 
 if [[ ${1:-} == --help ]]; then usage; exit 0; fi
 parent=${1:?parent principal id required}
 shift
-name= pubkey= fingerprint= seed= dry_run=${DRY_RUN:-0}
+name= pubkey= fingerprint= seed= template= dry_run=${DRY_RUN:-0}
 while (( $# )); do
     case "$1" in
-        --name|--pubkey|--image|--seed-uuid)
+        --name|--pubkey|--image|--seed-uuid|--template)
             (( $# >= 2 )) || fail "missing value for $1"
             case "$1" in
                 --name) name=$2 ;;
                 --pubkey) pubkey=$2 ;;
                 --image) fingerprint=$2 ;;
                 --seed-uuid) seed=$2 ;;
+                --template) template=$2 ;;
             esac
             shift 2
             ;;
@@ -35,7 +36,15 @@ uuid='^[0-9a-f]{8}(-[0-9a-f]{4}){3}-[0-9a-f]{12}$'
 [[ $name =~ ^[a-z][a-z0-9-]{0,62}$ ]] || fail 'invalid subsidiary name'
 [[ $pubkey =~ ^[A-Za-z0-9+/]{43}=$ ]] || fail 'invalid WireGuard public key'
 [[ $fingerprint =~ ^[0-9a-f]{64}$ ]] || fail 'a full LXD image fingerprint is required'
-[[ $seed =~ $uuid ]] || fail 'the seed subvolume UUID is required'
+# Exactly one provenance property the private image must carry.
+if [[ -n $template && -z $seed ]]; then
+    [[ $template =~ ^[a-z0-9][a-z0-9.-]{0,62}$ ]] || fail 'invalid template name'
+    property=opdbus.template expected=$template
+elif [[ -z $template && $seed =~ $uuid ]]; then
+    property=opdbus.seed.uuid expected=$seed
+else
+    fail 'give either the seed subvolume UUID or the template name'
+fi
 
 here=$(cd -- "$(dirname -- "$0")" && pwd)
 mount=${OP_3TCHEDFS_MOUNT:-/run/mounts/3tchedFS}
@@ -93,10 +102,10 @@ fi
 
 invoke=$here/../scripts/3tchedfs-invoke.sh
 image=$("$invoke" lxd get_image "$(jq -nc --arg f "$fingerprint" '{fingerprint:$f}')")
-jq -e --arg f "$fingerprint" --arg seed "$seed" '.result.result.result
+jq -e --arg f "$fingerprint" --arg p "$property" --arg v "$expected" '.result.result.result
     | select(.fingerprint == $f and .type == "container" and .public == false
-        and .properties["opdbus.seed.uuid"] == $seed)' <<<"$image" >/dev/null ||
-    fail 'the private LXD image does not identify the sealed subsidiary seed'
+        and .properties[$p] == $v)' <<<"$image" >/dev/null ||
+    fail 'the private LXD image does not carry the expected seed or template'
 "$invoke" lxd get_storage_pool_volume "$(jq -nc --arg pool "$pool" --arg n "identity-$session" \
     '{pool:$pool,vol_type:"custom",name:$n}')" >/dev/null ||
     fail "identity sled identity-$session is absent; install the Decoy-issued identity first"
