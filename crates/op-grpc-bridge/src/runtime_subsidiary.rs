@@ -2,6 +2,7 @@
 //! tenant selector supplied in arguments. All effects still enter Runtime.
 use std::{collections::HashMap, path::PathBuf, sync::Arc};
 
+use op_plugins::state_plugins::identity_sled::{OrgRelation, OrgRelationKind};
 use anyhow::{Context, Result, ensure};
 use op_cozo_store::{CozoGraphShuttle, LxdSubsidiary};
 use serde_json::Value;
@@ -44,15 +45,32 @@ impl Scope {
     }
 }
 
+fn binding(row: Option<LxdSubsidiary>, relation_json: &str) -> Result<Option<LxdSubsidiary>> {
+    let relation = if relation_json.is_empty() {
+        None
+    } else {
+        Some(serde_json::from_str::<OrgRelation>(relation_json)?)
+    };
+    match (row, relation) {
+        (None, None) => Ok(None),
+        (Some(row), Some(relation)) => {
+            ensure!(relation.kind == OrgRelationKind::Subsidiary && relation.name == row.name,
+                "subsidiary relation differs from its native binding");
+            Ok(Some(row))
+        }
+        _ => anyhow::bail!("subsidiary identity requires its native binding and organizational relation"),
+    }
+}
+
 pub(crate) async fn resolve(ctx: &BackendContext<'_>) -> Result<Option<Scope>, RuntimeError> {
     let store = ctx.runtime.identity_store().clone();
     let session = ctx.caller.session_id.clone();
     let key = ctx.caller.claims().wireguard_pubkey.clone();
     let genesis = ctx.caller.session_genesis.clone();
     tokio::task::spawn_blocking(move || -> Result<Option<Scope>> {
-        let Some(row) = store.lxd_subsidiaries()?.into_iter().find(|row| row.session_id == session)
-            else { return Ok(None) };
-        let identity = store.read_identity_revision(&session)?.record.context("subsidiary identity absent")?;
+        let identity = store.read_identity_revision(&session)?.record.context("backend caller identity absent")?;
+        let row = store.lxd_subsidiaries()?.into_iter().find(|row| row.session_id == session);
+        let Some(row) = binding(row, &identity.org_relation_json)? else { return Ok(None) };
         ensure!(identity.active && !identity.sealed_id.is_empty() && identity.session_genesis == genesis
             && identity.wireguard_pubkey == key && row.wireguard_pubkey == key && !row.native_uuid.is_empty(),
             "subsidiary identity or native binding changed");
@@ -121,5 +139,7 @@ mod tests {
         assert!(scope.collection("kiroween::other::inventory").is_err());
         assert!(scope.owns_collection("kiroween::inventory"));
         assert!(!scope.owns_collection("kiroween-other::inventory"));
+        assert!(binding(None, r#"{"kind":"subsidiary","name":"kiroween"}"#).is_err());
+        assert!(binding(Some(scope.row), "").is_err());
     }
 }
