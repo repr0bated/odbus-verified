@@ -1,3 +1,5 @@
 #!/bin/sh
 [ -f /run/opdbus/runit-ready/opdbus-grants ] || exit 1
-pgrep -f /usr/local/libexec/op-dbus/bin/op-grants-materializer >/dev/null 2>&1 || exit 1
+# Ready is written only after a successful reconcile by the running
+# materializer. Do not pgrep: pgrep -f reads /proc/tty/drivers and blocks
+# while bootlogd holds the console lock.

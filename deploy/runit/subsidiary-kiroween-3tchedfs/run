@@ -20,13 +20,13 @@ case $OWNER in ''|0|*[!0-9]*) echo 'invalid mapped root uid'; exit 78;; esac
 GROUP=$(cat /etc/op-dbus/env/subsidiary-kiroween-call-owner-gid 2>/dev/null) || { echo 'waiting for the container gid map'; exec sleep 10; }
 case $GROUP in ''|0|*[!0-9]*) echo 'invalid mapped root gid'; exit 78;; esac
 STATE=/var/lib/opdbus-subsidiary/$SESSION/empty-state
-# Same sealed catalog as the host. The threetched view uses the host's store;
-# the 3tchedFS view leaves out Incus, which is not a subsidiary's to see.
-STORES=/dev/shm/3tchedfs
+# One sealed catalog. Each view is its own store: the host threetched store is
+# already mounted, and a second mount of it fails. Incus is not a subsidiary's.
 OWN=/dev/shm/3tchedfs-subsidiary-kiroween
+THREETCHED_STORE=/dev/shm/3tchedfs-subsidiary-kiroween-threetched
 i=0
-until [ -S /run/opdbus/lungs/lungs.sock ] && [ -d /dev/shm/opdbus/plugin-blobs ] && [ -d "$STORES-threetched" ]; do
-    i=$((i + 1)); [ "$i" -lt 120 ] || { echo 'lungs socket, catalog or host stores not ready'; exit 1; }
+until [ -S /run/opdbus/lungs/lungs.sock ] && [ -d /dev/shm/opdbus/plugin-blobs ]; do
+    i=$((i + 1)); [ "$i" -lt 120 ] || { echo 'lungs socket or catalog not ready'; exit 1; }
     sleep 1
 done
 install -d -m 0755 "$STATE"
@@ -38,7 +38,9 @@ mount -t tmpfs -o "nosuid,nodev,size=256m,mode=0755,uid=$OWNER,gid=$GROUP" tmpfs
 install -d -m 0755 "$RUN/mounts" "$RUN/mounts/3tchedFS" "$RUN/mounts/threetchedFS" || exit 1
 BIN=/usr/local/libexec/op-dbus/bin/3tched-fs
 "$BIN" --store "$OWN" capture --schema-only --catalog /dev/shm/opdbus/plugin-blobs \
-    --state "$STATE" --exclude-plugin threetched,incus || exit 1
+    --state "$STATE" --exclude-plugin incus >"$STATE/3tched-capture.json" || exit 1
+"$BIN" --store "$THREETCHED_STORE" capture --schema-only --catalog /dev/shm/opdbus/plugin-blobs \
+    --state "$STATE" --include-plugin threetched >"$STATE/threetched-capture.json" || exit 1
 view() { # store, fs name, surface, mount directory
     exec "$BIN" --store "$1" mount --fs-name "$2" --surface "$3" --state "$STATE" \
         --catalog /dev/shm/opdbus/plugin-blobs --lungs-socket /run/opdbus/lungs/lungs.sock \
@@ -53,7 +55,7 @@ cleanup() {
 trap cleanup EXIT
 trap 'exit 0' TERM INT HUP
 view "$OWN" 3tchedFS 3tched 3tchedFS & PIDS+=("$!")
-view "$STORES-threetched" threetched threetched threetchedFS & PIDS+=("$!")
+view "$THREETCHED_STORE" threetched threetched threetchedFS & PIDS+=("$!")
 # Losing either view tears the unit down so runit restores the pair together.
 wait -n "${PIDS[@]}" || :
 exit 1
