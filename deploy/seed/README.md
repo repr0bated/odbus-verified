@@ -156,3 +156,30 @@ It reads plugins, methods and argument schemas only from the mounted 3tchedFS na
 mount; it never reads a blob catalog directory. The running
 `Jeremy` and `3tchedChatbot` containers got the same two files with `incus file push`
 (owner's choice; no restart). Seed pin unchanged.
+
+## Ubuntu systemd seeds (2026-11-22)
+
+Two sealed systemd seeds on `3tched-pool`, from the earlier Ubuntu seed image
+`/var/lib/opdbus/containers/3tchedChatbot/seed.img` (Btrfs label `3tched-seed`, SEEDING,
+subvolume `@`, Ubuntu 26.04.1 LTS, fuse3/libfuse3 3.18.2). The source image is unchanged.
+
+- `images/@ubuntu-user` (UUID `f7cca480-0273-bc48-a246-01c1bddf58fd`): user containers.
+  Imported with `SEED_NAME=@ubuntu-user 10-seed-acquire.sh image <seed.img>` (a full copy;
+  a snapshot cannot cross filesystems), then adjusted by
+  `deploy/seed/ubuntu-seeds-adjust.sh` (run copy in `/home/jeremy/provisioning/`):
+  the files under `deploy/seed/rootfs` from git HEAD (old files kept as `<file>.pre-20261122-164209`);
+  `3tched-fs`, `op-grpc-bridge`, `op-tunnel-door`, `op-identity-accept`, `zcall` and its completion
+  byte-identical with `@seed` (`nextdns` and the base `3tchedfs.service` already were); the same
+  `multi-user.target.wants` op units as `@seed`; `default.target` -> `multi-user.target`, so the
+  Budgie desktop stays installed but `sddm` is not started; `/etc/hostname` emptied. No
+  `initrd-release`, no `/etc/fstab` in the image. Sealed read-only.
+- `images/@ubuntu-subsidiary` (UUID `49e96bfd-20fd-4844-9e30-524f79eb0cf6`): CoW snapshot of
+  `@ubuntu-user` before sealing, with `op-grpc-bridge`, `opdbus-lo`, `door-tls-init` and
+  `op-tunnel-door` not enabled (subsidiary spec Req 8.4: no door in the subsidiary). The
+  3tchedFS units and `nextdns` stay enabled. Sealed read-only.
+- Rollback point: `images/@ubuntu-user.as-imported-20261122-164209` (read-only, as imported).
+- Logs and receipts: `/home/jeremy/provisioning/runs/ubuntu-user-acquire-20261122-164053.*`,
+  `ubuntu-seeds-adjust-20261122-164209.*` (receipts `exit=0`).
+
+Not yet booted: no container has been provisioned from either seed. The 3tchedFS units still
+mount over the host lungs socket, which the subsidiary spec forbids (open question).

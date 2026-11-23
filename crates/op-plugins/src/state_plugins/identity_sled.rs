@@ -163,6 +163,12 @@ pub struct ContainerIdentitySled {
     #[serde(default)]
     #[schemars(extend("x-oscal-subid" = "src.service.identity-sled.instance@v1"))]
     pub instance: Option<super::incus::IncusInstance>,
+    /// Organizational relation of this identity (for example a subsidiary and
+    /// its name). It is OSCAL-tagged so the relation can be mapped to
+    /// controls; it is not derived from the container name and may be moved.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[schemars(extend("x-oscal-subid" = "src.service.identity-sled.org-relation@v1"))]
+    pub org_relation: Option<OrgRelation>,
     /// Unix seconds when the session began.
     #[serde(default)]
     pub session_started_at: i64,
@@ -216,6 +222,33 @@ impl ContainerIdentitySled {
             && self.arrival_timestamp != 0
             && !self.chain_head_at_arrival.is_empty()
     }
+}
+
+/// Kind of organizational relation. New kinds (org-chart units and the like)
+/// are added as variants under the same subid.
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, schemars::JsonSchema)]
+#[serde(rename_all = "snake_case")]
+pub enum OrgRelationKind {
+    Subsidiary,
+}
+
+/// An identity's place in an organization. `parent` is an open reference
+/// (a principal or session id, a URI, an org-chart node); its resolution is
+/// not fixed here, so the relation can be re-pointed when the final model
+/// is settled.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, schemars::JsonSchema)]
+#[serde(deny_unknown_fields)]
+#[schemars(extend("x-oscal-subid" = "sch.service.identity-sled.org-relation.schema@v1"))]
+pub struct OrgRelation {
+    #[schemars(extend("x-oscal-subid" = "src.service.identity-sled.org-relation.kind@v1"))]
+    pub kind: OrgRelationKind,
+    /// Organizational name, e.g. the subsidiary name.
+    #[schemars(extend("x-oscal-subid" = "src.service.identity-sled.org-relation.name@v1"))]
+    pub name: String,
+    /// Reference to the parent, wherever it lives.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[schemars(extend("x-oscal-subid" = "src.service.identity-sled.org-relation.parent@v1"))]
+    pub parent: Option<String>,
 }
 
 /// The identity's private writable Btrfs leaf. Cozo owns its assignment;

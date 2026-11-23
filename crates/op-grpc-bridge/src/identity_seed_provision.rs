@@ -661,6 +661,7 @@ impl ProvisionExecution<'_> {
                 cozo_id: self.sid.clone(),
                 attached: true,
             }),
+            org_relation: None,
             instance: Some(observed),
             session_started_at: timestamp,
             last_seen_at: timestamp,

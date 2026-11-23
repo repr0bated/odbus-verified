@@ -162,6 +162,7 @@ pub(crate) fn record_to_sled(
         sealed_id: (!record.sealed_id.is_empty()).then(|| record.sealed_id.clone()),
         principal_kind: record.principal_kind.clone(),
         btrfs_device: stored_json(&record.btrfs_device_json)?,
+        org_relation: None,
         instance: stored_json(&record.instance_json)?,
         session_started_at: record.session_started_at,
         last_seen_at: record.last_seen_at,

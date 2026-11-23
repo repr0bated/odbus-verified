@@ -382,6 +382,7 @@ impl TestEnv {
                 cozo_id: session_id.clone(),
                 attached: false,
             }),
+            org_relation: None,
             instance: Some(IncusInstance {
                 name: session_id.clone(),
                 status: "Stopped".to_string(),

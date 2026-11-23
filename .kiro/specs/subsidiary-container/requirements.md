@@ -7,6 +7,42 @@ pre-existing 3tched tooling; this spec fixes what the provisioned container
 must be. Nothing is provisioned until after the current golden build and the
 owner's go-ahead.
 
+Owner decisions, 2026-11-22 (Kiroween hackathon; new development). These
+take precedence over the requirements below where they differ:
+
+- **LXD:** a subsidiary is remote or isolated, which is why it runs under LXD
+  through the sealed `lxd` plugin. This host has no LXD daemon; where the LXD
+  host runs is still open.
+- **Privileges and grants:** a subsidiary is the same as root within its own
+  space. It holds root-equivalent grants and capabilities scoped to itself,
+  with no execution methods.
+- **Not the chatbot model:** the chatbot is the only account with both a
+  human and a machine identity. It has no execution, and root access needs
+  two humans. A subsidiary does not copy that model.
+- **Backend channel:** FUSE call files only, as in Requirement 4. No lungs
+  socket and no bus.
+- **Network:** no NIC. The OVN edge NIC in Requirement 2 is withdrawn. BGP
+  stays possible without a NIC: a BGP session is TCP 179 over a socket, so a
+  BGP speaker in the container can peer through a forwarded socket (an LXD
+  `proxy` device) instead of an interface. That socket is a second channel
+  besides the FUSE call files and conflicts with Requirement 4.2 (no host
+  Unix socket) unless the owner exempts it or it is carried through the
+  bridge. Undecided. Effects otherwise go through FUSE call files and the
+  bridge's tracked egress.
+- **Root filesystem:** the owner accepts the earlier Ubuntu seed, which has
+  FUSE: `/var/lib/opdbus/containers/3tchedChatbot/seed.img`, Btrfs label
+  `3tched-seed`, SEEDING flag set, subvolumes `@` and `@seed-ro`, Ubuntu
+  26.04.1 LTS, `fusermount3` present. It boots systemd. The owner chose
+  systemd inside containers (2026-11-22), so Requirement 8 (runit) is
+  withdrawn for subsidiaries. Imported and sealed as
+  `3tched-pool/images/@ubuntu-subsidiary` (no in-container bridge or door)
+  and received read-only into the LXD ublk at
+  `/mnt/cozo-btrfs-lxd/seeds/@ubuntu-subsidiary`.
+- **Subsidiary marker:** "subsidiary" is the OSCAL-tagged
+  `ContainerIdentitySled.org_relation` (`kind`, `name`, `parent`;
+  `src.service.identity-sled.org-relation@v1`), not a label or the container
+  name. Its `parent` may point anywhere and may be moved later.
+
 Spec id: `subsidiary-container`
 Spec home: `.kiro/specs/subsidiary-container/`
 Source material: a fresh read of `origin/dev` `009e035`

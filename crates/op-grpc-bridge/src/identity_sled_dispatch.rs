@@ -299,6 +299,7 @@ fn record_to_sled(
             &record.session_id,
             &record.btrfs_device_json,
         )?,
+        org_relation: None,
         instance: parse_json("instance", &record.session_id, &record.instance_json)?,
         session_started_at: record.session_started_at,
         last_seen_at: record.last_seen_at,
@@ -3131,6 +3132,7 @@ pub(crate) mod tests {
             sealed_id: None,
             principal_kind: Some(principal_kind.into()),
             btrfs_device: None,
+            org_relation: None,
             instance: Some(prepare_parked_instance(
                 &session_id,
                 IncusInstance::default(),
