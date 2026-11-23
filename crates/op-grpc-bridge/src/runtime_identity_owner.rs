@@ -27,6 +27,7 @@ use crate::{core::{BackendProjection, BackendStateUpdate, StateScope},
 #[path = "runtime_identity_rename.rs"] mod rename;
 #[path = "runtime_identity_native.rs"] pub(crate) mod native_attachment;
 #[path = "runtime_identity_upgrade.rs"] mod native_upgrade;
+#[path = "runtime_identity_lxd.rs"] pub(crate) mod lxd_subsidiary;
 #[path = "runtime_identity_exec.rs"] mod guest_exec;
 
 const MAX_EVENTS_IN_STATE: usize = 256;
@@ -450,7 +451,7 @@ async fn adopt_identity_volume(
         None => None,
     };
     let cozo = cozo.clone();
-    tokio::task::spawn_blocking(move || commit_volume_identity(&cozo, &key, &claims, &inline, instance, previous_present)).await?
+    tokio::task::spawn_blocking(move || commit_volume_identity(&cozo, &key, &claims, &inline, instance, previous_present, None)).await?
 }
 
 fn volume_actor_kind(chatbot: bool, declared: Option<&str>, parent: Option<&str>) -> anyhow::Result<&'static str> {
@@ -498,6 +499,7 @@ fn commit_volume_identity(
     cozo: &CozoGraphShuttle, key: &str, claims: &op_identity::sealed_id::SealedId, inline: &str,
     instance: op_plugins::state_plugins::incus::IncusInstance,
     chatbot_previous_present: Option<bool>,
+    admitted_subsidiary: Option<op_plugins::state_plugins::identity_sled::OrgRelation>,
 ) -> anyhow::Result<bool> {
     let session = claims.session_id.clone();
     let config = instance.config.as_ref().context("identity native configuration absent")?;
@@ -505,7 +507,7 @@ fn commit_volume_identity(
     let kind = volume_actor_kind(configured_chatbot_key().as_deref() == Some(key),
         config.get("user.opdbus.principal_kind").map(String::as_str), parent)?;
     let expected = cozo.read_identity_revision(&session)?;
-    if parent.is_some() {
+    if parent.is_some() && admitted_subsidiary.is_none() {
         // Only the admitted parent-authorized native intent may create a child.
         let Some(record) = expected.record.as_ref() else { return Ok(false) };
         ensure!(record.principal_kind.as_deref() == Some("service")
@@ -563,7 +565,7 @@ fn commit_volume_identity(
     }
     ensure!(expected.revision == 0 && expected.operation_id.is_empty() && expected.genesis.is_none(),
         "an identity sled cannot overwrite a deletion tombstone");
-    let sled: ContainerIdentitySled = serde_json::from_value(serde_json::json!({
+    let mut sled: ContainerIdentitySled = serde_json::from_value(serde_json::json!({
         "session_id": session, "wireguard_pubkey": key, "principal_kind": kind,
         "active": instance.status == "Running", "expires_at": 0, "instance": instance,
         "session_started_at": claims.arrival_timestamp, "last_seen_at": claims.arrival_timestamp,
@@ -574,6 +576,7 @@ fn commit_volume_identity(
         "catalog_hash_at_arrival": claims.catalog_hash_at_arrival,
         "head_timestamp_at_arrival": claims.head_timestamp_at_arrival
     }))?;
+    sled.org_relation = admitted_subsidiary;
     let operation = format!("sled-adopt-{}", uuid::Uuid::new_v4().simple());
     cozo.apply_identity_intent(&session, &operation, IdentityIntent::CompareExchange(Box::new(IdentityCompareExchange {
         expected, record: Some(sled_to_record(&sled)?), genesis: Some(sled_to_genesis(&sled)) })))?;

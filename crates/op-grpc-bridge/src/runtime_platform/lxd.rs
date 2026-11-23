@@ -2,8 +2,9 @@
 //!
 //! Every catalog capability reaches `$ROOT`, so a grant alone must never turn
 //! an LXD payload into host authority. Mutations are fixed to the subsidiary
-//! shape and to a live human caller; exec, console, file, config, profile,
-//! network and lifecycle methods have no route here.
+//! shape and to a live human caller; exec, console, file, config, profile
+//! and network methods have no route here. Power is limited to the recorded
+//! parent starting or stopping its own admitted subsidiary.
 use crate::runtime::{BackendContext, RuntimeError};
 use anyhow::{Context, Result, ensure};
 use op_plugins::state_plugins::lxd as native_lxd;
@@ -11,7 +12,7 @@ use serde_json::{Value, json};
 use std::os::unix::fs::{MetadataExt, OpenOptionsExt};
 use std::path::Path;
 
-const SOCKET: &str = "/var/lib/lxd/unix.socket";
+use crate::runtime_identity_owner::lxd_subsidiary::{self, SOCKET};
 const IMAGE_DIR: &str = "/var/lib/op-dbus/lxd-images";
 const POOL: &str = "lxd-pool";
 /// Required on every subsidiary instance, exactly.
@@ -41,7 +42,7 @@ pub(crate) fn supports(method: &str) -> bool {
 }
 
 fn mutates(method: &str) -> bool {
-    matches!(method, "create_image" | "create_instance" | "create_storage_pool_volume")
+    matches!(method, "create_image" | "create_instance" | "create_storage_pool_volume" | "update_instance_state")
 }
 
 pub(crate) async fn dispatch(ctx: &BackendContext<'_>, method: &str, args: &Value)
@@ -51,11 +52,17 @@ pub(crate) async fn dispatch(ctx: &BackendContext<'_>, method: &str, args: &Valu
         let check = match method {
             "create_instance" => validate_instance(args, &ctx.caller.principal_id),
             "create_storage_pool_volume" => validate_volume(args),
+            "update_instance_state" => validate_state(args).map(|_| ()),
             _ => validate_image(args).map(|_| ()),
         };
         check.map_err(|error| RuntimeError::denied(error.to_string()))?;
         ctx.caller.authority.revalidate().await
             .map_err(|error| RuntimeError::denied(error.to_string()))?;
+        match method {
+            "create_instance" => reserve(ctx, args).await?,
+            "update_instance_state" => prepare_state(ctx, args).await?,
+            _ => {}
+        }
     }
     let client = native_lxd::Client::local(Path::new(SOCKET))
         .map_err(|error| RuntimeError::backend(error.into()))?;
@@ -125,13 +132,82 @@ fn validate_instance(args: &Value, caller: &str) -> Result<()> {
         && op_identity::session::derive_session_id(text("user.opdbus.wireguard_public_key")) == session,
         "a subsidiary is a pending service identity of its calling parent");
     let devices = instance["devices"].as_array().context("devices are absent")?;
-    ensure!(devices.len() == 2, "a subsidiary has exactly its root and identity sled");
+    ensure!(devices.len() == 3, "a subsidiary has exactly its root, identity sled and run directory");
     let root = json!({"name":"root","device":{"type":"disk","path":"/","pool":POOL}});
     let sled = json!({"name":"sled","device":{"type":"disk","path":"/agent/user","pool":POOL,
         "source":format!("identity-{session}"),"readonly":"true"}});
-    ensure!(devices.contains(&root) && devices.contains(&sled),
-        "only the pool root and the read-only identity sled may be attached");
+    let run = json!({"name":"run","device":{"type":"disk","path":"/run",
+        "source":lxd_subsidiary::run_source(session),"recursive":"true"}});
+    ensure!(devices.contains(&root) && devices.contains(&sled) && devices.contains(&run),
+        "only the pool root, the read-only identity sled and its own run directory may be attached");
     Ok(())
+}
+
+/// Durable parent intent before the request can reach LXD.
+async fn reserve(ctx: &BackendContext<'_>, args: &Value) -> Result<(), RuntimeError> {
+    let instance = &args["instance"];
+    let text = |key: &str| instance["config"][key].as_str().unwrap_or_default().to_owned();
+    let row = op_cozo_store::LxdSubsidiary {
+        session_id: text("user.opdbus.session_id"),
+        name: instance["name"].as_str().unwrap_or_default().to_owned(),
+        wireguard_pubkey: text("user.opdbus.wireguard_public_key"),
+        actor_id: ctx.caller.principal_id.clone(),
+        caller_session: ctx.caller.session_id.clone(),
+        caller_genesis: ctx.caller.session_genesis.clone(),
+        request_json: instance.to_string(),
+        native_uuid: String::new(),
+    };
+    let store = ctx.runtime.identity_store().clone();
+    tokio::task::spawn_blocking(move || store.reserve_lxd_subsidiary(row)).await
+        .map_err(|error| RuntimeError::backend(error.into()))?
+        .map_err(|error| RuntimeError::denied(error.to_string()))
+}
+
+/// Instance name and whether it starts; no other power action is accepted.
+fn validate_state(args: &Value) -> Result<(&str, bool)> {
+    object(args, &["name", "state"])?;
+    object(&args["state"], &["action", "timeout", "force"])?;
+    let start = match args["state"]["action"].as_str() {
+        Some("start") => true,
+        Some("stop") => false,
+        _ => anyhow::bail!("only start and stop are permitted"),
+    };
+    Ok((args["name"].as_str().context("instance name is absent")?, start))
+}
+
+/// The recorded parent may start its subsidiary only once its sled identity is
+/// admitted and the host has mounted its 3tchedFS; stopping needs neither.
+async fn prepare_state(ctx: &BackendContext<'_>, args: &Value) -> Result<(), RuntimeError> {
+    let denied = |error: anyhow::Error| RuntimeError::denied(error.to_string());
+    let (name, start) = validate_state(args).map_err(denied)?;
+    let store = ctx.runtime.identity_store().clone();
+    let reader = store.clone();
+    let rows = tokio::task::spawn_blocking(move || reader.lxd_subsidiaries()).await
+        .map_err(|error| RuntimeError::backend(error.into()))?
+        .map_err(|error| RuntimeError::backend(error.into()))?;
+    let row = rows.into_iter().find(|row| row.name == name && row.actor_id == ctx.caller.principal_id
+        && row.caller_session == ctx.caller.session_id && row.caller_genesis == ctx.caller.session_genesis)
+        .ok_or_else(|| RuntimeError::denied("LXD target is not this human's subsidiary"))?;
+    if !start { return Ok(()) }
+    if lxd_subsidiary::adopt(store.clone(), &row.session_id).await.map_err(denied)? {
+        crate::runtime_identity::recover_startup(store.clone(), ctx.runtime.catalog_dir().to_path_buf())
+            .await.map_err(RuntimeError::backend)?;
+    }
+    let session = row.session_id.clone();
+    let record = tokio::task::spawn_blocking(move || store.read_identity_revision(&session)).await
+        .map_err(|error| RuntimeError::backend(error.into()))?
+        .map_err(|error| RuntimeError::backend(error.into()))?.record;
+    if !record.is_some_and(|record| !record.sealed_id.is_empty()) {
+        return Err(RuntimeError::denied("subsidiary identity is not admitted"));
+    }
+    let mounts = tokio::fs::read_to_string("/proc/self/mountinfo").await
+        .map_err(|error| RuntimeError::backend(error.into()))?;
+    let mountpoint = format!("{}/mounts/3tchedFS", lxd_subsidiary::run_source(&row.session_id));
+    if !mounts.lines().any(|line| line.split(' ').nth(4) == Some(mountpoint.as_str())
+        && line.split_once(" - ").is_some_and(|(_, tail)| tail.starts_with("fuse"))) {
+        return Err(RuntimeError::denied("subsidiary 3tchedFS is not mounted on the host"));
+    }
+    ctx.caller.authority.revalidate().await.map_err(denied)
 }
 
 fn validate_volume(args: &Value) -> Result<()> {

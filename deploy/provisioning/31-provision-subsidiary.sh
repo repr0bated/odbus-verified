@@ -51,7 +51,9 @@ payload=$(jq -nc --arg name "$name" --arg parent "$parent" --arg session "$sessi
       devices:[
         {name:"root",device:{type:"disk",path:"/",pool:$pool}},
         {name:"sled",device:{type:"disk",path:"/agent/user",pool:$pool,
-          source:("identity-" + $session),readonly:"true"}}],
+          source:("identity-" + $session),readonly:"true"}},
+        {name:"run",device:{type:"disk",path:"/run",recursive:"true",
+          source:("/run/opdbus/subsidiary/" + $session + "/run")}}],
       config:{
         "boot.autostart":"false",
         "security.privileged":"false",
@@ -108,7 +110,7 @@ jq -e '.result.result.result | .status_code == 200' <<<"$outcome" >/dev/null ||
 instance=$("$invoke" lxd get_instance "$(jq -nc --arg name "$name" '{name:$name}')")
 jq -e --argjson want "$payload" '.result.result.result | . as $got
     | select(.name == $want.instance.name and .status == "Stopped" and .profiles == []
-        and (.expanded_devices | length) == 2)
+        and (.expanded_devices | length) == 3)
     | select(all($want.instance.config | to_entries[]; $got.expanded_config[.key] == .value))
     | select(([$got.expanded_config | keys[] | select(startswith("raw."))] | length) == 0)
     | {name, status, admission:.config["user.opdbus.admission"]}' <<<"$instance" ||

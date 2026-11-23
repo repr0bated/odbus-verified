@@ -8,6 +8,8 @@ mod native_upgrade;
 pub use native_upgrade::NativeRootUpgradeJournal;
 mod native_policy;
 pub use native_policy::{IDENTITY_STORAGE_SYSCALL_DENY, native_root_policy_transition_matches};
+mod lxd_subsidiary;
+pub use lxd_subsidiary::LxdSubsidiary;
 mod container_exec;
 pub use container_exec::{ContainerExecRequest, ContainerExecJournal};
 #[path = "identity_transactions/container_rename.rs"]

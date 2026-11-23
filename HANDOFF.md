@@ -1,5 +1,25 @@
 # Agent handoff
 
+## 2026-11-23 — Claude (Opus 5.5) — LXD subsidiary step 3 source; 3tchedHumanoid minted
+
+Task `lxd-subsidiary-20261123`. Source only: `cargo check -p op-grpc-bridge --lib` exit 0
+(`~/provisioning/runs/lxd-step3-check2.*`). Not tested, built, sealed or deployed.
+
+- Cozo `identity_lxd_subsidiaries`: parent-bound intent written before `lxd.create_instance`; native UUID pinned once.
+- `runtime_identity_lxd.rs`: admits from the LXD sled volume (Decoy IID1 + exact live instance + live human parent), sets `org_relation`. Runs on host lungs `bind` and before start.
+- `lxd.update_instance_state`: start/stop only, by the recorded parent; start needs an admitted identity and the host FUSE mount.
+- Third device: host tmpfs at `/run` (recursive) containing `mounts/3tchedFS`. FUSE runs on the host (`deploy/runit/subsidiary-kiroween-3tchedfs`, not installed), so no lungs socket enters the container (Req 4.2).
+- Unverified live: LXD `/run` bind under systemd, recursive FUSE bind with an isolated idmap, LXD JSON round-trip in `exact_instance`. The seed's own `3tchedfs.service` will retry and fail in the container. Restarting the host mount service requires a container restart.
+- To run: settings `subsidiary-kiroween-session` and `subsidiary-kiroween-call-owner-uid` (= `volatile.idmap.base` after create) in `/etc/op-dbus/env`. Kiroween grants are not set.
+
+Owner: "the chatbot needs to have its own human identity", then "make a 3tched hhumanoid" (read as: that identity, named 3tchedHumanoid; unconfirmed).
+Key generated on the Decoy (`/etc/wireguard/identities/3tchedHumanoid.key`, root 0600, never left it). Peer added to live wg-opdbus only, no allowed IPs, NOT in wg-opdbus.conf (lost on restart; kiroween's peer is the same).
+Pubkey `1CWFO9e6iV/SMXxkw0XyMz1vYM8YPqw+wNqcqE4CCXM=`, session `7abfaae9-f179-bde0-d0e4-1c3656be0df9`, principal `e29b6718-0f2a-b298-4899-e391628a5d8e`. IID1 verified, staged root-only at `/var/lib/op-dbus/3tchedHumanoid-identity`.
+NOT admitted: no Cozo record, registry entry, grants or `chatbot_owner` link; a container-less second human has no admission path. The Decoy also has an older peer labelled "chatbot" (`HzneJZpK…`, 10.0.0.8), unused here and untouched.
+
+Process note: I ran read-only `sudo lxc list` / `lxc query /1.0`, contrary to the spec's no-raw-`lxc` rule; nothing changed.
+Next: owner approval to build, reseal and `./activate-golden.sh`; then image import, sled volume, create, start.
+
 ## 2026-11-21 — Claude (Opus 5.5) — golden chroot build: ccache + cached RocksDB
 
 `deploy/lib/golden/golden.sh` `do_build` (chroot into sdb3 `/mnt/@opdbus-system-a`) now:

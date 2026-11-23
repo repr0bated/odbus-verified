@@ -1,0 +1,37 @@
+#!/bin/sh
+# Project the kiroween subsidiary's own 3tchedFS into the tmpfs its LXD
+# container receives as /run. The container gets call files only, no host
+# socket. Only the container's mapped root may write them.
+exec 2>&1
+SESSION=$(cat /etc/op-dbus/env/subsidiary-kiroween-session) || exit 78
+case $SESSION in ''|*[!0-9a-f-]*) echo 'invalid session'; exit 78;; esac
+BASE=/run/opdbus/subsidiary
+RUN=$BASE/$SESSION/run
+# LXD requires the device source to exist when the container is created; its
+# mapped root uid is only known afterwards.
+install -d -m 0700 "$BASE" "$BASE/$SESSION" || exit 1
+install -d -m 0755 "$RUN" || exit 1
+OWNER=$(cat /etc/op-dbus/env/subsidiary-kiroween-call-owner-uid 2>/dev/null) || { echo 'waiting for the container uid map'; exec sleep 10; }
+case $OWNER in ''|0|*[!0-9]*) echo 'invalid mapped root uid'; exit 78;; esac
+MOUNT=$RUN/mounts/3tchedFS
+STATE=/var/lib/opdbus-subsidiary/$SESSION/empty-state
+STORE=/dev/shm/3tchedfs-subsidiary-$SESSION
+i=0
+until [ -S /run/opdbus/lungs/lungs.sock ] && [ -d /dev/shm/opdbus/plugin-blobs ]; do
+    i=$((i + 1)); [ "$i" -lt 120 ] || { echo 'lungs socket or catalog not ready'; exit 1; }
+    sleep 1
+done
+install -d -m 0700 "$STORE"
+install -d -m 0755 "$STATE"
+# The guest writes this tree, so host root must never resolve a path inside a
+# tree a guest has already held: every run detaches the old tmpfs and prepares
+# a fresh one. A running container keeps its old view until it is restarted.
+if mountpoint -q "$RUN"; then umount -R -l "$RUN" || exit 1; fi
+mount -t tmpfs -o "nosuid,nodev,size=256m,mode=0755,uid=$OWNER,gid=$OWNER" tmpfs "$RUN" || exit 1
+install -d -m 0755 "$RUN/mounts" "$MOUNT" || exit 1
+BIN=/usr/local/libexec/op-dbus/bin/3tched-fs
+"$BIN" capture --store "$STORE" --schema-only --catalog /dev/shm/opdbus/plugin-blobs \
+    --state "$STATE" --exclude-plugin threetched || exit 1
+exec "$BIN" --store "$STORE" mount --fs-name 3tchedFS --surface 3tched --state "$STATE" \
+    --catalog /dev/shm/opdbus/plugin-blobs --lungs-socket /run/opdbus/lungs/lungs.sock \
+    --lungs-session "$SESSION" --call-owner-uid "$OWNER" --allow-other --auto-unmount "$MOUNT"

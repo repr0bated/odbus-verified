@@ -254,6 +254,13 @@ impl LungsIdentity {
             let session = uuid::Uuid::parse_str(session_id)?;
             ensure!(session.to_string() == session_id, "session id is not canonical");
             ensure!(self.binding.get().is_none(), "lungs connection is already bound");
+            // An LXD subsidiary is projected by its host mount: index its
+            // sled volume before binding, as guest binding does for Incus.
+            if self.host_root() && crate::runtime_identity_owner::lxd_subsidiary::adopt(
+                self.identity_store.clone(), session_id).await? {
+                crate::runtime_identity::recover_startup(self.identity_store.clone(), self.catalog_dir.clone()).await?;
+                self.revalidate_peer()?;
+            }
             self.publish_binding(Binding::Host, session_id).await
         }).await.context("host binding timed out")?
     }

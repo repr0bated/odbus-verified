@@ -37,7 +37,7 @@ pub use identity_transactions::{
     NativeCreationRecord, NativeCreationRequest, PhysicalRootMigrationReceipt, RootRepairJournal,
     NativeRootUpgradeJournal,
     IDENTITY_STORAGE_SYSCALL_DENY, native_root_policy_transition_matches,
-    ContainerExecRequest, ContainerExecJournal,
+    ContainerExecRequest, ContainerExecJournal, LxdSubsidiary,
     SeedProvisionJournal, clean_provision_instance_binding_matches,
     container_rename_native_matches, is_numbered_native_name,
     physical_root_instance_binding_matches,
@@ -551,6 +551,9 @@ impl CozoGraphShuttle {
             }"#,
             // Private same-UUID name cutover; native POST permission is never replayed.
             r#":create identity_org_relations {
+                session_id: String => document: String
+            }"#,
+            r#":create identity_lxd_subsidiaries {
                 session_id: String => document: String
             }"#,
             r#":create identity_container_renames {
