@@ -6,6 +6,10 @@ umask 022
 W=/var/lib/op-dbus/lxd-template-build; OUT=/var/lib/op-dbus/lxd-images/ubuntu-resolute-template-20261123.tar.zst
 U=https://cdimage.ubuntu.com/ubuntu-base/releases/26.04/release; T=ubuntu-base-26.04.1-base-amd64.tar.gz
 KR=/mnt/cozo-btrfs-lxd/seeds/@ubuntu-subsidiary/rootfs/usr/share/keyrings/ubuntu-archive-keyring.gpg
+BUILD=/mnt/@opdbus-system-a/opt/op-build
+ZCALL=$BUILD/target/x86_64-unknown-linux-gnu/release/zcall
+ZCALL_SHA=$(jq -er '.artifacts.zcall | select(test("^[0-9a-f]{64}$"))' "$BUILD/execution-receipt.json")
+printf '%s  %s\n' "$ZCALL_SHA" "$ZCALL" | sha256sum -c -
 [ ! -e "$W" ] && [ ! -e "$OUT" ] || { echo 'build dir or output exists'; exit 1; }
 install -d -m 0700 "$W" "$W/dl"; cd "$W/dl"
 for f in SHA256SUMS SHA256SUMS.gpg "$T"; do curl -fsS --retry 3 -o "$f" "$U/$f"; done
@@ -34,6 +38,9 @@ rm -rf "$R"/var/lib/apt/lists/* "$R"/var/log/*.log "$R"/var/log/apt/* "$R"/root/
 : >"$R/etc/machine-id"; : >"$R/etc/resolv.conf"; : >"$R/etc/hostname"
 install -d -m 0755 "$R/agent/user" "$R/run"
 umount -R "$R/dev"; umount "$R/proc"; umount "$R"
+install -d -m 0755 "$R/usr/local/bin"
+install -m 0755 "$ZCALL" "$R/usr/local/bin/zcall"
+printf '%s  %s\n' "$ZCALL_SHA" "$R/usr/local/bin/zcall" | sha256sum -c -
 awk -F: 'length($2)>3{print "password set: "$1; b=1}END{exit b}' "$R/etc/shadow"
 install -d "$W/img/templates"
 printf '{{ container.name }}\n' >"$W/img/templates/hostname.tpl"
@@ -46,6 +53,7 @@ properties:
   os: ubuntu
   release: "26.04"
   codename: resolute
+  opdbus.zcall.sha256: "$ZCALL_SHA"
 templates:
   /etc/hostname:
     when: [create, copy]
