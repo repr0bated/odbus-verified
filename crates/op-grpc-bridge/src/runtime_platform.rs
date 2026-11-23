@@ -361,7 +361,7 @@ pub(crate) async fn dispatch(
     let mut state = BackendStateUpdate::Unchanged;
     let result = match plugin {
         "config" | "endpoint" | "agent_config" => {
-            let store = ctx.runtime.documents();
+            let store = crate::runtime::subsidiary::documents(ctx).await?;
             let result = match plugin {
                 "config" => {
                     native::config::dispatch_config_with_store(store.clone(), method, args).await
@@ -493,7 +493,7 @@ pub(crate) async fn dispatch(
         "embedding_model" => {
             let (result, observed) =
                 native::embedding_model::dispatch_embedding_model_method_observed(
-                    ctx.runtime.documents().clone(),
+                    crate::runtime::subsidiary::documents(ctx).await?,
                     method,
                     args,
                 )

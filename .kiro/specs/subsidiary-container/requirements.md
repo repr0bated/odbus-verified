@@ -11,6 +11,11 @@ and mutations, within its own space. Its execution targets its own container;
 resource names, data and activity are bound to its verified identity. It must
 not gain host or sibling-container authority. This supersedes the older
 no-execution restriction, not identity/capability/tracker enforcement.
+Mutable configuration, endpoint and agent documents, embedding configuration,
+and routing documents use the subsidiary's own persistent backend owner, not
+the host runtime-document database. Shared providers still require native
+identity/resource enforcement; private SHM or private documents alone do not
+scope an external effect.
 
 
 Owner decisions, 2026-11-22 (Kiroween hackathon; new development). These

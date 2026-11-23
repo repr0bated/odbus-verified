@@ -307,7 +307,7 @@ pub(super) async fn dispatch(
         .revalidate()
         .await
         .map_err(|error| RuntimeError::denied(error.to_string()))?;
-    let documents = ctx.runtime.documents().clone();
+    let documents = crate::runtime::subsidiary::documents(ctx).await?;
     let row = documents.read_durable(&owner.key()?).await?;
     let state = decode(&owner, row, &limits)?;
     let (result, state) = if plugin == "routing_decision" {

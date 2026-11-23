@@ -3,6 +3,7 @@
 use std::{collections::HashMap, path::PathBuf, sync::Arc};
 
 use op_plugins::state_plugins::identity_sled::{OrgRelation, OrgRelationKind};
+use op_plugins::state_plugins::runtime_documents::RuntimeDocuments;
 use anyhow::{Context, Result, ensure};
 use op_cozo_store::{CozoGraphShuttle, LxdSubsidiary};
 use serde_json::Value;
@@ -87,31 +88,63 @@ pub(crate) async fn resolve(ctx: &BackendContext<'_>) -> Result<Option<Scope>, R
         .map_err(RuntimeError::before_effect)
 }
 
-/// Runtime-owned handles keep RocksDB open once per subsidiary, separately
-/// from identity, shared cognitive data and every other subsidiary's store.
+/// One native Cozo handle and one document writer per subsidiary. Domain
+/// configuration and generic Cozo methods never reopen competing owners.
+struct Store {
+    documents: Arc<RuntimeDocuments>,
+    archives: PathBuf,
+}
+
 #[derive(Default)]
 pub(crate) struct Stores {
-    cozo: Mutex<HashMap<String, Arc<CozoGraphShuttle>>>,
+    open: Mutex<HashMap<String, Arc<Store>>>,
 }
 
 impl Stores {
-    pub(crate) async fn cozo(&self, scope: &Scope) -> Result<(Arc<CozoGraphShuttle>, PathBuf), RuntimeError> {
+    async fn store(&self, scope: &Scope) -> Result<Arc<Store>, RuntimeError> {
         let directory = scope.directory().map_err(RuntimeError::before_effect)?;
-        let archives = directory.join("backend/cozo-archives");
-        let mut open = self.cozo.lock().await;
+        let mut open = self.open.lock().await;
         if let Some(store) = open.get(&scope.row.session_id) {
-            return Ok((store.clone(), archives));
+            return Ok(store.clone());
         }
         let path = directory.join("backend/cozo");
-        let store = tokio::task::spawn_blocking(move || CozoGraphShuttle::new_persistent_private(path)).await
+        let cozo = tokio::task::spawn_blocking(move || CozoGraphShuttle::new_persistent_private(path)).await
             .map_err(|error| RuntimeError::before_effect(error.into()))?
             .map_err(|error| RuntimeError::before_effect(error.into()))?;
         for other in open.values() {
-            store.ensure_distinct_from(other).map_err(|error| RuntimeError::before_effect(error.into()))?;
+            cozo.ensure_distinct_from(&other.documents.shared_store())
+                .map_err(|error| RuntimeError::before_effect(error.into()))?;
         }
-        let store = Arc::new(store);
+        let store = Arc::new(Store {
+            documents: Arc::new(RuntimeDocuments::new(cozo)),
+            archives: directory.join("backend/cozo-archives"),
+        });
         open.insert(scope.row.session_id.clone(), store.clone());
-        Ok((store, archives))
+        Ok(store)
+    }
+
+    pub(crate) async fn cozo(&self, scope: &Scope) -> Result<(Arc<CozoGraphShuttle>, PathBuf), RuntimeError> {
+        let store = self.store(scope).await?;
+        Ok((store.documents.shared_store(), store.archives.clone()))
+    }
+
+    pub(crate) async fn documents(&self, scope: &Scope) -> Result<Arc<RuntimeDocuments>, RuntimeError> {
+        Ok(self.store(scope).await?.documents.clone())
+    }
+}
+
+pub(crate) async fn documents(ctx: &BackendContext<'_>) -> Result<Arc<RuntimeDocuments>, RuntimeError> {
+    match resolve(ctx).await? {
+        Some(scope) => {
+            let documents = ctx.runtime.subsidiary().documents(&scope).await?;
+            let store = documents.shared_store();
+            store.ensure_distinct_from(&ctx.runtime.documents().shared_store())
+                .map_err(|error| RuntimeError::before_effect(error.into()))?;
+            store.ensure_distinct_from(ctx.runtime.identity_store())
+                .map_err(|error| RuntimeError::before_effect(error.into()))?;
+            Ok(documents)
+        }
+        None => Ok(ctx.runtime.documents().clone()),
     }
 }
 
