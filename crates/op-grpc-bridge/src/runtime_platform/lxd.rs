@@ -215,7 +215,7 @@ fn validate_state(args: &Value) -> Result<(&str, bool)> {
 }
 
 /// The recorded parent may start its subsidiary only once its sled identity is
-/// admitted and the host has mounted its 3tchedFS; stopping needs neither.
+/// admitted and both host FUSE views are mounted; stopping needs neither.
 async fn prepare_state(ctx: &BackendContext<'_>, args: &Value) -> Result<(), RuntimeError> {
     let denied = |error: anyhow::Error| RuntimeError::denied(error.to_string());
     let (name, start) = validate_state(args).map_err(denied)?;
@@ -241,10 +241,12 @@ async fn prepare_state(ctx: &BackendContext<'_>, args: &Value) -> Result<(), Run
     }
     let mounts = tokio::fs::read_to_string("/proc/self/mountinfo").await
         .map_err(|error| RuntimeError::backend(error.into()))?;
-    let mountpoint = format!("{}/mounts/3tchedFS", lxd_subsidiary::run_source(&row.session_id));
-    if !mounts.lines().any(|line| line.split(' ').nth(4) == Some(mountpoint.as_str())
-        && line.split_once(" - ").is_some_and(|(_, tail)| tail.starts_with("fuse"))) {
-        return Err(RuntimeError::denied("subsidiary 3tchedFS is not mounted on the host"));
+    for view in ["3tchedFS", "threetchedFS"] {
+        let mountpoint = format!("{}/mounts/{view}", lxd_subsidiary::run_source(&row.session_id));
+        if !mounts.lines().any(|line| line.split(' ').nth(4) == Some(mountpoint.as_str())
+            && line.split_once(" - ").is_some_and(|(_, tail)| tail.starts_with("fuse"))) {
+            return Err(RuntimeError::denied(format!("subsidiary {view} is not mounted on the host")));
+        }
     }
     ctx.caller.authority.revalidate().await.map_err(denied)
 }
