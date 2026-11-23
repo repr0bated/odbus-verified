@@ -8,6 +8,7 @@
 use crate::runtime::{BackendContext, RuntimeError};
 use anyhow::{Context, Result, ensure};
 use op_plugins::state_plugins::lxd as native_lxd;
+use op_plugins::state_plugins::lxd::LxdClient;
 use serde_json::{Value, json};
 use std::os::unix::fs::{MetadataExt, OpenOptionsExt};
 use std::path::Path;
