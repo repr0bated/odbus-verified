@@ -1,11 +1,11 @@
-//! Runit lifecycle operations for service definitions supplied by the snapshot.
+//! Native lifecycle operations for service definitions supplied by the snapshot.
 
 use super::plugin_scaffold_helpers::method_decl_from_schemars_with_output;
 mod methods;
 use crate::service_def::ServiceName;
 use anyhow::Result;
 use async_trait::async_trait;
-pub use methods::{ServiceInitOutput, ServiceOperationOutput, dispatch_service_method};
+pub use methods::{ServiceInitOutput, ServiceOperationOutput, ServiceStatus, dispatch_service_method};
 use op_state::{ApplyResult, Checkpoint, DiffMetadata, PluginCapabilities, StateDiff, StatePlugin};
 use op_state_store::{CapabilityDecl, PluginSchema, SideEffect};
 use schemars::JsonSchema;
@@ -22,7 +22,7 @@ pub struct ServiceLifecycle {
 
 // D-Bus method input types for service lifecycle operations.
 
-/// Enable a runit definition already supplied by the filesystem snapshot.
+/// Enable a native definition already supplied by the filesystem snapshot.
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
 pub struct InitInput {
@@ -39,7 +39,7 @@ pub struct InitInput {
 pub struct RunInput {
     /// Service name
     pub name: String,
-    /// Runit executes the installed definition. Runtime argument overrides are
+    /// The supervisor executes the installed definition. Runtime argument overrides are
     /// not supported; this compatibility field must be empty.
     #[serde(default)]
     #[schemars(length(max = 0))]
@@ -151,7 +151,7 @@ pub(crate) fn service_schema() -> PluginSchema {
         &simd_json::serde::to_owned_value(&ServiceSchemaState::default()).unwrap(),
     );
 
-    // Add D-Bus methods for runit service lifecycle management.
+    // Host operations use runit; subsidiary operations use their guest supervisor.
     schema.methods.insert(
         "init".to_string(),
         method_decl_from_schemars_with_output::<InitInput, ServiceInitOutput>(

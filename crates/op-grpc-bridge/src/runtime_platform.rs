@@ -352,6 +352,11 @@ pub(crate) async fn dispatch(
         .revalidate()
         .await
         .map_err(|error| RuntimeError::denied(error.to_string()))?;
+    if crate::runtime::guest::supports(plugin) {
+        if let Some(subsidiary) = crate::runtime::subsidiary::resolve(ctx).await? {
+            return crate::runtime::guest::dispatch(ctx, &subsidiary, plugin, method, args).await;
+        }
+    }
     let scope = private_scope(ctx);
     let mut state = BackendStateUpdate::Unchanged;
     let result = match plugin {
@@ -911,6 +916,15 @@ async fn rtnetlink_state(
 ) -> Result<BackendStateUpdate> {
     let interfaces = op_network::rtnetlink::list_interfaces_strict().await?;
     let route = op_network::rtnetlink::get_default_route().await?;
+    rtnetlink_observation(ctx, scope, interfaces, route)
+}
+
+pub(crate) fn rtnetlink_observation(
+    ctx: &BackendContext<'_>,
+    scope: &StateScope,
+    interfaces: Vec<op_network::rtnetlink::NetworkInterface>,
+    route: Option<Value>,
+) -> Result<BackendStateUpdate> {
     let mut root = committed_root(ctx, "rtnetlink", scope)?;
     let previous = root.remove("interfaces").unwrap_or_else(|| json!([]));
     let previous = previous
@@ -959,7 +973,7 @@ async fn rtnetlink_state(
     Ok(BackendStateUpdate::Replace(root.into()))
 }
 
-fn service_state(
+pub(crate) fn service_state(
     ctx: &BackendContext<'_>,
     scope: &StateScope,
     method: &str,
@@ -999,7 +1013,7 @@ fn service_state(
     Ok(BackendStateUpdate::Replace(root.into()))
 }
 
-fn package_state(
+pub(crate) fn package_state(
     ctx: &BackendContext<'_>,
     plugin: &str,
     scope: &StateScope,

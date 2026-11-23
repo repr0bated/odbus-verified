@@ -19,6 +19,10 @@ impl Scope {
     pub(crate) fn collection_prefix(&self) -> &str {
         &self.prefix
     }
+    pub(crate) fn native_uuid(&self) -> &str {
+        &self.row.native_uuid
+    }
+
 
     pub(crate) fn collection(&self, name: &str) -> Result<String> {
         ensure!(!name.is_empty(), "collection name is empty");

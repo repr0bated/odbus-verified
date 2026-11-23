@@ -10,6 +10,9 @@ BUILD=/mnt/@opdbus-system-a/opt/op-build
 ZCALL=$BUILD/target/x86_64-unknown-linux-gnu/release/zcall
 ZCALL_SHA=$(jq -er '.artifacts.zcall | select(test("^[0-9a-f]{64}$"))' "$BUILD/execution-receipt.json")
 printf '%s  %s\n' "$ZCALL_SHA" "$ZCALL" | sha256sum -c -
+GUEST_BACKEND=$BUILD/target/x86_64-unknown-linux-gnu/release/op-guest-backend
+GUEST_BACKEND_SHA=$(jq -er '.artifacts["op-guest-backend"] | select(test("^[0-9a-f]{64}$"))' "$BUILD/execution-receipt.json")
+printf '%s  %s\n' "$GUEST_BACKEND_SHA" "$GUEST_BACKEND" | sha256sum -c -
 [ ! -e "$W" ] && [ ! -e "$OUT" ] || { echo 'build dir or output exists'; exit 1; }
 install -d -m 0700 "$W" "$W/dl"; cd "$W/dl"
 for f in SHA256SUMS SHA256SUMS.gpg "$T"; do curl -fsS --retry 3 -o "$f" "$U/$f"; done
@@ -29,7 +32,7 @@ grep -rhoE 'https?://[^ ]+' "$R/etc/apt/sources.list.d" "$R/etc/apt/sources.list
 X="env -i PATH=/usr/sbin:/usr/bin:/sbin:/bin HOME=/root LANG=C.UTF-8 DEBIAN_FRONTEND=noninteractive chroot $R"
 $X apt-get -o Acquire::Retries=3 update
 $X apt-get -y -o Dpkg::Options::=--force-confold dist-upgrade
-$X apt-get -y --no-install-recommends install systemd systemd-sysv dbus ca-certificates jq less nano iproute2 procps fuse3
+$X apt-get -y --no-install-recommends install systemd systemd-sysv dbus accountsservice packagekit btrfs-progs libssl3 ca-certificates jq less nano iproute2 procps fuse3
 $X apt-get clean
 $X systemctl mask systemd-networkd-wait-online.service getty@.service systemd-udevd.service >/dev/null 2>&1 || true
 $X dpkg-query -W -f '${Package} ${Version}\n' >"$W/packages.txt"
@@ -41,6 +44,9 @@ umount -R "$R/dev"; umount "$R/proc"; umount "$R"
 install -d -m 0755 "$R/usr/local/bin"
 install -m 0755 "$ZCALL" "$R/usr/local/bin/zcall"
 printf '%s  %s\n' "$ZCALL_SHA" "$R/usr/local/bin/zcall" | sha256sum -c -
+install -d -m 0755 "$R/usr/local/libexec/op-dbus"
+install -m 0755 "$GUEST_BACKEND" "$R/usr/local/libexec/op-dbus/op-guest-backend"
+printf '%s  %s\n' "$GUEST_BACKEND_SHA" "$R/usr/local/libexec/op-dbus/op-guest-backend" | sha256sum -c -
 awk -F: 'length($2)>3{print "password set: "$1; b=1}END{exit b}' "$R/etc/shadow"
 install -d "$W/img/templates"
 printf '{{ container.name }}\n' >"$W/img/templates/hostname.tpl"
@@ -54,6 +60,7 @@ properties:
   release: "26.04"
   codename: resolute
   opdbus.zcall.sha256: "$ZCALL_SHA"
+  opdbus.guest-backend.sha256: "$GUEST_BACKEND_SHA"
 templates:
   /etc/hostname:
     when: [create, copy]

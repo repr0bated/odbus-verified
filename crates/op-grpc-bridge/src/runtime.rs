@@ -38,6 +38,9 @@ pub(crate) use checkpoint::{CallCheckpoint, CallClass, CheckpointEvidenceOwner,
 #[path = "runtime_subsidiary.rs"]
 pub(crate) mod subsidiary;
 
+#[path = "runtime_guest.rs"]
+pub(crate) mod guest;
+
 #[async_trait::async_trait]
 pub(crate) trait CallerAuthority: Send + Sync {
     async fn revalidate(&self) -> anyhow::Result<()>;

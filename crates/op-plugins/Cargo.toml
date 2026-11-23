@@ -83,3 +83,7 @@ prost-reflect = { workspace = true }
 [[bin]]
 name = "opblob"
 path = "src/bin/opblob.rs"
+
+[[bin]]
+name = "op-guest-backend"
+path = "src/bin/op-guest-backend.rs"
