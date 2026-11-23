@@ -15,13 +15,13 @@ OWNER=$(cat /etc/op-dbus/env/subsidiary-kiroween-call-owner-uid 2>/dev/null) || 
 case $OWNER in ''|0|*[!0-9]*) echo 'invalid mapped root uid'; exit 78;; esac
 MOUNT=$RUN/mounts/3tchedFS
 STATE=/var/lib/opdbus-subsidiary/$SESSION/empty-state
-STORE=/dev/shm/3tchedfs-subsidiary-$SESSION
+# The host view's own store: same sealed catalog, no private capture.
+STORE=/dev/shm/3tchedfs-3tchedFS
 i=0
-until [ -S /run/opdbus/lungs/lungs.sock ] && [ -d /dev/shm/opdbus/plugin-blobs ]; do
-    i=$((i + 1)); [ "$i" -lt 120 ] || { echo 'lungs socket or catalog not ready'; exit 1; }
+until [ -S /run/opdbus/lungs/lungs.sock ] && [ -d /dev/shm/opdbus/plugin-blobs ] && [ -d "$STORE" ]; do
+    i=$((i + 1)); [ "$i" -lt 120 ] || { echo 'lungs socket, catalog or host store not ready'; exit 1; }
     sleep 1
 done
-install -d -m 0700 "$STORE"
 install -d -m 0755 "$STATE"
 # The guest writes this tree, so host root must never resolve a path inside a
 # tree a guest has already held: every run detaches the old tmpfs and prepares
@@ -30,8 +30,6 @@ if mountpoint -q "$RUN"; then umount -R -l "$RUN" || exit 1; fi
 mount -t tmpfs -o "nosuid,nodev,size=256m,mode=0755,uid=$OWNER,gid=$OWNER" tmpfs "$RUN" || exit 1
 install -d -m 0755 "$RUN/mounts" "$MOUNT" || exit 1
 BIN=/usr/local/libexec/op-dbus/bin/3tched-fs
-"$BIN" capture --store "$STORE" --schema-only --catalog /dev/shm/opdbus/plugin-blobs \
-    --state "$STATE" --exclude-plugin threetched || exit 1
 exec "$BIN" --store "$STORE" mount --fs-name 3tchedFS --surface 3tched --state "$STATE" \
     --catalog /dev/shm/opdbus/plugin-blobs --lungs-socket /run/opdbus/lungs/lungs.sock \
     --lungs-session "$SESSION" --call-owner-uid "$OWNER" --allow-other --auto-unmount "$MOUNT"

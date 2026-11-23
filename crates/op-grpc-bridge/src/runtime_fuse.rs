@@ -625,8 +625,21 @@ impl Drop for LocalMounts {
                 );
             }
         }
+        // A mount copied into another mount namespace keeps its connection open
+        // after MNT_DETACH, so its serving thread may never end. Never let that
+        // hold shutdown before the bridge's own drain deadline starts; process
+        // exit closes the remaining descriptors.
+        let deadline = std::time::Instant::now() + std::time::Duration::from_secs(5);
         for thread in self.threads.drain(..) {
-            let _ = thread.join();
+            while !thread.is_finished() && std::time::Instant::now() < deadline {
+                std::thread::sleep(std::time::Duration::from_millis(20));
+            }
+            if thread.is_finished() {
+                let _ = thread.join();
+            } else {
+                tracing::warn!(thread = ?thread.thread().name(),
+                    "FUSE mount is still held by another mount namespace; leaving it to process exit");
+            }
         }
     }
 }

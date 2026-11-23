@@ -8173,3 +8173,9 @@ Grants: kiroween principal 8e5c6d49-20f9-385e-6930-a3aa01a64d76 has `cap.identit
 Owner direction: FUSE is required for kiroween, and it must use the host's own catalog and 3tched backend. The unit currently reads the host catalog and lungs socket but captures a private store and excludes `threetched`.
 
 Next: repair both container views with owner approval; bound the FUSE thread join in `LocalMounts::drop`; then retry activation.
+
+### 2026-11-23 · Claude Opus 5.5 — bounded FUSE join; kiroween shares the host store
+
+`LocalMounts::drop` now waits at most 5 s for FUSE threads (`cargo check -p op-grpc-bridge --lib` exit 0, untested). `subsidiary-kiroween-3tchedfs` serves from the host store `/dev/shm/3tchedfs-3tchedFS` with no private capture or `threetched` exclusion; state stays per identity. Not deployed.
+
+Owner approved restarting 3tchedChatbot and Jeremy; nobody was connected. `incus.restart_instance` for Jeremy (operation e4f05615-c57a-4cc6-b900-674f73def8b0) returned outcome_unknown and Jeremy was unchanged; both carry `user.opdbus.session_id`, so `guard_unmanaged_instance` is the likely refusal. Not retried or bypassed; the chatbot was not attempted. The running bridge still has the old unbounded join.
