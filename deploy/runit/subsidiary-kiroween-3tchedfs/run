@@ -1,5 +1,5 @@
 #!/bin/sh
-# Project the kiroween subsidiary's own 3tchedFS into the tmpfs its LXD
+# Project the kiroween subsidiary's own 3tchedFS and threetchedFS into the tmpfs its LXD
 # container receives as /run. The container gets call files only, no host
 # socket. Only the container's mapped root may write them.
 exec 2>&1
@@ -13,13 +13,12 @@ install -d -m 0700 "$BASE" "$BASE/$SESSION" || exit 1
 install -d -m 0755 "$RUN" || exit 1
 OWNER=$(cat /etc/op-dbus/env/subsidiary-kiroween-call-owner-uid 2>/dev/null) || { echo 'waiting for the container uid map'; exec sleep 10; }
 case $OWNER in ''|0|*[!0-9]*) echo 'invalid mapped root uid'; exit 78;; esac
-MOUNT=$RUN/mounts/3tchedFS
 STATE=/var/lib/opdbus-subsidiary/$SESSION/empty-state
-# The host view's own store: same sealed catalog, no private capture.
-STORE=/dev/shm/3tchedfs-3tchedFS
+# The host views' own stores: same sealed catalog, no private capture.
+STORES=/dev/shm/3tchedfs
 i=0
-until [ -S /run/opdbus/lungs/lungs.sock ] && [ -d /dev/shm/opdbus/plugin-blobs ] && [ -d "$STORE" ]; do
-    i=$((i + 1)); [ "$i" -lt 120 ] || { echo 'lungs socket, catalog or host store not ready'; exit 1; }
+until [ -S /run/opdbus/lungs/lungs.sock ] && [ -d /dev/shm/opdbus/plugin-blobs ] && [ -d "$STORES-3tchedFS" ] && [ -d "$STORES-threetched" ]; do
+    i=$((i + 1)); [ "$i" -lt 120 ] || { echo 'lungs socket, catalog or host stores not ready'; exit 1; }
     sleep 1
 done
 install -d -m 0755 "$STATE"
@@ -28,8 +27,18 @@ install -d -m 0755 "$STATE"
 # a fresh one. A running container keeps its old view until it is restarted.
 if mountpoint -q "$RUN"; then umount -R -l "$RUN" || exit 1; fi
 mount -t tmpfs -o "nosuid,nodev,size=256m,mode=0755,uid=$OWNER,gid=$OWNER" tmpfs "$RUN" || exit 1
-install -d -m 0755 "$RUN/mounts" "$MOUNT" || exit 1
+install -d -m 0755 "$RUN/mounts" "$RUN/mounts/3tchedFS" "$RUN/mounts/threetchedFS" || exit 1
 BIN=/usr/local/libexec/op-dbus/bin/3tched-fs
-exec "$BIN" --store "$STORE" mount --fs-name 3tchedFS --surface 3tched --state "$STATE" \
-    --catalog /dev/shm/opdbus/plugin-blobs --lungs-socket /run/opdbus/lungs/lungs.sock \
-    --lungs-session "$SESSION" --call-owner-uid "$OWNER" --allow-other --auto-unmount "$MOUNT"
+view() { # store, fs name, surface, mount directory
+    exec "$BIN" --store "$STORES-$1" mount --fs-name "$2" --surface "$3" --state "$STATE" \
+        --catalog /dev/shm/opdbus/plugin-blobs --lungs-socket /run/opdbus/lungs/lungs.sock \
+        --lungs-session "$SESSION" --call-owner-uid "$OWNER" --allow-other --auto-unmount "$RUN/mounts/$4"
+}
+view 3tchedFS 3tchedFS 3tched 3tchedFS & A=$!
+view threetched threetched threetched threetchedFS & B=$!
+# Losing either view ends both, so runit restores the pair together.
+trap 'kill "$A" "$B" 2>/dev/null; wait; exit 0' TERM INT HUP
+while kill -0 "$A" 2>/dev/null && kill -0 "$B" 2>/dev/null; do sleep 2 & wait $!; done
+kill "$A" "$B" 2>/dev/null
+wait
+exit 1

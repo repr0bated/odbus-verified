@@ -8179,3 +8179,7 @@ Next: repair both container views with owner approval; bound the FUSE thread joi
 `LocalMounts::drop` now waits at most 5 s for FUSE threads (`cargo check -p op-grpc-bridge --lib` exit 0, untested). `subsidiary-kiroween-3tchedfs` serves from the host store `/dev/shm/3tchedfs-3tchedFS` with no private capture or `threetched` exclusion; state stays per identity. Not deployed.
 
 Owner approved restarting 3tchedChatbot and Jeremy; nobody was connected. `incus.restart_instance` for Jeremy (operation e4f05615-c57a-4cc6-b900-674f73def8b0) returned outcome_unknown and Jeremy was unchanged; both carry `user.opdbus.session_id`, so `guard_unmanaged_instance` is the likely refusal. Not retried or bypassed; the chatbot was not attempted. The running bridge still has the old unbounded join.
+
+### 2026-11-23 · Claude Opus 5.5 — both views for kiroween; host threetched view up; old container gone
+
+`subsidiary-kiroween-3tchedfs` now mounts `3tchedFS` and `threetchedFS` from the host stores (parses, not run). Owner: any number of mounts is fine, the host ones must always be mounted. Host `threetched-fs` started; its `down` file is kept because `mount-3tchedfs check threetched` fails (expects `.methods` in that view's schema.json) and the same check on 3tchedFS exceeded 60 s, so it will not survive a reboot yet. Owner deleted `kiroween-subsidiary` and restarted Jeremy (both views list). 3tchedChatbot has not been restarted (pid 18950) and still has no mounts. b3efe12 build exit 0, superseded by this commit.
