@@ -6,6 +6,8 @@ Task `jeremy-reprovision-20261123`, base `c9abd2e`. Owner: reprovision `Jeremy` 
 
 Owner, same day: there is no scenario where `threetched` is excluded or singled out for inclusion. The filters are removed from the seed and guest FUSE units; both guest views capture the whole sealed catalog (`--include-plugin threetched` also hid `threetched_plugins` and `threetched_skills`). NOT changed, same filters remain: `deploy/runit/libexec-3tched/mount-3tchedfs` and `mount-3tchedfs-host-session` (their readiness checks require the split), `deploy/runit/subsidiary-kiroween-3tchedfs/run` (Codex claim; its `incus` exclusion is a separate owner decision), `deploy/workspace-image/prepare-lungs-client.sh`, and the mount-consolidation spec and AGENTS text.
 
+Owner: systemd services mount both views individually. Verified in source and `@seed`: `3tchedfs.service` and `threetchedfs.service` are separate, both enabled in `@seed` and the chatbot, neither orders on the other. The chatbot lost both at 03:04:27 EST because they exited 0 (cause unknown) under `Restart=on-failure`; both units are now `Restart=always` in source only.
+
 Next: sealed successor of `@seed` with these files (do not modify `@seed`), move `OP_IDENTITY_GOLDEN_*` to it and restart the bridge, rewire `Jeremy` devices and drop `lxc.init.cmd`, new root-owned upgrade plan, then sealed `identity_sled.upgrade_own_native_root`; old root retained. `c9abd2e` release inputs changed only under `deploy/seed`, `deploy/provisioning` and this file.
 
 ## 2026-11-23 — Grok — owner rejected the egress proxy
