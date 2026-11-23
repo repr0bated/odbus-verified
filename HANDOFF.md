@@ -8147,3 +8147,15 @@ Architecture confirmed and documented: The 3-image pre-rootfs layout is in desig
 
 Blocked: Cockpit recreation requires owner authorization. Specs/source updates are complete and pending owner decision on container recreation.
 
+
+### 2026-11-23 · Claude Opus 5.5 — guest exec for LXD subsidiary and chatbot volume; old container still present
+
+Owner asked to run commands inside kiroween and for the chatbot to be the primary one running commands in its own container. Source: `execute_in_owned_container` now handles an LXD subsidiary (recorded human parent only, exact admitted container and UUID, existing exec journal, `Client::exec_recorded`) and a chatbot with no root receipt (its attached Decoy-issued sled volume as provenance). `cargo check -p op-grpc-bridge --lib` exit 0 (`~/provisioning/runs/lxd-exec-check2.*`); the first run of that check exited 101 while compiling op-plugins. Not tested, sealed or deployed.
+
+Grants: owner applied direct capabilities to f2441300 (941, no group change) and container exec to 00ecf0e9 only; standing until the owner says development has stopped. Backup `/etc/opdbus/capability-grants.json.bak-owner-direct`.
+
+Old Incus `kiroween-subsidiary` is still running. Owner approved deletion; `incus.stop_instance` (operation 08e5cd80-8020-4205-94d5-1545e8bf1c4b) returned outcome_unknown, container unchanged, no pending Incus operation. Likely cause: `guard_unmanaged_instance` refuses instances labelled `user.opdbus.session_id`; the error text is not logged. Not bypassed. Keep `/root/identity-keys-20261121/kiroween-subsidiary`.
+
+Decoy: peers 8fUis0DF… and 1CWFO9e6… persisted in `/etc/wireguard/wg-opdbus.conf`, backup `…before-subsidiary-peers-20261123`.
+
+Next: golden build of this commit, seal, cut, activate, then image, volume, create, mount, start.

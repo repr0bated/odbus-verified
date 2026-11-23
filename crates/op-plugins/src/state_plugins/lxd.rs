@@ -10261,6 +10261,62 @@ pub mod client_extra {
             Ok(self.read_envelope(response).await?.0)
         }
 
+        /// Run one noninteractive argv in a local instance with recorded output.
+        /// Returns the exit code, stdout and stderr; never retried.
+        pub async fn exec_recorded(
+            &self,
+            name: &str,
+            command: &[String],
+        ) -> Result<(i64, Vec<u8>, Vec<u8>), LxdError> {
+            let invalid = |error: &str| LxdError::InvalidResponse(error.to_string());
+            let body = serde_json::to_vec(&types::InstanceExecPost {
+                command: command.to_vec(),
+                record_output: true,
+                ..Default::default()
+            })?;
+            let path = format!("/instances/{}/exec", escape(name));
+            let (started, _): (types::Operation, String) =
+                self.call(Method::POST, &path, &[], Some(body), None).await?;
+            let (done, _) = self.get_operation_wait(&started.id, 120).await?;
+            if done.status_code.0 != 200 || !done.err.is_empty() {
+                return Err(LxdError::OperationFailed(format!(
+                    "exec ended with status {}: {}",
+                    done.status_code.0, done.err
+                )));
+            }
+            let code = match done.metadata.get("return") {
+                Some(types::JsonValue::Number(code)) => code.as_i64(),
+                _ => None,
+            }
+            .ok_or_else(|| invalid("exec completed without an exit code"))?;
+            let Some(types::JsonValue::Object(output)) = done.metadata.get("output") else {
+                return Err(invalid("exec completed without recorded output"));
+            };
+            let prefix = format!("/1.0/instances/{}/logs/exec-output/", escape(name));
+            let mut streams = Vec::with_capacity(2);
+            for key in ["1", "2"] {
+                let Some(types::JsonValue::String(url)) = output.get(key) else {
+                    return Err(invalid("exec output path absent"));
+                };
+                // Never follow a path outside this instance's own exec output.
+                let file = url
+                    .strip_prefix(&prefix)
+                    .filter(|file| {
+                        !file.is_empty()
+                            && !file.starts_with('.')
+                            && file
+                                .bytes()
+                                .all(|c| c.is_ascii_alphanumeric() || matches!(c, b'-' | b'_' | b'.'))
+                    })
+                    .ok_or_else(|| invalid("exec output is outside the target instance"))?;
+                let path = format!("/instances/{}/logs/exec-output/{file}", escape(name));
+                streams.push(self.get_bytes(&path, &[]).await?);
+            }
+            let stderr = streams.pop().unwrap_or_default();
+            let stdout = streams.pop().unwrap_or_default();
+            Ok((code, stdout, stderr))
+        }
+
         /// Bounded copy of a local response into the shared response type.
         async fn local_response(
             mut response: reqwest_unix::Response,

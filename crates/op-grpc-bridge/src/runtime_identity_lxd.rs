@@ -67,6 +67,50 @@ pub(crate) async fn adopt(cozo: Arc<CozoGraphShuttle>, session: &str) -> anyhow:
     tokio::task::spawn_blocking(move || commit(&cozo, &row, instance)).await?
 }
 
+/// The admitted row for one session, if that identity is an LXD subsidiary.
+pub(super) async fn row(cozo: &Arc<CozoGraphShuttle>, session: &str) -> anyhow::Result<Option<LxdSubsidiary>> {
+    let cozo = cozo.clone();
+    let rows = tokio::task::spawn_blocking(move || cozo.lxd_subsidiaries()).await??;
+    Ok(rows.into_iter().find(|row| row.session_id == session))
+}
+
+/// Prove that the caller is the recorded parent and the target is its exact
+/// admitted running container. The child itself has no exec authority here.
+pub(super) async fn prove_exec(engine: &NativeOwner, store: &IdentitySledStore, row: &LxdSubsidiary)
+    -> anyhow::Result<ContainerIdentitySled> {
+    engine.revalidate().await?;
+    let caller = revision_sled(&load_revision(store, &engine.caller.session_id).await?)?
+        .context("identity lifecycle caller is absent")?;
+    engine.verify_own(&caller).await?;
+    ensure!(caller.active && caller.principal_kind.as_deref() == Some("human")
+        && row.actor_id == engine.caller.principal_id && row.caller_session == engine.caller.session_id
+        && row.caller_genesis == engine.caller.session_genesis,
+        "LXD guest execution requires its recorded human parent");
+    seed_provision::target_key_is_registered(&row.wireguard_pubkey).await?;
+    let current = self::row(&store.cozo, &row.session_id).await?;
+    ensure!(current.as_ref() == Some(row) && !row.native_uuid.is_empty(), "LXD subsidiary binding changed");
+    let sled = revision_sled(&load_revision(store, &row.session_id).await?)?
+        .context("guest execution identity absent")?;
+    ensure!(sled.is_anchored() && sled.sealed_id.is_some() && sled.wireguard_pubkey == row.wireguard_pubkey,
+        "guest execution requires its admitted identity");
+    let uuid = |instance: &IncusInstance| instance.config.as_ref()
+        .and_then(|config| config.get("volatile.uuid")).cloned();
+    let bound = sled.instance.as_ref().context("guest execution native binding absent")?;
+    ensure!(bound.name == row.name && uuid(bound).as_ref() == Some(&row.native_uuid),
+        "guest execution binding differs from its admitted container");
+    let live = native_lxd::Client::local(Path::new(SOCKET))?.get_instance(&row.name).await?.0;
+    let actual = exact_instance(row, serde_json::to_value(live)?)?;
+    ensure!(actual.status == "Running", "LXD subsidiary is not running");
+    Ok(sled)
+}
+
+/// One POST; every failure after this call starts is an unknown outcome.
+pub(super) async fn exec(row: &LxdSubsidiary, command: &[String]) -> anyhow::Result<(i64, String, String)> {
+    let (code, stdout, stderr) = native_lxd::Client::local(Path::new(SOCKET))?
+        .exec_recorded(&row.name, command).await?;
+    Ok((code, String::from_utf8_lossy(&stdout).into_owned(), String::from_utf8_lossy(&stderr).into_owned()))
+}
+
 fn commit(cozo: &CozoGraphShuttle, row: &LxdSubsidiary, instance: IncusInstance) -> anyhow::Result<bool> {
     let session = row.session_id.as_str();
     ensure!(configured_chatbot_key().as_deref() != Some(row.wireguard_pubkey.as_str()),

@@ -1,4 +1,4 @@
-//! One admitted argv execution inside the exact owned Incus guest, never the host.
+//! One admitted argv execution inside the exact owned Incus or LXD guest, never the host.
 use super::*;
 use op_cozo_store::{ContainerExecJournal, ContainerExecRequest};
 use op_plugins::state_plugins::identity_sled::{ExecuteInOwnedContainerInput, ExecuteInOwnedContainerOutput};
@@ -44,28 +44,78 @@ async fn root_receipt(store: &IdentitySledStore, target: &str) -> anyhow::Result
     }).await?
 }
 
+/// The chatbot was adopted from its volume, so its root has no creation
+/// receipt. Its Decoy-issued sled on the attached volume is its provenance.
+async fn chatbot_volume_receipt(sled: &ContainerIdentitySled, raw: &JsonValue) -> anyhow::Result<String> {
+    let session = sled.session_id.clone();
+    ensure!(control_plane_chatbot_session_id().as_deref() == Some(session.as_str()),
+        "only the configured chatbot may use volume provenance");
+    let volume = format!("identity-{session}");
+    let pool = std::env::var("OP_CONTAINER_POOL").unwrap_or_else(|_| "3tched-pool".into());
+    ensure!(raw["expanded_devices"].as_object().is_some_and(|devices| devices.values().any(|device|
+        device["type"] == "disk" && device["pool"] == pool.as_str() && device["source"] == volume.as_str()
+            && device["path"] == "/agent/user")), "chatbot identity volume is not attached");
+    let (key, sealed) = (sled.wireguard_pubkey.clone(), sled.sealed_id.clone());
+    tokio::task::spawn_blocking(move || -> anyhow::Result<String> {
+        let dir = PathBuf::from(format!("/var/lib/incus/storage-pools/{pool}/custom/default_{volume}"));
+        let read = |name: &str| std::fs::read_to_string(dir.join(name))
+            .with_context(|| format!("chatbot sled has no {name}"));
+        ensure!(read("session_id")?.trim() == session, "chatbot sled session differs");
+        let trust_path = std::env::var("OP_DECOY_TRUST_STORE")
+            .unwrap_or_else(|_| crate::oracle_assertion::DEFAULT_DECOY_TRUST_STORE.into());
+        let trust = std::fs::read(&trust_path).with_context(|| format!("reading {trust_path}"))?;
+        let claims = verify_issued_claims(&read("issued_identity.iid1")?, &trust, &session, &key, 0)?;
+        let inline = claims.to_inline_ref().map_err(|error| anyhow::anyhow!("seal identity: {error}"))?;
+        ensure!(read("sealed_id")?.trim() == inline && sealed.as_deref() == Some(inline.as_str()),
+            "chatbot sled differs from its admitted identity");
+        Ok(serde_json::json!({"provenance":"chatbot-volume","volume":volume,
+            "sealed_sha256":format!("{:x}",Sha256::digest(inline.as_bytes()))}).to_string())
+    }).await?
+}
+
+async fn has_root_receipt(store: &IdentitySledStore, target: &str) -> anyhow::Result<bool> {
+    let cozo = store.cozo.clone(); let target = target.to_owned();
+    tokio::task::spawn_blocking(move || -> anyhow::Result<bool> {
+        Ok(cozo.read_native_root_upgrade(&target)?.is_some() || cozo.read_clean_provision(&target)?.is_some())
+    }).await?
+}
+
 async fn prove_target(engine: &NativeOwner, store: &IdentitySledStore, target: &str,
     pinned: Option<&ContainerExecRequest>,
 ) -> anyhow::Result<(ContainerIdentitySled, String)> {
+    if let Some(row) = lxd_subsidiary::row(&store.cozo, target).await? {
+        let sled = lxd_subsidiary::prove_exec(engine, store, &row).await?;
+        let root = serde_json::json!({"provenance":"lxd-subsidiary","native_uuid":row.native_uuid,
+            "request_sha256":format!("{:x}",Sha256::digest(row.request_json.as_bytes()))}).to_string();
+        ensure!(pinned.is_none_or(|pin| pin.target_root_receipt == root && pin.native_uuid == row.native_uuid),
+            "guest execution pinned LXD container changed");
+        return Ok((sled, root));
+    }
     engine.revalidate().await?;
     let expected = load_revision(store, target).await?;
     let mut sled = revision_sled(&expected)?.context("guest execution identity absent")?;
     admit_lifecycle_owner(engine, store, &sled).await?;
     ensure!(sled.active && sled.is_anchored(), "guest execution requires its anchored running identity");
-    let guard = prepare_identity_root_start(store, &expected, &mut sled, &native_identity_storage_verifier()).await?
-        .context("guest execution root provenance guard absent")?;
-    engine.retain(guard);
+    let chatbot = configured_chatbot_key().as_deref() == Some(sled.wireguard_pubkey.as_str());
+    // Only a chatbot with no root receipt at all uses its volume provenance; an
+    // existing receipt must still satisfy its own guard.
+    let volume_only = chatbot && !has_root_receipt(store, target).await?;
+    if !volume_only {
+        let guard = prepare_identity_root_start(store, &expected, &mut sled, &native_identity_storage_verifier()).await?
+            .context("guest execution root provenance guard absent")?;
+        engine.retain(guard);
+    }
     let bound = sled.instance.as_ref().context("guest execution native binding absent")?;
     let (raw, _) = IncusRootRepairBackend::local().instance(&bound.name).await?;
     let actual = IncusPlugin::instance_from_native_metadata(raw.clone())?;
     ensure!(actual.status == "Running" && identity_instance_matches(&sled, &actual)
         && clean_provision::binding_matches(&serde_json::to_string(bound)?, &serde_json::to_string(&actual)?),
         "guest native UUID or isolation authority changed");
-    if configured_chatbot_key().as_deref() != Some(sled.wireguard_pubkey.as_str()) {
+    if !chatbot {
         native_attachment::validate_instance(&raw, &sled.session_id, &sled.wireguard_pubkey,
             raw["config"]["user.opdbus.parent_principal_id"].as_str())?;
     }
-    let root = root_receipt(store, target).await?;
+    let root = if volume_only { chatbot_volume_receipt(&sled, &raw).await? } else { root_receipt(store, target).await? };
     if let Some(pin) = pinned {
         ensure!(pin.target_root_receipt == root
             && raw["config"]["volatile.uuid"] == pin.native_uuid
@@ -84,6 +134,14 @@ async fn persist_result(store: &IdentitySledStore, journal: ContainerExecJournal
     Ok(tokio::task::spawn_blocking(move || cozo.finish_container_exec(&journal, &json, unknown)).await??)
 }
 
+async fn incus_exec(name: &str, command: &[String]) -> anyhow::Result<(i64, String, String)> {
+    let observation = op_plugins::state_plugins::incus::dispatch_incus_method_observed("exec_instance",
+        &serde_json::json!({"name":name,"command":command})).await?;
+    let native: op_plugins::state_plugins::incus::ExecInstanceOutput = serde_json::from_value(observation.result)?;
+    ensure!(native.completed && native.name == name, "guest execution result target or completion differs");
+    Ok((native.exit_code, native.stdout, native.stderr))
+}
+
 pub(super) async fn execute(engine: &NativeOwner, store: &IdentitySledStore, args: &JsonValue) -> anyhow::Result<JsonValue> {
     let input: ExecuteInOwnedContainerInput = serde_json::from_value(args.clone())?;
     validate(&input)?;
@@ -91,6 +149,7 @@ pub(super) async fn execute(engine: &NativeOwner, store: &IdentitySledStore, arg
     let seal = strict_identity_contract()?;
     engine.retain(store.lifecycle_lock(&input.session_id).await.lock_owned().await);
     let (sled, root) = prove_target(engine, store, &input.session_id, None).await?;
+    let lxd = lxd_subsidiary::row(&store.cozo, &input.session_id).await?;
     let instance = sled.instance.as_ref().context("guest native binding absent")?;
     let native_uuid = instance.config.as_ref().and_then(|config| config.get("volatile.uuid"))
         .context("guest native UUID absent")?.clone();
@@ -114,17 +173,17 @@ pub(super) async fn execute(engine: &NativeOwner, store: &IdentitySledStore, arg
     store.mark_effect();
     prove_target(engine, store, &input.session_id, Some(&request)).await?;
     ensure!(strict_identity_contract()?.schema_hash == request.schema_hash, "guest execution schema pin changed");
-    let outcome = op_plugins::state_plugins::incus::dispatch_incus_method_observed("exec_instance",
-        &serde_json::json!({"name":instance.name,"command":input.command})).await;
+    let outcome = match &lxd {
+        Some(row) => lxd_subsidiary::exec(row, &input.command).await,
+        None => incus_exec(&instance.name, &input.command).await,
+    };
     let result = match outcome {
-        Ok(observation) => {
-            let native: op_plugins::state_plugins::incus::ExecInstanceOutput = serde_json::from_value(observation.result)?;
-            ensure!(native.completed && native.name == instance.name, "guest execution result target or completion differs");
-            let (stdout, stdout_bytes, stdout_truncated) = bound_output(native.stdout);
-            let (stderr, stderr_bytes, stderr_truncated) = bound_output(native.stderr);
+        Ok((exit_code, stdout, stderr)) => {
+            let (stdout, stdout_bytes, stdout_truncated) = bound_output(stdout);
+            let (stderr, stderr_bytes, stderr_truncated) = bound_output(stderr);
             serde_json::to_value(ExecuteInOwnedContainerOutput {
                 operation_id:input.operation_id, session_id:input.session_id.clone(), native_uuid:request.native_uuid.clone(),
-                exit_code:native.exit_code, stdout, stderr, stdout_bytes, stderr_bytes,
+                exit_code, stdout, stderr, stdout_bytes, stderr_bytes,
                 stdout_truncated, stderr_truncated, replayed:false,
             })?
         }
