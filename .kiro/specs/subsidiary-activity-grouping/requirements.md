@@ -1,5 +1,19 @@
 # Requirements Document — `subsidiary-activity-grouping`: all subsidiary activity grouped per subsidiary container
 
+> **Owner correction (2026-11-23).** A subsidiary uses the full 3tched
+> backend, including reads, mutations and execution, as one isolated unit.
+> Resolve its namespace from the admitted identity, never from a requested
+> tenant or a caller-supplied prefix. Collections use
+> `<subsidiary>::<collection>`; its main chain is
+> `<subsidiary>::mainchain`. Backend data, generated resources, execution
+> targets, receipts and derived activity must belong to that unit. All list,
+> lookup, create, update and delete paths must enforce the same boundary.
+> Grant the full sealed capability set to that exact principal, not a group.
+> The older shared-vector decision, no-execution ceiling and consumables-only
+> restrictions below are superseded where they conflict. Full capabilities
+> do not confer host or sibling authority; namespacing must be implemented
+> before those capabilities can safely be materialized.
+
 > **Hybrid storage decision (2026-11-20).** A subsidiary keeps its own
 > private Cozo database and the chain ID `<subsidiary>::mainchain`. Subsidiary
 > vectors share a Qdrant collection using the immutable, verified subsidiary ID
@@ -7,10 +21,10 @@
 > below. Reads and writes use a tenant scope from admission or verified
 > chain attribution. Caller arguments do not select tenant scopes.
 
-Status: SPEC ONLY, NOT APPROVED FOR IMPLEMENTATION. Owner request of
-2026-11-19: prepare 3tched to group all subsidiary activity per subsidiary
-container. Nothing in this spec is implemented, deployed or provisioned until
-the owner approves it and answers the open questions in `design.md`.
+Status: OWNER-AUTHORIZED IMPLEMENTATION, INCOMPLETE. Current owner corrections
+above define the full-backend subsidiary namespace. Historical revisions below
+are context only where they do not conflict. No end-to-end isolation, grant
+materialization or deployment is claimed from this document.
 
 Spec id: `subsidiary-activity-grouping`
 Spec home: `.kiro/specs/subsidiary-activity-grouping/`
@@ -192,11 +206,11 @@ narrow scope, so that a subsidiary can never act beyond what I granted it.
 
 #### Acceptance Criteria
 
-1. THE SYSTEM SHALL key a subsidiary's durable grants by its exact child `principal_id`, using the existing grant-document contract (exact keys, closed `$` groups, no `*`).
-2. THE SYSTEM SHALL compute a subsidiary's capability ceiling as the parent's capabilities minus every `shell`, `exec`, `admin` and `secret` class capability, and SHALL refuse admission of any call whose capability is outside the ceiling even when a grant names it.
-3. IF an ephemeral grant or ticket names a subsidiary principal and a capability outside its ceiling THEN THE SYSTEM SHALL refuse to consume it and SHALL record the refusal tagged with the subsidiary.
-4. WHEN a subsidiary principal requests a protected task (elevation) THEN THE SYSTEM SHALL refuse it.
-5. THE SYSTEM SHALL only propose grant changes for a subsidiary (grant-delta files) and SHALL NOT write or materialize a grant document.
+1. THE SYSTEM SHALL key the full sealed backend capability set, including execution and mutations, by the subsidiary's exact child `principal_id`, without wildcard grants or changes to another principal.
+2. THE SYSTEM SHALL resolve the subsidiary namespace from its verified identity and enforce that namespace on every resource selector, mutation, listing and execution target.
+3. THE SYSTEM SHALL allow a subsidiary to execute inside its own admitted container and SHALL refuse host or sibling-container targets.
+4. THE SYSTEM SHALL derive collections as `<subsidiary>::<collection>` and its main chain as `<subsidiary>::mainchain`; caller arguments SHALL NOT select another subsidiary.
+5. THE SYSTEM SHALL materialize owner-authorized exact-principal grants through the existing validated durable grant owner only after affected backends enforce the subsidiary boundary.
 6. WHEN a subsidiary is revoked THEN THE SYSTEM SHALL revoke every ephemeral grant and unconsumed ticket naming its principal and SHALL write a grant-delta proposal removing its durable entry.
 
 ### Requirement 6 — Per-subsidiary FUSE view

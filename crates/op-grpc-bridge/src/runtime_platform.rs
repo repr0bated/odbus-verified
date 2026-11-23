@@ -539,10 +539,33 @@ pub(crate) async fn dispatch(
             result
         }
         "qdrant" => {
-            let result = native::qdrant::dispatch_qdrant_method(method, args)
+            let subsidiary = crate::runtime::subsidiary::resolve(ctx).await?;
+            let mut bound;
+            let args = if let Some(subsidiary) = &subsidiary {
+                let field = match method {
+                    "create_collection" | "delete_collection" => Some("name"),
+                    "list_collections" => None,
+                    _ => Some("collection_name"),
+                };
+                if let Some(field) = field {
+                    let name = args[field].as_str().context("Qdrant collection name is absent")
+                        .map_err(RuntimeError::before_effect)?;
+                    let name = subsidiary.collection(name).map_err(RuntimeError::before_effect)?;
+                    bound = args.clone();
+                    bound[field] = name.into();
+                    &bound
+                } else { args }
+            } else { args };
+            let mut result = native::qdrant::dispatch_qdrant_method(method, args)
                 .await
                 .map_err(|error| operation_error(ctx, error))?;
-            let observed = native::qdrant::current_state()
+            if let Some(subsidiary) = &subsidiary && method == "list_collections" {
+                result["collections"].as_array_mut()
+                    .context("Qdrant collection listing is not an array")
+                    .map_err(|error| operation_error(ctx, error))?
+                    .retain(|name| name.as_str().is_some_and(|name| subsidiary.owns_collection(name)));
+            }
+            let observed = native::qdrant::current_state(subsidiary.as_ref().map(|scope| scope.collection_prefix()))
                 .await
                 .map_err(|error| operation_error(ctx, error))?;
             let mut fields = serde_json::to_value(observed)

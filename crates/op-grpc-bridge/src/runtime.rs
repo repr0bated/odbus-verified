@@ -35,6 +35,9 @@ mod checkpoint;
 pub(crate) use checkpoint::{CallCheckpoint, CallClass, CheckpointEvidenceOwner,
     CheckpointPolicy, CheckpointStage, CheckpointTarget, GroundedOutcome};
 
+#[path = "runtime_subsidiary.rs"]
+pub(crate) mod subsidiary;
+
 #[async_trait::async_trait]
 pub(crate) trait CallerAuthority: Send + Sync {
     async fn revalidate(&self) -> anyhow::Result<()>;
@@ -445,6 +448,7 @@ struct RuntimeInner {
     chat: crate::runtime_chat::ChatRuntime,
     workspace: crate::runtime_workspace::WorkspaceRuntime,
     cognitive: crate::runtime_cognitive::CognitiveBackend,
+    subsidiary: subsidiary::Stores,
     network: crate::runtime_network::NetworkRuntime,
     elevation: crate::task_elevation::TaskElevation,
     fuse_calls: Arc<crate::runtime_fuse::FuseCalls>,
@@ -532,6 +536,7 @@ impl Runtime {
                 chat,
                 workspace,
                 cognitive,
+                subsidiary: Default::default(),
                 network,
                 elevation: crate::task_elevation::TaskElevation::default(),
                 fuse_calls: Arc::new(crate::runtime_fuse::FuseCalls::new()),
@@ -639,6 +644,9 @@ impl Runtime {
     }
     pub(crate) fn cognitive(&self) -> &crate::runtime_cognitive::CognitiveBackend {
         &self.inner.cognitive
+    }
+    pub(crate) fn subsidiary_stores(&self) -> &subsidiary::Stores {
+        &self.inner.subsidiary
     }
     pub(crate) fn task_elevation(&self) -> &crate::task_elevation::TaskElevation {
         &self.inner.elevation

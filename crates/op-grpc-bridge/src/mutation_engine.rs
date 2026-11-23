@@ -4276,7 +4276,7 @@ impl MutationEngine {
                 // Same gap as snowball: this plugin is dispatched only through
                 // the typed interface here, which never commits to the SHM
                 // projection on its own.
-                match op_plugins::state_plugins::qdrant::current_state().await {
+                match op_plugins::state_plugins::qdrant::current_state(None).await {
                     Ok(state) => {
                         if let Err(error) = self
                             .publish_plugin_projection_state(

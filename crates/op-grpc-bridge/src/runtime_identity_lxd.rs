@@ -74,18 +74,20 @@ pub(super) async fn row(cozo: &Arc<CozoGraphShuttle>, session: &str) -> anyhow::
     Ok(rows.into_iter().find(|row| row.session_id == session))
 }
 
-/// Prove that the caller is the recorded parent and the target is its exact
-/// admitted running container. The child itself has no exec authority here.
+/// Admit the subsidiary itself or its recorded human parent to execute inside
+/// this exact running container. Neither may substitute another native target.
 pub(super) async fn prove_exec(engine: &NativeOwner, store: &IdentitySledStore, row: &LxdSubsidiary)
     -> anyhow::Result<ContainerIdentitySled> {
     engine.revalidate().await?;
     let caller = revision_sled(&load_revision(store, &engine.caller.session_id).await?)?
         .context("identity lifecycle caller is absent")?;
     engine.verify_own(&caller).await?;
-    ensure!(caller.active && caller.principal_kind.as_deref() == Some("human")
+    let own = caller.active && caller.principal_kind.as_deref() == Some("service")
+        && caller.session_id == row.session_id && caller.wireguard_pubkey == row.wireguard_pubkey;
+    let parent = caller.active && caller.principal_kind.as_deref() == Some("human")
         && row.actor_id == engine.caller.principal_id && row.caller_session == engine.caller.session_id
-        && row.caller_genesis == engine.caller.session_genesis,
-        "LXD guest execution requires its recorded human parent");
+        && row.caller_genesis == engine.caller.session_genesis;
+    ensure!(own || parent, "LXD guest execution requires its own identity or recorded human parent");
     seed_provision::target_key_is_registered(&row.wireguard_pubkey).await?;
     let current = self::row(&store.cozo, &row.session_id).await?;
     ensure!(current.as_ref() == Some(row) && !row.native_uuid.is_empty(), "LXD subsidiary binding changed");

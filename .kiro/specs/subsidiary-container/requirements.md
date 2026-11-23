@@ -1,11 +1,17 @@
 # Requirements Document — `subsidiary-container`: the Subsidiary container contract
 
-Status: SPEC ONLY, NOT APPROVED FOR IMPLEMENTATION. Owner request of
-2026-11-19: document the container contract for the Kiroween "3tched
-Subsidiary" project (public repo `repr0bated/subsidiary`). Provisioning is
-pre-existing 3tched tooling; this spec fixes what the provisioned container
-must be. Nothing is provisioned until after the current golden build and the
-owner's go-ahead.
+Status: OWNER-AUTHORIZED IMPLEMENTATION, INCOMPLETE. Provisioning is existing
+3tched tooling; current owner corrections below define the requested kiroween
+container. Source, deployed state and verification must be reported separately.
+
+**Owner correction, 2026-11-23:** provision the Ubuntu Resolute Raccoon LXD
+container with guest root and both `3tchedFS` and `threetchedFS`. A subsidiary
+has the full sealed 3tched backend method/capability set, INCLUDING execution
+and mutations, within its own space. Its execution targets its own container;
+resource names, data and activity are bound to its verified identity. It must
+not gain host or sibling-container authority. This supersedes the older
+no-execution restriction, not identity/capability/tracker enforcement.
+
 
 Owner decisions, 2026-11-22 (Kiroween hackathon; new development). These
 take precedence over the requirements below where they differ:
@@ -14,9 +20,9 @@ take precedence over the requirements below where they differ:
   through the sealed `lxd` plugin. LXD 5.0.2 was
   installed on this host on 2026-11-23 at the owner's request (runit `lxd`,
   pool `lxd-pool`, no network or listener).
-- **Privileges and grants:** a subsidiary is the same as root within its own
-  space. It holds root-equivalent grants and capabilities scoped to itself,
-  with no execution methods.
+- **Privileges and grants:** a subsidiary is root within its own space, with
+  the full backend capability set including execution. Every backend must
+  enforce its subsidiary resource scope.
 - **Not the chatbot model:** the chatbot is the only account with both a
   human and a machine identity. It has no execution, and root access needs
   two humans. A subsidiary does not copy that model.

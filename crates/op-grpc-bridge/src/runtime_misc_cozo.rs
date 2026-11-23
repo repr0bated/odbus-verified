@@ -1,6 +1,6 @@
-//! Generic Cozo methods operate on the existing cognitive store, not identity,
-//! runtime documents, or the bridge's durable audit ledger. Native relation
-//! archives and system-graph transactions retain their existing implementations.
+//! Generic Cozo methods operate on the caller's subsidiary store, or the
+//! existing cognitive store for other callers. Identity, runtime documents
+//! and the bridge's durable audit ledger remain distinct owners.
 use std::{collections::BTreeMap, sync::Arc};
 
 use anyhow::{Context, Result, ensure};
@@ -135,8 +135,14 @@ pub(super) async fn dispatch(
     method: &str,
     args: &Value,
 ) -> Result<BackendOutcome, RuntimeError> {
-    refuse_personal_relations(method, args).map_err(RuntimeError::before_effect)?;
-    let store = ctx.runtime.cognitive().cognitive().await?.cozo_shuttle();
+    let subsidiary = crate::runtime::subsidiary::resolve(ctx).await?;
+    let (store, archive_root) = if let Some(scope) = &subsidiary {
+        let (store, archives) = ctx.runtime.subsidiary_stores().cozo(scope).await?;
+        (store, Some(archives))
+    } else {
+        refuse_personal_relations(method, args).map_err(RuntimeError::before_effect)?;
+        (ctx.runtime.cognitive().cognitive().await?.cozo_shuttle(), None)
+    };
     store
         .ensure_distinct_from(ctx.runtime.identity_store())
         .map_err(|error| RuntimeError::before_effect(error.into()))?;
@@ -158,8 +164,9 @@ pub(super) async fn dispatch(
         let input: cozo::RefreshSystemGraphInput = serde_json::from_value(args.clone())
             .map_err(|error| RuntimeError::before_effect(error.into()))?;
         let runtime = ctx.runtime.clone();
+        let graph_scope = if subsidiary.is_some() { ctx.caller.private_scope() } else { StateScope::Public };
         Some((
-            tokio::task::spawn_blocking(move || committed_system_graph(&runtime))
+            tokio::task::spawn_blocking(move || committed_system_graph(&runtime, &graph_scope))
                 .await
                 .map_err(|error| RuntimeError::before_effect(error.into()))?
                 .map_err(RuntimeError::before_effect)?,
@@ -179,6 +186,8 @@ pub(super) async fn dispatch(
         .await
         .map_err(anyhow::Error::from)
         .and_then(|result| result)
+    } else if let Some(archives) = archive_root {
+        cozo::methods::dispatch_cozo_with_archive_dir(store.clone(), archives, method, args).await
     } else {
         cozo::dispatch_cozo_method(store.clone(), method, args).await
     };
@@ -299,7 +308,7 @@ async fn observe(store: Arc<CozoGraphShuttle>) -> Result<BackendStateUpdate> {
     ))
 }
 
-fn committed_system_graph(runtime: &crate::runtime::Runtime) -> Result<GraphSnapshot> {
+fn committed_system_graph(runtime: &crate::runtime::Runtime, scope: &StateScope) -> Result<GraphSnapshot> {
     ensure!(
         runtime.catalog().plugins().len() <= 512,
         "system graph catalog exceeds plugin limit"
@@ -326,7 +335,7 @@ fn committed_system_graph(runtime: &crate::runtime::Runtime) -> Result<GraphSnap
         let state = if GRAPH_STATE_PLUGINS.contains(&entry.id.as_str()) {
             runtime
                 .core()
-                .committed_snapshot(&StateScope::Public, &entry.id, &canonical_path(&entry.id))?
+                .committed_snapshot(scope, &entry.id, &canonical_path(&entry.id))?
                 .map(|snapshot| -> Result<Value> {
                     ensure!(
                         snapshot.schema_hash == entry.schema_hash,
@@ -368,9 +377,10 @@ fn committed_system_graph(runtime: &crate::runtime::Runtime) -> Result<GraphSnap
         generated_at: chrono::Utc::now().to_rfc3339(),
         inputs: BTreeMap::from([
             ("sealed_catalog_sha256".into(), runtime.catalog().hash().to_owned()),
-            ("committed_public_heads".into(), serde_json::to_string(&generations)?),
+            ("committed_scope".into(), serde_json::to_string(scope)?),
+            ("committed_heads".into(), serde_json::to_string(&generations)?),
         ]),
-        coverage: vec!["manifest-pinned plugin contracts".into(), "committed public subsystem state".into()],
+        coverage: vec!["manifest-pinned plugin contracts".into(), "committed subsystem state in the selected owner scope".into()],
         limitations: vec![
             "Capture time is not backend observation time; unavailable public state is unknown, not absent infrastructure.".into(),
             "This graph does not independently probe services or identify the active release.".into(),

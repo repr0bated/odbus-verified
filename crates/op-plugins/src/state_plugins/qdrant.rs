@@ -413,7 +413,7 @@ pub async fn dispatch_qdrant_method(
 /// typed dispatch, which has no other way to observe this plugin's live
 /// state — the per-method responses above are each a narrow slice, not the
 /// plugin's full state.
-pub async fn current_state() -> Result<QdrantState> {
+pub async fn current_state(collection_prefix: Option<&str>) -> Result<QdrantState> {
     let client = QdrantHttpClient::new()?;
     let root = client
         .request(reqwest::Method::GET, "", None, false)
@@ -435,6 +435,9 @@ pub async fn current_state() -> Result<QdrantState> {
 
     let mut collections = Vec::with_capacity(names.len());
     for name in &names {
+        if collection_prefix.is_some_and(|prefix| !name.starts_with(prefix)) {
+            continue;
+        }
         let segment = QdrantHttpClient::collection_segment(name)?;
         let detail = client
             .request(
