@@ -339,6 +339,11 @@ pub(super) async fn provision(engine: &NativeOwner, store: &IdentitySledStore,
                 "session_id":sid,"wireguard_pubkey":input.wireguard_pubkey,"principal_kind":"service",
                 "session_started_at":claims.arrival_timestamp,"last_seen_at":claims.arrival_timestamp}))?;
             fresh.schema_version = RECORD_FORMAT;
+            fresh.org_relation = Some(op_plugins::state_plugins::identity_sled::OrgRelation {
+                kind: op_plugins::state_plugins::identity_sled::OrgRelationKind::Subsidiary,
+                name: instance.name.clone(),
+                parent: input.parent_principal_id.clone(),
+            });
             fresh.active = instance.status == "Running";
             fresh.instance = Some(instance);
             apply_genesis_stamp(&mut fresh, &GenesisStamp { sealed_id: inline, claims })?;

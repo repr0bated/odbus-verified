@@ -838,6 +838,7 @@ impl CozoGraphShuttle {
             entry.operation_id = meta.operation_id;
             if let Some(record) = &mut entry.record {
                 record.principal_kind = meta.principal_kind;
+                record.org_relation_json = read_org_relation(&tx, &sid)?;
             }
         }
         for entry in result.values() {
@@ -1730,6 +1731,7 @@ fn read_one(
         .unwrap_or_default();
     if let Some(record) = &mut record {
         record.principal_kind = meta.principal_kind.clone();
+        record.org_relation_json = read_org_relation(tx, sid)?;
     }
     validate_pair(sid, record.as_ref(), genesis.as_ref())?;
     Ok((
@@ -1742,6 +1744,47 @@ fn read_one(
         },
         meta,
     ))
+}
+fn read_org_relation(
+    tx: &MultiTransaction,
+    sid: &str,
+) -> std::result::Result<String, CozoError> {
+    let rows = query(
+        tx,
+        "?[document] := *identity_org_relations{session_id, document}, session_id = $sid",
+        sid_params(sid),
+    )?;
+    rows.rows
+        .first()
+        .map(|row| string(row, 0))
+        .transpose()
+        .map(Option::unwrap_or_default)
+}
+fn put_org_relation(
+    tx: &MultiTransaction,
+    sid: &str,
+    document: &str,
+) -> std::result::Result<(), CozoError> {
+    if document.is_empty() {
+        query(
+            tx,
+            "?[session_id] <- [[$sid]] :rm identity_org_relations {session_id}",
+            sid_params(sid),
+        )?;
+        return Ok(());
+    }
+    let value: Value = serde_json::from_str(document)?;
+    if document.len() > 4096 || !value.is_object() {
+        return Err(err("identity org relation must be a bounded JSON object"));
+    }
+    let mut params = sid_params(sid);
+    params.insert("document".into(), DataValue::Str(document.into()));
+    query(
+        tx,
+        "?[session_id, document] <- [[$sid, $document]] :put identity_org_relations {session_id => document}",
+        params,
+    )?;
+    Ok(())
 }
 fn string(row: &[DataValue], at: usize) -> std::result::Result<String, CozoError> {
     match row.get(at) {
@@ -1777,6 +1820,7 @@ fn decode_record(row: &[DataValue]) -> std::result::Result<IdentitySledRecord, C
         vector_id: string(row, 8)?,
         sealed_id: string(row, 9)?,
         principal_kind: None,
+        org_relation_json: String::new(),
         btrfs_device_json: string(row, 10)?,
         instance_json: string(row, 11)?,
         session_started_at: integer(row, 12)?,
@@ -2051,6 +2095,7 @@ fn put_pair(
             sid_params(sid),
         )?;
     }
+    put_org_relation(tx, sid, row.map_or("", |row| row.org_relation_json.as_str()))?;
     #[cfg(test)]
     tests::fault("after_row")?;
     if let Some(g) = genesis {

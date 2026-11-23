@@ -10189,6 +10189,8 @@ pub mod client_extra {
     pub struct Client {
         base_url: String,
         pub(crate) http: reqwest::Client,
+        /// Local daemon socket transport; `None` for a remote HTTPS server.
+        unix: Option<reqwest_unix::Client>,
         pub(crate) bearer_token: Option<String>,
         project: Option<String>,
         target: Option<String>,
@@ -10208,12 +10210,82 @@ pub mod client_extra {
                     .user_agent("lxd-rs/0.1.0")
                     .build()
                     .unwrap_or_else(|_| reqwest::Client::new()),
+                unix: None,
                 bearer_token: None,
                 project: None,
                 target: None,
                 require_authenticated: false,
                 server_cache: Arc::new(std::sync::OnceLock::new()),
             }
+        }
+
+        /// Client for this host's own daemon over its Unix socket.
+        pub fn local(socket: &std::path::Path) -> Result<Self, LxdError> {
+            let unix = reqwest_unix::Client::builder()
+                .unix_socket(socket.to_path_buf())
+                .no_proxy()
+                .redirect(reqwest_unix::redirect::Policy::none())
+                .retry(reqwest_unix::retry::never())
+                .connect_timeout(Duration::from_secs(3))
+                .build()
+                .map_err(|error| LxdError::Unsupported(format!("local LXD client: {error}")))?;
+            Ok(Self {
+                unix: Some(unix),
+                ..Self::new("http://localhost")
+            })
+        }
+
+        /// Stream one local file as a unified image to the local daemon.
+        pub async fn import_local_image(
+            &self,
+            file: std::fs::File,
+            length: u64,
+            filename: &str,
+            properties: &str,
+        ) -> Result<types::Operation, LxdError> {
+            let unix = self.unix.as_ref().ok_or_else(|| {
+                LxdError::Unsupported("image streaming requires the local daemon".into())
+            })?;
+            let response = unix
+                .post(self.build_url("/images", &[])?.as_str())
+                .header("Content-Type", "application/octet-stream")
+                .header("Content-Length", length)
+                .header("X-LXD-filename", filename)
+                .header("X-LXD-properties", properties)
+                .body(tokio::fs::File::from_std(file))
+                .timeout(Duration::from_secs(1800))
+                .send()
+                .await
+                .map_err(|error| LxdError::InvalidResponse(format!("local LXD upload: {error}")))?;
+            let response = Self::local_response(response).await?;
+            Ok(self.read_envelope(response).await?.0)
+        }
+
+        /// Bounded copy of a local response into the shared response type.
+        async fn local_response(
+            mut response: reqwest_unix::Response,
+        ) -> Result<reqwest::Response, LxdError> {
+            const LIMIT: usize = 16 * 1024 * 1024;
+            let invalid = |error: String| LxdError::InvalidResponse(error);
+            let mut builder = http02::Response::builder().status(response.status().as_u16());
+            for (name, value) in response.headers() {
+                builder = builder.header(name.as_str(), value.as_bytes());
+            }
+            let mut bytes = Vec::new();
+            while let Some(chunk) = response
+                .chunk()
+                .await
+                .map_err(|error| invalid(format!("incomplete local LXD response: {error}")))?
+            {
+                if chunk.len() > LIMIT.saturating_sub(bytes.len()) {
+                    return Err(invalid("local LXD response exceeded size limit".into()));
+                }
+                bytes.extend_from_slice(&chunk);
+            }
+            builder
+                .body(bytes)
+                .map(reqwest::Response::from)
+                .map_err(|error| invalid(error.to_string()))
         }
 
         /// Select a project for subsequent requests (Go's `UseProject`).
@@ -10414,6 +10486,7 @@ pub mod client_extra {
             Ok(Client {
                 base_url: self.base_url.trim_end_matches('/').to_string(),
                 http: builder.build()?,
+                unix: None,
                 bearer_token: self.bearer_token,
                 project: self.project,
                 target: self.target,
@@ -10462,6 +10535,29 @@ pub mod client_extra {
             content_type: Option<&str>,
             extra_headers: &[(&str, String)],
         ) -> Result<reqwest::Response, LxdError> {
+            if let Some(unix) = &self.unix {
+                let method = reqwest_unix::Method::from_bytes(method.as_str().as_bytes())
+                    .map_err(|error| LxdError::InvalidResponse(error.to_string()))?;
+                let mut req = unix
+                    .request(method, url.as_str())
+                    .timeout(Duration::from_secs(120));
+                if let Some(b) = body {
+                    req = req.body(b);
+                }
+                if let Some(ct) = content_type {
+                    req = req.header("Content-Type", ct);
+                }
+                if let Some(e) = etag {
+                    req = req.header("If-Match", e);
+                }
+                for (k, v) in extra_headers {
+                    req = req.header(*k, v.as_str());
+                }
+                let response = req.send().await.map_err(|error| {
+                    LxdError::InvalidResponse(format!("local LXD request: {error}"))
+                })?;
+                return Self::local_response(response).await;
+            }
             let mut req = self.http.request(method, url);
             if let Some(b) = body {
                 req = req.body(b);

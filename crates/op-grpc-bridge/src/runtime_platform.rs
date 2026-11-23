@@ -7,6 +7,9 @@ use anyhow::{Context, Result, ensure};
 use op_plugins::state_plugins as native;
 use serde_json::{Map, Value, json};
 
+#[path = "runtime_platform/lxd.rs"]
+mod lxd;
+
 /// Only sealed method keys with a concrete native execution path belong here.
 /// Incus creation, retired MCP and listener ownership are integrated separately.
 pub(crate) fn supports(plugin: &str, method: &str) -> bool {
@@ -101,6 +104,7 @@ pub(crate) fn supports(plugin: &str, method: &str) -> bool {
                 | "update_device"
                 | "remove_device"
         ),
+        "lxd" => lxd::supports(method),
         "keypair" => method == "list_keypairs",
         "keyring" => matches!(method, "list_collections" | "get_default_collection"),
         "login1" => matches!(
@@ -786,6 +790,7 @@ pub(crate) async fn dispatch(
                 .await
                 .map_err(|error| operation_error(ctx, error))?
         }
+        "lxd" => lxd::dispatch(ctx, method, args).await?,
         "btrfs" => native::btrfs_plugin::dispatch_btrfs_method(method, args)
             .await
             .map_err(|error| operation_error(ctx, error))?,

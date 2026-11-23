@@ -736,6 +736,12 @@ fn sled_to_record(sled: &ContainerIdentitySled) -> anyhow::Result<IdentitySledRe
         vector_id: sled.vector_id.clone(),
         sealed_id: sled.sealed_id.clone().unwrap_or_default(),
         principal_kind: sled.principal_kind.clone(),
+        org_relation_json: sled
+            .org_relation
+            .as_ref()
+            .map(serde_json::to_string)
+            .transpose()?
+            .unwrap_or_default(),
         btrfs_device_json: sled
             .btrfs_device
             .as_ref()

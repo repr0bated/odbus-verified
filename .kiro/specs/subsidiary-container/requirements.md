@@ -11,8 +11,9 @@ Owner decisions, 2026-11-22 (Kiroween hackathon; new development). These
 take precedence over the requirements below where they differ:
 
 - **LXD:** a subsidiary is remote or isolated, which is why it runs under LXD
-  through the sealed `lxd` plugin. This host has no LXD daemon; where the LXD
-  host runs is still open.
+  through the sealed `lxd` plugin. LXD 5.0.2 was
+  installed on this host on 2026-11-23 at the owner's request (runit `lxd`,
+  pool `lxd-pool`, no network or listener).
 - **Privileges and grants:** a subsidiary is the same as root within its own
   space. It holds root-equivalent grants and capabilities scoped to itself,
   with no execution methods.

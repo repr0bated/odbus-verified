@@ -299,7 +299,11 @@ fn record_to_sled(
             &record.session_id,
             &record.btrfs_device_json,
         )?,
-        org_relation: None,
+        org_relation: parse_json(
+            "org_relation",
+            &record.session_id,
+            &record.org_relation_json,
+        )?,
         instance: parse_json("instance", &record.session_id, &record.instance_json)?,
         session_started_at: record.session_started_at,
         last_seen_at: record.last_seen_at,
@@ -349,6 +353,12 @@ fn sled_to_record(sled: &ContainerIdentitySled) -> anyhow::Result<IdentitySledRe
         vector_id: sled.vector_id.clone(),
         sealed_id: sled.sealed_id.clone().unwrap_or_default(),
         principal_kind: sled.principal_kind.clone(),
+        org_relation_json: sled
+            .org_relation
+            .as_ref()
+            .map(serde_json::to_string)
+            .transpose()?
+            .unwrap_or_default(),
         btrfs_device_json: sled
             .btrfs_device
             .as_ref()
@@ -3202,6 +3212,7 @@ pub(crate) mod tests {
             vector_id: String::new(),
             sealed_id: String::new(),
             principal_kind: None,
+            org_relation_json: String::new(),
             btrfs_device_json: String::new(),
             instance_json: String::new(),
             session_started_at: 0,

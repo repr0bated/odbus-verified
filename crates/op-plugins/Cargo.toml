@@ -50,7 +50,9 @@ log = { workspace = true }
 reqwest = { workspace = true, features = ["multipart", "rustls-tls"] }
 # Incus's privileged Unix socket needs the native UDS transport added in 0.12.
 # Keep other plugin adapters on their existing workspace client.
-reqwest-unix = { package = "reqwest", version = "=0.12.28", default-features = false }
+reqwest-unix = { package = "reqwest", version = "=0.12.28", default-features = false, features = ["stream"] }
+# The 0.11 reqwest response type is built from http 0.2 for local LXD replies.
+http02 = { package = "http", version = "0.2" }
 sysinfo = "0.30"
 google-cloud-auth = "1.15"
 btrfs-uapi = "0.13"
