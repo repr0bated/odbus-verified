@@ -16,6 +16,8 @@ and routing documents use the subsidiary's own persistent backend owner, not
 the host runtime-document database. Shared providers still require native
 identity/resource enforcement; private SHM or private documents alone do not
 scope an external effect.
+Arbitrary Cozo queries and revisioned runtime documents must use distinct
+databases, so a query cannot bypass document commits or desynchronize SHM.
 
 
 Owner decisions, 2026-11-22 (Kiroween hackathon; new development). These

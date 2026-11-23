@@ -7,7 +7,7 @@ use op_plugins::state_plugins::runtime_documents::RuntimeDocuments;
 use anyhow::{Context, Result, ensure};
 use op_cozo_store::{CozoGraphShuttle, LxdSubsidiary};
 use serde_json::Value;
-use tokio::sync::Mutex;
+use tokio::sync::{Mutex, OnceCell};
 
 use super::{BackendContext, RuntimeError};
 
@@ -88,11 +88,47 @@ pub(crate) async fn resolve(ctx: &BackendContext<'_>) -> Result<Option<Scope>, R
         .map_err(RuntimeError::before_effect)
 }
 
-/// One native Cozo handle and one document writer per subsidiary. Domain
-/// configuration and generic Cozo methods never reopen competing owners.
+/// Arbitrary graph queries and revisioned documents are separate native
+/// databases. Both owners are cached and opened only when first needed.
 struct Store {
-    documents: Arc<RuntimeDocuments>,
-    archives: PathBuf,
+    directory: PathBuf,
+    cozo: OnceCell<Arc<CozoGraphShuttle>>,
+    documents: OnceCell<Arc<RuntimeDocuments>>,
+}
+
+impl Store {
+    fn new(directory: PathBuf) -> Self {
+        Self { directory, cozo: OnceCell::new(), documents: OnceCell::new() }
+    }
+
+    async fn cozo(&self) -> Result<Arc<CozoGraphShuttle>, RuntimeError> {
+        let store = self.cozo.get_or_try_init(|| async {
+            open_private_cozo(self.directory.join("backend/cozo")).await
+        }).await?;
+        if let Some(documents) = self.documents.get() {
+            store.ensure_distinct_from(&documents.shared_store())
+                .map_err(|error| RuntimeError::before_effect(error.into()))?;
+        }
+        Ok(store.clone())
+    }
+
+    async fn documents(&self) -> Result<Arc<RuntimeDocuments>, RuntimeError> {
+        let documents = self.documents.get_or_try_init(|| async {
+            let store = open_private_cozo(self.directory.join("backend/runtime-documents")).await?;
+            Ok::<_, RuntimeError>(Arc::new(RuntimeDocuments::from_shared(store)))
+        }).await?;
+        if let Some(store) = self.cozo.get() {
+            store.ensure_distinct_from(&documents.shared_store())
+                .map_err(|error| RuntimeError::before_effect(error.into()))?;
+        }
+        Ok(documents.clone())
+    }
+}
+
+async fn open_private_cozo(path: PathBuf) -> Result<Arc<CozoGraphShuttle>, RuntimeError> {
+    tokio::task::spawn_blocking(move || CozoGraphShuttle::new_persistent_private(path).map(Arc::new)).await
+        .map_err(|error| RuntimeError::before_effect(error.into()))?
+        .map_err(|error| RuntimeError::before_effect(error.into()))
 }
 
 #[derive(Default)]
@@ -107,36 +143,25 @@ impl Stores {
         if let Some(store) = open.get(&scope.row.session_id) {
             return Ok(store.clone());
         }
-        let path = directory.join("backend/cozo");
-        let cozo = tokio::task::spawn_blocking(move || CozoGraphShuttle::new_persistent_private(path)).await
-            .map_err(|error| RuntimeError::before_effect(error.into()))?
-            .map_err(|error| RuntimeError::before_effect(error.into()))?;
-        for other in open.values() {
-            cozo.ensure_distinct_from(&other.documents.shared_store())
-                .map_err(|error| RuntimeError::before_effect(error.into()))?;
-        }
-        let store = Arc::new(Store {
-            documents: Arc::new(RuntimeDocuments::new(cozo)),
-            archives: directory.join("backend/cozo-archives"),
-        });
+        let store = Arc::new(Store::new(directory));
         open.insert(scope.row.session_id.clone(), store.clone());
         Ok(store)
     }
 
     pub(crate) async fn cozo(&self, scope: &Scope) -> Result<(Arc<CozoGraphShuttle>, PathBuf), RuntimeError> {
-        let store = self.store(scope).await?;
-        Ok((store.documents.shared_store(), store.archives.clone()))
+        let owner = self.store(scope).await?;
+        Ok((owner.cozo().await?, owner.directory.join("backend/cozo-archives")))
     }
 
     pub(crate) async fn documents(&self, scope: &Scope) -> Result<Arc<RuntimeDocuments>, RuntimeError> {
-        Ok(self.store(scope).await?.documents.clone())
+        self.store(scope).await?.documents().await
     }
 }
 
 pub(crate) async fn documents(ctx: &BackendContext<'_>) -> Result<Arc<RuntimeDocuments>, RuntimeError> {
     match resolve(ctx).await? {
         Some(scope) => {
-            let documents = ctx.runtime.subsidiary().documents(&scope).await?;
+            let documents = ctx.runtime.subsidiary_stores().documents(&scope).await?;
             let store = documents.shared_store();
             store.ensure_distinct_from(&ctx.runtime.documents().shared_store())
                 .map_err(|error| RuntimeError::before_effect(error.into()))?;
@@ -151,6 +176,25 @@ pub(crate) async fn documents(ctx: &BackendContext<'_>) -> Result<Arc<RuntimeDoc
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[tokio::test]
+    async fn generic_query_cannot_remove_configuration_documents() {
+        let directory = tempfile::tempdir().unwrap();
+        let owner = Store::new(directory.path().to_owned());
+        let documents = owner.documents().await.unwrap();
+        let original = documents.update("config", |_| {
+            Ok(serde_json::json!({"project":"kiroween"}))
+        }).await.unwrap();
+        let graph = owner.cozo().await.unwrap();
+        tokio::task::spawn_blocking(move || -> anyhow::Result<()> {
+            let read = "?[plugin_id] := *plugin_runtime_documents{plugin_id}";
+            graph.run_query(read, None)?;
+            graph.run_query("::remove plugin_runtime_documents", None)?;
+            assert!(graph.run_query(read, None).is_err(), "generic relation was not removed");
+            Ok(())
+        }).await.unwrap().unwrap();
+        assert_eq!(documents.read_durable("config").await.unwrap(), Some(original));
+    }
 
     fn scope() -> Scope {
         Scope {
