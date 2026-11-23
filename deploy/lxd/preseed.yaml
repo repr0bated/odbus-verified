@@ -1,0 +1,17 @@
+# LXD host for isolated subsidiaries: own btrfs pool, no network, no listener.
+config:
+  images.auto_update_interval: "0"
+networks: []
+storage_pools:
+- name: lxd-pool
+  driver: btrfs
+  config:
+    source: /mnt/cozo-btrfs-lxd/lxd-pool
+profiles:
+- name: default
+  config: {}
+  devices:
+    root:
+      type: disk
+      path: /
+      pool: lxd-pool

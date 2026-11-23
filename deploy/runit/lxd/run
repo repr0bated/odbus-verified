@@ -1,0 +1,15 @@
+#!/bin/sh
+# LXD daemon for isolated subsidiaries. Own pool on the cozo-ublk-lxd btrfs;
+# never shares a pool with Incus. No network listener is configured.
+exec 2>&1
+test -e /etc/environment && . /etc/environment
+/etc/sv/cozo-ublk-lxd/check || sv -w 90 check cozo-ublk-lxd || exit 1
+mountpoint -q /mnt/cozo-btrfs-lxd || exit 1
+sv start lxcfs
+for d in /usr/libexec/lxd/lxd-apparmor-load /usr/lib/lxd/lxd-apparmor-load; do
+  [ -x "$d" ] && { "$d" || :; }
+done
+for b in /usr/libexec/lxd/lxd /usr/lib/lxd/lxd /usr/sbin/lxd /usr/bin/lxd; do
+  [ -x "$b" ] && exec prlimit -n=1048576 -u=unlimited "$b" --group lxd
+done
+echo 'lxd: no daemon binary'; exit 1
