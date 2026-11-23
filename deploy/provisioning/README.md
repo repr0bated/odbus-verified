@@ -142,7 +142,7 @@ Port of `deploy/seed/rootfs/` (systemd units) to runit (`runit/`):
 | `opdbus-lo` | `opdbus-lo.service` | **networking**: no NIC; `10.0.0.2/32` on `lo` for the door |
 | `door-tls-init` | same | door TLS pair generated inside the container; cert exported to host `/run/opdbus/ct/<name>/door.crt` |
 | `3tchedfs` | `3tchedfs.service` | capture + mount `3tchedFS` (surface `3tched`) at `/run/mounts/3tchedFS` over the host lungs socket |
-| `threetchedfs` | `threetchedfs.service` | capture (`--include-plugin threetched`) + mount `threetched` (surface `3tched`: guests do not ship the threetched CLI) at `/run/mounts/threetchedFS`; needs the duplicate-path-fixed `3tched-fs` (host `3tched-fs-dupfix-b37bffa2`) |
+| `threetchedfs` | `threetchedfs.service` | capture (whole sealed catalog, no filter) + mount `threetched` (surface `3tched`: guests do not ship the threetched CLI) at `/run/mounts/threetchedFS`; needs the duplicate-path-fixed `3tched-fs` (host `3tched-fs-dupfix-b37bffa2`) |
 | `op-grpc-bridge` | `op-grpc-bridge.service` | waits for both mounts + lo + TLS, loads `/etc/op-dbus/bridge.env`, runs the existing `op-grpc-bridge` binary on `10.0.0.2:8090` |
 | `op-tunnel-door` | same | chatbot only (tunnel device present): splices host door socket into the container door |
 | `threetched-gateway` (`sv/`, host template) | `deploy/runit/threetched` (`daemon`) | zero claw **gateway mode** on `127.0.0.1:8084` with `/var/lib/zeroclaw` |
