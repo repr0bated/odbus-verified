@@ -110,7 +110,7 @@ responses are marked `mock: true` and carry no live admission.
 
 | step | script | what |
 |---|---|---|
-| 1 | `10-seed-acquire.sh check` | **Case A**: a seed already exists (`images/@seed` Ubuntu 26.04 systemd, `images/@antix-seed` Debian trixie runit). |
+| 1 | `10-seed-acquire.sh check` | **Case A**: a seed already exists (`images/@seed`, antiX 26.1 with systemd). |
 | 1 | `10-seed-acquire.sh receive <file>` | **Case B1**: `btrfs receive` a sent seed (e.g. `@seed-send` from sdb3). Received ro subvolume kept; a writable copy becomes the seed. |
 | 1 | `10-seed-acquire.sh image <raw.img>` | **Case B2**: copy the rootfs out of a raw image (e.g. `/boot-disk/blob/seed-blob.img`, read-only loop). |
 | 1 | `10-seed-acquire.sh debootstrap [suite]` | **Case B3**: fresh Debian minbase + runit (fresh install / DR / client wants another image). |
@@ -123,7 +123,7 @@ responses are marked `mock: true` and carry no live admission.
 | 4 | `START=1 …` / `incus start <NAME>` | Start. In-container runit brings up mounts → bridge; host bridge adopts the sled on the first lungs bind. |
 | 5 | `40-verify.sh [NAME]` | Read-only: seeds ro state, sled→container count (must be 1), devices, in-container service status, threetched gateway health + runtime-token file presence/mode (never its contents). |
 
-Select the seed with `SEED_NAME=@antix-seed` (default) or `SEED_NAME=@seed`. Settings
+Select the seed with `SEED_NAME` (default `@seed`; `@antix-seed` is not in the pool). Settings
 (binary paths, pool, NextDNS version/checksum) are in `lib.sh`.
 
 "Registering with Incus": the seed is not an Incus *image*; it is a read-only subvolume
@@ -165,19 +165,17 @@ The Ubuntu/systemd `@seed` already carries the systemd versions of these units
 | `runtime-run` | `tmpfs:` (Incus tmpfs; exactly `{type:disk, source:tmpfs:, path:/run}`, no `initial.mode`: the sealed typed device contract cannot carry it and adoption refuses it, `incus.rs:142,1612`) | `/run` |
 | `opdbus-run` | `/run/opdbus/ct/<name>` | `/run/mounts/opdbus` (shift) |
 | `lungs` | `/run/opdbus/lungs` | `/run/mounts/opdbus/lungs` (ro, shift) |
-| `shm` | `/run/opdbus/shm/<name>` (1777, `opdbus/plugin-blobs` pre-created) | `/dev/shm` (shift) |
-| `catalog` | `/var/lib/opdbus/plugin-blobs` (sealed catalog) | `/dev/shm/opdbus/plugin-blobs` (ro, shift) |
+| `catalog` | `/var/lib/opdbus/plugin-blobs` (sealed catalog) | same path (ro, shift) |
 | `decoy-trust` | `/etc/op-dbus/decoy-trust.json` | same path (ro, shift) |
 | `sled` | pool volume `identity-<session>` | `/agent/user` (ro) |
 | `tunnel` | `/run/opdbus/tunnel` | `/run/mounts/opdbus/tunnel` (chatbot key only) |
 
 Mount layering: no mount covers another. Each parent is mounted before anything under it:
-`runtime-run` (`/run`) before `opdbus-run`, `opdbus-run` before `lungs`/`tunnel`, and `shm` before `catalog` (Incus orders disks by path).
-Without the `shm` disk, systemd (systemd seed) mounts its own tmpfs on `/dev/shm` at boot,
-covering the catalog, and both 3tchedFS units fail their manifest check. A tmpfs from
-`raw.lxc` does not work: Incus writes raw.lxc after its disks and LXC attaches idmapped
-disks later, so the catalog target is missing. Host dirs are recreated at boot by
-`deploy/runit/boot-run/S96-run-mounts.stage1.sh`.
+`runtime-run` (`/run`) before `opdbus-run`, `opdbus-run` before `lungs`/`tunnel` (Incus orders disks by path).
+The catalog is not under `/dev/shm`: the guest init mounts its own tmpfs there. The earlier
+`shm` disk was a workaround for that placement and the bridge refuses it on human containers;
+it is not added to new containers. The running chatbot still has it until it is rewired. S96
+recreates the `/run/opdbus/ct` host dirs at boot; it still creates the old `shm` dirs, which new containers do not use.
 
 Config: `user.opdbus.session_id`, `user.opdbus.wireguard_public_key`, `security.idmap.isolated=true`,
 unprivileged, no nesting, `boot.autostart=false`, `raw.lxc`: `lxc.uts.name = <session>` (**hostname**),

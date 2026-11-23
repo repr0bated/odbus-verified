@@ -4,7 +4,7 @@
 set -eu
 POOL=${OP_CONTAINER_POOL:-3tched-pool}
 POOL_DIR=/var/lib/incus/storage-pools/$POOL
-SEED_NAME=${SEED_NAME:-@antix-seed}          # images/<SEED_NAME>; Ubuntu seed is @seed (never deleted)
+SEED_NAME=${SEED_NAME:-@seed}          # images/<SEED_NAME>; antiX 26.1, systemd (never deleted)
 SEED_DIR=$POOL_DIR/images/$SEED_NAME
 HERE=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
 REPO=${OP_REPO:-/srv/git/odbus-verified}
