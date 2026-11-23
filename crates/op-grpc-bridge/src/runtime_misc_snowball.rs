@@ -207,6 +207,9 @@ async fn search(
         )));
     }
     accountability(ctx).await?;
+    let subsidiary = crate::runtime::subsidiary::resolve(ctx).await?;
+    let collection = subsidiary.as_ref().map(|scope| scope.collection("mainchain"))
+        .transpose().map_err(RuntimeError::before_effect)?;
     let (embedding_model, hits) = tokio::time::timeout(
         Duration::from_secs(45),
         op_cognitive::chain_vectors::search_session_events(
@@ -214,6 +217,7 @@ async fn search(
             &ctx.caller.principal_id,
             &ctx.caller.session_id,
             limit,
+            collection.as_deref(),
         ),
     )
     .await

@@ -55,21 +55,36 @@ pub(crate) fn supports(plugin: &str, method: &str) -> bool {
     plugin == "identity_sled" && method == "finalize_session"
 }
 
-/// The sled ledger directory for `session`, if that identity has a sled.
-fn ledger_dir(session: &str) -> anyhow::Result<Option<PathBuf>> {
+struct LedgerLocation {
+    directory: PathBuf,
+    chain_id: Option<String>,
+}
+
+/// The sled is selected by the identity owner, never a caller path or pool.
+fn ledger_dir(store: &op_cozo_store::CozoGraphShuttle, session: &str) -> anyhow::Result<Option<LedgerLocation>> {
     let parsed = uuid::Uuid::parse_str(session).context("session id is not a UUID")?;
     ensure!(parsed.to_string() == session, "session id is not canonical");
-    let pool = std::env::var("OP_CONTAINER_POOL").unwrap_or_else(|_| "3tched-pool".into());
-    let sled = PathBuf::from(format!("/var/lib/incus/storage-pools/{pool}/custom/default_identity-{session}"));
+    let relation = store.read_identity_revision(session)?.record
+        .map(|record| record.org_relation_json).unwrap_or_default();
+    let row = store.lxd_subsidiaries()?.into_iter().find(|row| row.session_id == session);
+    let row = crate::runtime::subsidiary::binding(row, &relation)?;
+    let (sled, chain_id) = if let Some(row) = row {
+        ensure!(!row.native_uuid.is_empty(), "subsidiary sled requires its admitted native binding");
+        (PathBuf::from(format!("/var/lib/lxd/storage-pools/lxd-pool/custom/default_identity-{session}")),
+            Some(format!("{}::mainchain", row.name)))
+    } else {
+        let pool = std::env::var("OP_CONTAINER_POOL").unwrap_or_else(|_| "3tched-pool".into());
+        (PathBuf::from(format!("/var/lib/incus/storage-pools/{pool}/custom/default_identity-{session}")), None)
+    };
     let stored = match std::fs::read_to_string(sled.join("session_id")) {
         Ok(stored) => stored,
-        Err(error) if error.kind() == std::io::ErrorKind::NotFound => return Ok(None),
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound && chain_id.is_none() => return Ok(None),
         Err(error) => return Err(error).with_context(|| format!("reading {}", sled.display())),
     };
     ensure!(stored.trim() == session, "sled session_id differs from its volume name");
     let ledger = sled.join("ledger");
     std::fs::DirBuilder::new().mode(0o700).recursive(true).create(&ledger)?;
-    Ok(Some(ledger))
+    Ok(Some(LedgerLocation { directory: ledger, chain_id }))
 }
 
 /// The ledger line for one committed call (nothing is written here). `None`
@@ -160,8 +175,12 @@ pub(crate) async fn append_from_tracker(runtime: &Runtime, record: &ExecutionRec
         if crate::chat_mode_policy::excluded_from_sled(personal, &staged.session, &staged.method, &staged.args) {
             return Ok(());
         }
-        let SledEntry { session, entry, .. } = staged;
-        let Some(ledger) = ledger_dir(&session)? else { return Ok(()) };
+        let SledEntry { session, mut entry, .. } = staged;
+        let Some(location) = ledger_dir(&store, &session)? else { return Ok(()) };
+        if let Some(chain_id) = location.chain_id {
+            entry["chain_id"] = chain_id.into();
+        }
+        let ledger = location.directory;
         let mut line = serde_json::to_vec(&entry)?;
         line.push(b'\n');
         let _guard = LEDGER_LOCK.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
@@ -186,11 +205,17 @@ pub(crate) async fn dispatch(ctx: &BackendContext<'_>, args: &Value) -> Result<B
     let input: FinalizeInput = serde_json::from_value(args.clone())
         .map_err(|error| RuntimeError::before_effect(error.into()))?;
     crate::runtime_misc::revalidate(ctx).await?;
+    let subsidiary = crate::runtime::subsidiary::resolve(ctx).await?;
+    if subsidiary.is_some() && input.session_id != ctx.caller.session_id {
+        return Err(RuntimeError::denied("a subsidiary finalizes only its own session ledger"));
+    }
+    let store = ctx.runtime.identity_store().clone();
     let session = input.session_id.clone();
     // Start a finalization: later appends open a fresh current ledger, and an
     // interrupted earlier finalization is retried with this one.
-    let segments = tokio::task::spawn_blocking(move || -> anyhow::Result<Vec<PathBuf>> {
-        let ledger = ledger_dir(&session)?.context("this identity has no sled ledger")?;
+    let (segments, collection) = tokio::task::spawn_blocking(move || -> anyhow::Result<_> {
+        let location = ledger_dir(&store, &session)?.context("this identity has no sled ledger")?;
+        let ledger = location.directory;
         {
             let _guard = LEDGER_LOCK.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
             let current = ledger.join(CURRENT);
@@ -206,7 +231,7 @@ pub(crate) async fn dispatch(ctx: &BackendContext<'_>, args: &Value) -> Result<B
                 .is_some_and(|name| name.starts_with(FINALIZING_PREFIX) && name.ends_with(".jsonl")))
             .collect::<Vec<_>>();
         segments.sort();
-        Ok(segments)
+        Ok((segments, location.chain_id))
     }).await.map_err(|error| RuntimeError::before_effect(error.into()))?
         .map_err(RuntimeError::before_effect)?;
 
@@ -224,7 +249,7 @@ pub(crate) async fn dispatch(ctx: &BackendContext<'_>, args: &Value) -> Result<B
     let points = entries.iter().map(|entry| {
         let field = |name: &str| entry[name].as_str().unwrap_or_default().to_owned();
         let mut payload = serde_json::Map::new();
-        for name in ["session_id", "actor_id", "plugin_id", "method", "subid", "operation_id", "terminal_event_hash", "at"] {
+        for name in ["session_id", "actor_id", "plugin_id", "method", "subid", "operation_id", "terminal_event_hash", "at", "chain_id"] {
             payload.insert(name.into(), field(name).into());
         }
         op_cognitive::chain_vectors::LedgerPoint { event_hash: field("event_hash"), text: field("text"), payload }
@@ -232,6 +257,7 @@ pub(crate) async fn dispatch(ctx: &BackendContext<'_>, args: &Value) -> Result<B
     let (model, collection, ids) = op_cognitive::chain_vectors::upsert_session_ledger(
         ctx.runtime.identity_store().as_ref(),
         &points,
+        collection.as_deref(),
     ).await.map_err(RuntimeError::unknown)?;
 
     let cleared = segments.clone();

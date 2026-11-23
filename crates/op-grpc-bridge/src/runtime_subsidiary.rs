@@ -45,7 +45,7 @@ impl Scope {
     }
 }
 
-fn binding(row: Option<LxdSubsidiary>, relation_json: &str) -> Result<Option<LxdSubsidiary>> {
+pub(crate) fn binding(row: Option<LxdSubsidiary>, relation_json: &str) -> Result<Option<LxdSubsidiary>> {
     let relation = if relation_json.is_empty() {
         None
     } else {

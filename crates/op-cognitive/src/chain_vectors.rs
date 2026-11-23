@@ -203,6 +203,7 @@ pub async fn search_session_events(
     actor_id: &str,
     session_id: &str,
     limit: u32,
+    selected_collection: Option<&str>,
 ) -> Result<(String, Vec<ScoredPoint>)> {
     anyhow::ensure!(
         !actor_id.is_empty() && !session_id.is_empty(),
@@ -218,8 +219,10 @@ pub async fn search_session_events(
     );
     let voyage = VoyageClient::new()?;
     let embedding = voyage.embed(query, Some("query")).await?;
-    let collection = std::env::var("OPDBUS_QDRANT_SNOWBALL_COLLECTION")
-        .unwrap_or_else(|_| DEFAULT_COLLECTION.to_string());
+    let collection = selected_collection.map(str::to_owned).unwrap_or_else(|| {
+        std::env::var("OPDBUS_QDRANT_SNOWBALL_COLLECTION")
+            .unwrap_or_else(|_| DEFAULT_COLLECTION.to_string())
+    });
     let client = Qdrant::from_url(&qdrant_url()).build()?;
     let response = client
         .query(
@@ -259,15 +262,18 @@ pub fn ledger_point_id(event_hash: &str) -> uuid::Uuid {
 }
 
 /// End-of-session vectorization of a sled ledger (owner 2026-11-02: the
-/// snowball is a session ledger vectorized once at the end). Points go to the
-/// snowball collection with the payload `search_session_events` filters on.
-/// Returns the embedding model, the collection and each point id in order.
+/// snowball is a session ledger vectorized once at the end). The admitted
+/// caller selects its subsidiary collection; other callers use the configured
+/// snowball collection. Returns model, collection and each point id in order.
 pub async fn upsert_session_ledger(
     registry: &CozoGraphShuttle,
     points: &[LedgerPoint],
+    selected_collection: Option<&str>,
 ) -> Result<(String, String, Vec<String>)> {
-    let collection = std::env::var("OPDBUS_QDRANT_SNOWBALL_COLLECTION")
-        .unwrap_or_else(|_| DEFAULT_COLLECTION.to_string());
+    let collection = selected_collection.map(str::to_owned).unwrap_or_else(|| {
+        std::env::var("OPDBUS_QDRANT_SNOWBALL_COLLECTION")
+            .unwrap_or_else(|_| DEFAULT_COLLECTION.to_string())
+    });
     if points.is_empty() {
         return Ok((String::new(), collection, Vec::new()));
     }
