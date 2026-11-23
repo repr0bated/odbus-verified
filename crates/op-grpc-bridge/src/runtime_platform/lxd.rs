@@ -90,12 +90,19 @@ pub(crate) async fn dispatch(ctx: &BackendContext<'_>, method: &str, args: &Valu
 /// parent-authorized intents, never a label or a name the caller supplies.
 async fn subsidiary_scope(ctx: &BackendContext<'_>)
     -> Result<Option<Vec<op_cozo_store::LxdSubsidiary>>, RuntimeError> {
+    if crate::runtime::subsidiary::resolve(ctx).await?.is_none() {
+        return Ok(None);
+    }
     let store = ctx.runtime.identity_store().clone();
     let rows = tokio::task::spawn_blocking(move || store.lxd_subsidiaries()).await
         .map_err(|error| RuntimeError::backend(error.into()))?
         .map_err(|error| RuntimeError::backend(error.into()))?;
     let own = &ctx.caller.session_id;
-    if !rows.iter().any(|row| &row.session_id == own) { return Ok(None) }
+    if !rows.iter().any(|row| &row.session_id == own) {
+        return Err(RuntimeError::before_effect(anyhow::anyhow!(
+            "subsidiary binding changed before LXD scope selection"
+        )));
+    }
     Ok(Some(rows.into_iter().filter(|row| &row.session_id == own
         || row.actor_id == ctx.caller.principal_id).collect()))
 }
