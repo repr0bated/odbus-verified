@@ -18476,10 +18476,20 @@ pub mod client {
                 escape(pool),
                 escape(&volume.r#type)
             );
-            let body = Some(serde_json::to_vec(volume)?);
-            let (op, _): (types::Operation, String) =
-                self.call(Method::POST, &path, &[], body, None).await?;
-            Ok(OperationHandle::new(self.clone(), op))
+            let mut body = serde_json::to_value(volume)?;
+            // An unset source is a plain create; its typed default would ask
+            // LXD for a migration.
+            if volume.source == Default::default() {
+                if let Some(map) = body.as_object_mut() {
+                    map.remove("source");
+                }
+            }
+            // Older servers create an empty volume synchronously and return
+            // null metadata instead of an operation.
+            let (op, _): (Option<types::Operation>, String) = self
+                .call(Method::POST, &path, &[], Some(serde_json::to_vec(&body)?), None)
+                .await?;
+            Ok(OperationHandle::new(self.clone(), op.unwrap_or_default()))
         }
 
         async fn migrate_storage_pool_volume(
