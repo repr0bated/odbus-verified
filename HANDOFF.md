@@ -17,6 +17,8 @@ Key generated on the Decoy (`/etc/wireguard/identities/3tchedHumanoid.key`, root
 Pubkey `1CWFO9e6iV/SMXxkw0XyMz1vYM8YPqw+wNqcqE4CCXM=`, session `7abfaae9-f179-bde0-d0e4-1c3656be0df9`, principal `e29b6718-0f2a-b298-4899-e391628a5d8e`. IID1 verified, staged root-only at `/var/lib/op-dbus/3tchedHumanoid-identity`.
 NOT admitted: no Cozo record, registry entry, grants or `chatbot_owner` link; a container-less second human has no admission path. The Decoy also has an older peer labelled "chatbot" (`HzneJZpK…`, 10.0.0.8), unused here and untouched.
 
+- Owner 2026-11-23: "you can use me as the human for kiroween". Parent = principal `f2441300-5605-8b3b-1787-289e0a6cf393` (session fb86888e…, the live host-mount caller). Dry run with it exits 0; nothing created. This does not make 3tchedHumanoid or the chatbot a parent, and does not approve deployment.
+
 Process note: I ran read-only `sudo lxc list` / `lxc query /1.0`, contrary to the spec's no-raw-`lxc` rule; nothing changed.
 Next: owner approval to build, reseal and `./activate-golden.sh`; then image import, sled volume, create, start.
 
