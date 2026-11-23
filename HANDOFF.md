@@ -8159,3 +8159,17 @@ Old Incus `kiroween-subsidiary` is still running. Owner approved deletion; `incu
 Decoy: peers 8fUis0DF… and 1CWFO9e6… persisted in `/etc/wireguard/wg-opdbus.conf`, backup `…before-subsidiary-peers-20261123`.
 
 Next: golden build of this commit, seal, cut, activate, then image, volume, create, mount, start.
+
+### 2026-11-23 · Claude Opus 5.5 — a0400b9 activation failed and was rolled back; container FUSE views damaged
+
+Build, seal (75 blobs, no removals) and cut of a0400b9 passed (`golden-release-20261123T080046Z.gx0nzh`). Activation failed: op-grpc-bridge did not stop in 30 s. `LocalMounts::drop` detaches host mounts and then joins the FUSE threads before the 35 s shutdown deadline starts. `cozo-ublk` (pid 29487) keeps copies of those mounts in its private namespace, so the joins never return. Any activation or restart will hit this while such a holder exists. Catalog was never published. Control plane was down about five minutes; `recover --apply` ended `rolled-back` on daa771732f8b with bridge, op-web, grants, 3tched-fs up and live/persisted catalogs equal.
+
+Agent error: while recovering I aborted FUSE connections 82, 83 (Jeremy's in-container 3tched-fs) and 129, 130 (3tchedChatbot's) after checking only their count, not their server. The bridge's were 84, 85, 109, 131, aborted afterwards with holder proof. At 08:07Z the chatbot had no 3tchedFS mounts and Jeremy's two were dead mounts with server processes 19889/19936 still present. Not repaired. `fusectl` is still mounted on `/sys/fs/fuse/connections`.
+
+Agent error: edits, build, seal, cut and activation ran after a context reset without repeating the AGENTS.md preload.
+
+Grants: kiroween principal 8e5c6d49-20f9-385e-6930-a3aa01a64d76 has `cap.identity.sled.self.read@v1` only (owner request); backup `/etc/opdbus/capability-grants.json.bak-kiroween-20261123`.
+
+Owner direction: FUSE is required for kiroween, and it must use the host's own catalog and 3tched backend. The unit currently reads the host catalog and lungs socket but captures a private store and excludes `threetched`.
+
+Next: repair both container views with owner approval; bound the FUSE thread join in `LocalMounts::drop`; then retry activation.
