@@ -10,6 +10,7 @@ use anyhow::{Context, Result, ensure};
 use op_plugins::state_plugins::lxd as native_lxd;
 use op_plugins::state_plugins::lxd::LxdClient;
 use serde_json::{Value, json};
+use std::collections::BTreeSet;
 use std::os::unix::fs::{MetadataExt, OpenOptionsExt};
 use std::path::Path;
 
@@ -95,10 +96,35 @@ pub(crate) async fn dispatch(ctx: &BackendContext<'_>, method: &str, args: &Valu
         if mutates(method) { RuntimeError::unknown(error.into()) }
         else { RuntimeError::backend(error.into()) }
     })?;
-    if let (Some(scope), "get_instance_names") = (&scope, method) {
-        result["result"].as_array_mut()
-            .ok_or_else(|| RuntimeError::backend(anyhow::anyhow!("LXD instance names are not a list")))?
-            .retain(|name| name.as_str().is_some_and(|name| scope.iter().any(|row| row.name == name)));
+    if let Some(scope) = &scope {
+        match method {
+            "get_instance_names" => {
+                result["result"].as_array_mut()
+                    .ok_or_else(|| RuntimeError::backend(anyhow::anyhow!("LXD instance names are not a list")))?
+                    .retain(|name| name.as_str().is_some_and(|name| scope.iter().any(|row| row.name == name)));
+            }
+            "get_image_fingerprints" => {
+                let fingerprints = admitted_image_fingerprints(scope);
+                result["result"].as_array_mut()
+                    .ok_or_else(|| RuntimeError::backend(anyhow::anyhow!("LXD image fingerprints are not a list")))?
+                    .retain(|item| item.as_str().is_some_and(|fingerprint| fingerprints.contains(fingerprint)));
+            }
+            "get_images" => {
+                let fingerprints = admitted_image_fingerprints(scope);
+                result["result"].as_array_mut()
+                    .ok_or_else(|| RuntimeError::backend(anyhow::anyhow!("LXD images are not a list")))?
+                    .retain(|image| image.get("fingerprint").and_then(Value::as_str)
+                        .is_some_and(|fingerprint| fingerprints.contains(fingerprint)));
+            }
+            "get_image" => {
+                let fingerprints = admitted_image_fingerprints(scope);
+                let returned = result["result"].get("fingerprint").and_then(Value::as_str).unwrap_or_default();
+                if !fingerprints.contains(returned) {
+                    return Err(RuntimeError::denied("a subsidiary sees only its admitted image"));
+                }
+            }
+            _ => {}
+        }
     }
     Ok(result)
 }
@@ -148,17 +174,34 @@ async fn subsidiary_scope(ctx: &BackendContext<'_>)
         || row.actor_id == ctx.caller.principal_id).collect()))
 }
 
-/// A subsidiary reads only its own containers and sled volumes. Pool, volume
-/// list and operation reads would name other identities, so they are refused.
+/// Fingerprints fixed in the admitted create requests. A missing or non-hex
+/// fingerprint authorizes no image. This is not the live image list.
+fn admitted_image_fingerprints(scope: &[op_cozo_store::LxdSubsidiary]) -> BTreeSet<String> {
+    scope.iter().filter_map(|row| {
+        let body: Value = serde_json::from_str(&row.request_json).ok()?;
+        let fingerprint = body.get("source")?.get("fingerprint")?.as_str()?;
+        hex64(fingerprint).then(|| fingerprint.to_owned())
+    }).collect()
+}
+
+/// A subsidiary reads only its own containers, sled volumes, and the image
+/// fingerprint in its admitted create request. Other private images, pool
+/// lists and operation reads are refused. Image lists are fetched and then
+/// reduced to those fingerprints.
 fn ensure_in_scope(scope: &[op_cozo_store::LxdSubsidiary], method: &str, args: &Value) -> Result<()> {
     let name = args["name"].as_str().unwrap_or_default();
-    ensure!(match method {
-        "get_images" | "get_image" | "get_image_fingerprints" | "get_instance_names" => true,
+    let allowed = match method {
+        "get_images" | "get_image_fingerprints" | "get_instance_names" => true,
+        "get_image" => {
+            let fingerprint = args.get("fingerprint").and_then(Value::as_str).unwrap_or_default();
+            admitted_image_fingerprints(scope).contains(fingerprint)
+        }
         "get_instance" | "get_instance_state" => scope.iter().any(|row| row.name == name),
         "get_storage_pool_volume" => args["pool"] == POOL && args["vol_type"] == "custom"
             && scope.iter().any(|row| name == format!("identity-{}", row.session_id)),
         _ => false,
-    }, "a subsidiary sees only its own containers");
+    };
+    ensure!(allowed, "a subsidiary sees only its own containers and admitted image");
     Ok(())
 }
 
