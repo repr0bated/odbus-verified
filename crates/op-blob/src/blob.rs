@@ -49,6 +49,26 @@ pub const SECTION_META_JSON: u32 = 4;
 const HEADER_LEN: usize = 64;
 const SECTION_ENTRY_LEN: usize = 24;
 
+/// Hash of a sealed schema with the root `purpose` object removed.
+///
+/// Purpose says who may call a method. It is not part of the state document.
+/// A reseal that only changes purpose keeps this hash, so durable state
+/// written under the previous purpose still pins. Any other schema change
+/// changes the hash and recovery keeps failing closed.
+pub fn state_contract_hash(schema_json: &str) -> Result<String, String> {
+    let mut value: serde_json::Value =
+        serde_json::from_str(schema_json).map_err(|error| format!("schema json: {error}"))?;
+    value
+        .as_object_mut()
+        .ok_or("schema json is not an object")?
+        .remove("purpose");
+    let text = serde_json::to_string(&canonicalize_json_object_keys(value))
+        .map_err(|error| format!("schema json: {error}"))?;
+    let mut hasher = Sha256::new();
+    hasher.update(text.as_bytes());
+    Ok(hex(&hasher.finalize()))
+}
+
 /// Return JSON with object keys inserted in lexical order at every depth.
 /// serde_json's `preserve_order` feature changes `Map` to an insertion-ordered
 /// map, so deterministic producers must sort explicitly instead of relying on
@@ -521,5 +541,29 @@ impl<'a> BlobRef<'a> {
     /// registry or a monolith file.
     pub fn state_store_schema(&self) -> Result<op_state_store::PluginSchema, String> {
         serde_json::from_str(self.schema_json()).map_err(|e| format!("schema parse: {e}"))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn state_contract_hash_ignores_only_purpose() {
+        let base = serde_json::json!({"name": "tunnel", "version": "1"});
+        let bare = serde_json::to_string(&canonicalize_json_object_keys(base.clone())).unwrap();
+        let mut with_purpose = base;
+        with_purpose.as_object_mut().unwrap().insert(
+            "purpose".into(),
+            serde_json::json!({"subid": "sch.service.tunnel.purpose.subsidiary@v1", "subsidiary": {"cap.service.tunnel.read@v1": true}}),
+        );
+        let sealed = serde_json::to_string(&canonicalize_json_object_keys(with_purpose)).unwrap();
+        assert_ne!(sealed, bare);
+        assert_eq!(state_contract_hash(&sealed).unwrap(), {
+            let mut hasher = Sha256::new();
+            hasher.update(bare.as_bytes());
+            hex(&hasher.finalize())
+        });
+        assert_eq!(state_contract_hash(&bare).unwrap(), state_contract_hash(&sealed).unwrap());
     }
 }

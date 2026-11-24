@@ -117,7 +117,7 @@ impl PersistentCore {
                     "identity metadata root is not an object"
                 );
                 identity_publication = Some(IdentityPublication {
-                    schema_hash: update.schema_hash,
+                    schema_hash: self.contract_hash(catalog, &update.plugin_id)?,
                     state_hash: state_hash(metadata.as_ref())?,
                     generation: proof.generation,
                 });
@@ -170,8 +170,8 @@ impl PersistentCore {
             pins.push((plugin_id.clone(), tree.schema_hash.clone()));
             publications.push(Publication {
                 scope: state_scope,
-                plugin_id,
-                schema_hash: tree.schema_hash,
+                plugin_id: plugin_id.clone(),
+                schema_hash: self.contract_hash(catalog, &plugin_id)?,
                 object_path: tree.object_path,
                 operation_id: token.clone(),
                 state: tree.state,

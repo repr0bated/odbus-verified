@@ -437,7 +437,13 @@ impl BridgeCore {
             .lock().map_err(|_| anyhow::anyhow!("durable bridge owner poisoned"))?;
         owner.require_available()?;
         let state = owner.operations.get(&(scope, id.to_owned())).context("original operation unavailable")?;
-        ensure!(state.plugin_id == plugin && state.method == method && state.schema_hash == schema_hash
+        owner
+            .pin(&self.inner.catalog, plugin, schema_hash)
+            .context("original operation request or orchestration binding differs")?;
+        owner
+            .pin(&self.inner.catalog, plugin, &state.schema_hash)
+            .context("original operation request or orchestration binding differs")?;
+        ensure!(state.plugin_id == plugin && state.method == method
             && state.request_digest.as_deref().unwrap_or(&state.arguments_digest) == digest.as_str()
             && state.attribution.as_ref() == attribution,
             "original operation request or orchestration binding differs");
@@ -520,6 +526,9 @@ impl BridgeCore {
             .map_err(|_| anyhow::anyhow!("durable bridge owner poisoned"))?;
         owner.require_available()?;
         let schema = owner.pin(&self.inner.catalog, &mutation.plugin_id, schema_hash)?;
+        // Store the purpose-stable contract hash. The caller's presented hash
+        // is still pinned above, so a stale blob hash is refused.
+        let schema_hash = owner.contract_hash(&self.inner.catalog, &mutation.plugin_id)?;
         let method = schema
             .methods
             .get(&mutation.member_name)
@@ -541,10 +550,10 @@ impl BridgeCore {
             &self.inner.catalog,
             scope.clone(),
             mutation,
-            schema_hash,
+            &schema_hash,
             LedgerAction::Attempt {
                 operation_id: id.into(),
-                schema_hash: schema_hash.into(),
+                schema_hash: schema_hash.clone(),
                 arguments_digest: digest,
                 attribution: attribution.cloned(),
                 request_digest: request_digest.map(str::to_owned),
@@ -600,12 +609,25 @@ impl BridgeCore {
             .lock()
             .map_err(|_| anyhow::anyhow!("durable bridge owner poisoned"))?;
         let admitted = owner.require_operation(operation)?;
+        owner
+            .pin(
+                &self.inner.catalog,
+                &admitted.plugin_id,
+                &commit.schema_hash,
+            )
+            .context("completed method differs from admitted attempt")?;
+        owner
+            .pin(
+                &self.inner.catalog,
+                &admitted.plugin_id,
+                &admitted.schema_hash,
+            )
+            .context("completed method differs from admitted attempt")?;
         ensure!(
             commit.mutation.plugin_id == admitted.plugin_id
                 && commit.mutation.member_name == admitted.method
                 && commit.mutation.object_path == admitted.object_path
                 && commit.mutation.capability_id == admitted.capability_id
-                && commit.schema_hash == admitted.schema_hash
                 && argument_digest(&commit.mutation.value)? == admitted.arguments_digest,
             "completed method differs from admitted attempt"
         );

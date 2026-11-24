@@ -320,9 +320,10 @@ impl PersistentCore {
         let selected = catalog
             .plugin(plugin_id)
             .context("plugin absent from admitted catalog")?;
+        let contract = self.contract_hash(catalog, plugin_id)?;
         ensure!(
-            selected.schema_hash == expected && selected.sealed_schema_json.is_some(),
-            "state schema pin mismatch"
+            selected.schema_hash == expected || contract == expected,
+            "state schema pin mismatch for {plugin_id}"
         );
         let current = Catalog::sealed_plugin(&self.catalog_dir, plugin_id)?;
         ensure!(
@@ -332,6 +333,18 @@ impl PersistentCore {
         );
         serde_json::from_value(current.schema.context("sealed plugin schema unavailable")?)
             .map_err(Into::into)
+    }
+
+    /// State pin. Stable across a purpose-only reseal; the blob hash is not.
+    pub(super) fn contract_hash(&self, catalog: &Catalog, plugin_id: &str) -> Result<String> {
+        let sealed = catalog
+            .plugin(plugin_id)
+            .context("plugin absent from admitted catalog")?
+            .sealed_schema_json
+            .as_deref()
+            .context("sealed plugin schema absent")?;
+        op_blob::blob::state_contract_hash(sealed)
+            .map_err(|error| anyhow::anyhow!("state contract hash for {plugin_id}: {error}"))
     }
 
     fn private_directory(
@@ -654,16 +667,18 @@ impl PersistentCore {
         let head = self.heads.get(&(scope.clone(), plugin.to_owned()));
         let mut event_id = head.map_or(0, |head| head.event_id);
         if let Some(head) = head {
+            self.pin(catalog, plugin, &head.schema_hash)?;
             ensure!(
-                head.schema_hash == selected.schema_hash
-                    && head.state_hash == state_hash(Some(&raw))?,
+                head.state_hash == state_hash(Some(&raw))?,
                 "committed SHM differs from the durable bridge state"
             );
         } else if *scope == StateScope::Public && plugin == "identity_sled" {
             if let Some(identity) = &self.identity_head {
                 // A dedicated owner may legitimately publish newer metadata
                 // outside this ledger. Never fence or misattribute that state.
-                if identity.head.schema_hash == selected.schema_hash
+                // Purpose-only reseals keep the state contract and change the
+                // blob hash, so the stored pin is checked the same way as a head.
+                if self.pin(catalog, plugin, &identity.head.schema_hash).is_ok()
                     && snapshot.generation >= identity.generation
                     && identity.head.state_hash == state_hash(Some(&raw))?
                 {
