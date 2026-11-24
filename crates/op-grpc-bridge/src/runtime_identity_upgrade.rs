@@ -291,7 +291,9 @@ pub(super) async fn upgrade(engine: &NativeOwner, store: &IdentitySledStore,
     ensure!(running["status"] == "Running", "native power changed before upgrade commit");
     inspected_upgrade(&plan, &journal).await?;
     let mut record = journal.expected.record.clone().context("upgrade original identity absent")?;
-    record.instance_json = serde_json::to_string(&IncusPlugin::instance_from_native_metadata(running)?)?;
+    // The live binding was verified above. Commit the journaled text itself:
+    // config is an unordered map, so a second serialization never matches it.
+    record.instance_json = journal.native_after_json.clone();
     record.active = true;
     let cozo = store.cozo.clone(); let committing = journal.clone(); let commit_sid = sid.clone();
     let commit_operation = operation.clone();
