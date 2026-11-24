@@ -36,6 +36,21 @@ profile has only the root disk (on 3tched-pool) and the shared lungs socket.
 - `opdbus-sockets.conf`: `/run/opdbus` -> `/run/mounts/opdbus`, where
   provisioning binds the host directories (`lungs` read-only, `tunnel` for
   the chatbot).
+- gRPC-ready client config (2026-11-23): `etc/profile.d/op-dbus-env.sh`
+  (canonical copy of `deploy/config/profile.d/op-dbus-env.sh`, previously
+  missing from guests, so `guest-env` had nothing to source) plus the env
+  store defaults `etc/op-dbus/env/no-proxy` =
+  `localhost,127.0.0.1,::1,10.0.0.2` and `etc/op-dbus/env/ssl-cert-file` =
+  the system CA bundle. There are deliberately no `http-proxy` /
+  `https-proxy` settings: outbound gRPC (and everything else) dials
+  directly and the host BPF egress (`ct-egress-bpf-<instance>`) carries
+  it; local door (`10.0.0.2:8090`) and loopback gRPC must never be
+  proxied. Internal gRPC stays on `lungs.sock` / the door, not IP. Env
+  files are gitignored as a class, so the seed builders
+  (`ubuntu-seeds-adjust.sh`, `deploy/lxd/finish-resolute-template.sh`)
+  write these two defaults explicitly. Applied live to `@seed`,
+  `@ubuntu-user`, `@ubuntu-subsidiary` (snapshots `*.pre-grpc-*` kept),
+  `Jeremy` and `3tchedChatbot` on 2026-11-23.
 - `nextdns.service` + `usr/local/libexec/op-dbus/nextdns-run`, `resolv.conf`: the
   official NextDNS client (`/usr/bin/nextdns`, release and SHA-256 pinned in
   `deploy/provisioning/lib.sh` `NEXTDNS_VERSION`/`NEXTDNS_SHA256`) on `127.0.0.1:53`;

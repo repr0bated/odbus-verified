@@ -49,6 +49,12 @@ W=$R/etc/systemd/system/multi-user.target.wants; install -d -m 0755 "$W"
 for u in $(ls "$SEED/etc/systemd/system/multi-user.target.wants" | grep -E '^(3tchedfs|threetchedfs|opdbus-lo|door-tls-init|op-grpc-bridge|op-tunnel-door|nextdns)\.service$'); do
   ln -sfn "/etc/systemd/system/$u" "$W/$u"; log "enabled $u"
 done
+# gRPC-ready client config: profile store + defaults (see LXD template).
+install -m 0644 "$REPO/deploy/config/profile.d/op-dbus-env.sh" "$R/etc/profile.d/op-dbus-env.sh"
+install -d -m 0755 "$R/etc/op-dbus/env"
+printf '%s\n' 'localhost,127.0.0.1,::1,10.0.0.2' >"$R/etc/op-dbus/env/no-proxy"
+printf '%s\n' '/etc/ssl/certs/ca-certificates.crt' >"$R/etc/op-dbus/env/ssl-cert-file"
+rm -f "$R/etc/op-dbus/env/http-proxy" "$R/etc/op-dbus/env/https-proxy"
 
 # 4. graphical login off, desktop kept
 ln -sfn /lib/systemd/system/multi-user.target "$R/etc/systemd/system/default.target"

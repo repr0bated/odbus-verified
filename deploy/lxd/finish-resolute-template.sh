@@ -51,6 +51,16 @@ install -m 0644 /etc/op-dbus/decoy-trust.json "$R/etc/op-dbus/decoy-trust.json"
 install -m 0644 "$REPO/deploy/seed/rootfs/etc/systemd/system/nextdns.service" "$R/etc/systemd/system/nextdns.service"
 install -m 0644 "$REPO/deploy/seed/rootfs/etc/resolv.conf" "$R/etc/resolv.conf"
 ln -sfn "../nextdns.service" "$R/etc/systemd/system/multi-user.target.wants/nextdns.service"
+# gRPC-ready client config (all seeds/containers): env store defaults —
+# local/door endpoints never proxied, system CA bundle for TLS stacks.
+# No http(s)-proxy settings anywhere: outbound gRPC dials directly and
+# the BPF egress carries it. (Env files are gitignored as a class, so
+# they are written here explicitly, not copied from the repo tree.)
+install -m 0644 "$REPO/deploy/seed/rootfs/etc/profile.d/op-dbus-env.sh" "$R/etc/profile.d/op-dbus-env.sh"
+install -d -m 0755 "$R/etc/op-dbus/env"
+printf '%s\n' 'localhost,127.0.0.1,::1,10.0.0.2' >"$R/etc/op-dbus/env/no-proxy"
+printf '%s\n' '/etc/ssl/certs/ca-certificates.crt' >"$R/etc/op-dbus/env/ssl-cert-file"
+rm -f "$R/etc/op-dbus/env/http-proxy" "$R/etc/op-dbus/env/https-proxy"
 ln -sfn /lib/systemd/system/multi-user.target "$R/etc/systemd/system/default.target"
 awk -F: 'length($2)>3{print "password set: "$1; b=1}END{exit b}' "$R/etc/shadow"
 install -d "$W/img/templates"
