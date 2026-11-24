@@ -4966,11 +4966,11 @@ pub mod types {
             pub status_code: StatusCode,
             /// Affected resources
             /// Example: {"instances": ["/1.0/instances/foo", "/1.0/instances/bar"]}
-            #[serde(default)]
+            #[serde(default, deserialize_with = "crate::state_plugins::lxd::devices::null_as_default")]
             pub resources: HashMap<String, Vec<String>>,
             /// Operation specific metadata
             /// Example: {"command": ["bash"], "environment": {"HOME": "/root", "LANG": "C.UTF-8", "PATH": "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin", "TERM": "xterm", "USER": "root"}, "fds": {"0": "da3046cf02c0116febf4ef3fe4eaecdf308e720c05e5a9c730ce1a6f15417f66", "1": "05896879d8692607bd6e4a09475667da3b5f6714418ab0ee0e5720b4c57f754b"}, "interactive": true}
-            #[serde(default)]
+            #[serde(default, deserialize_with = "crate::state_plugins::lxd::devices::null_as_default")]
             pub metadata: HashMap<String, JsonValue>,
             /// Whether the operation can be canceled
             /// Example: false
@@ -9745,6 +9745,16 @@ pub mod devices {
         }
     }
 
+    /// Go encodes a nil map as JSON `null`; LXD sends that for an operation's
+    /// `metadata` and `resources` until they are filled in.
+    pub fn null_as_default<'de, D, T>(deserializer: D) -> Result<T, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+        T: Default + serde::Deserialize<'de>,
+    {
+        Ok(<Option<T> as serde::Deserialize>::deserialize(deserializer)?.unwrap_or_default())
+    }
+
     /// Serde bridge for the generated `devices` / `expanded_devices` fields:
     /// a `Vec<NamedDevice>` on the wire is LXD's `map[name] -> { type, ... }`.
     ///
@@ -10292,24 +10302,29 @@ pub mod client_extra {
             let Some(types::JsonValue::Object(output)) = done.metadata.get("output") else {
                 return Err(invalid("exec completed without recorded output"));
             };
-            let prefix = format!("/1.0/instances/{}/logs/exec-output/", escape(name));
+            // LXD 5.0 records exec output beside the instance logs; later
+            // releases moved it to logs/exec-output/.
+            let prefix = format!("/1.0/instances/{}/logs/", escape(name));
             let mut streams = Vec::with_capacity(2);
             for key in ["1", "2"] {
                 let Some(types::JsonValue::String(url)) = output.get(key) else {
                     return Err(invalid("exec output path absent"));
                 };
                 // Never follow a path outside this instance's own exec output.
-                let file = url
+                let (dir, file) = url
                     .strip_prefix(&prefix)
-                    .filter(|file| {
-                        !file.is_empty()
-                            && !file.starts_with('.')
+                    .map(|file| match file.strip_prefix("exec-output/") {
+                        Some(file) => ("exec-output/", file),
+                        None => ("", file),
+                    })
+                    .filter(|(_, file)| {
+                        file.starts_with("exec_")
                             && file
                                 .bytes()
                                 .all(|c| c.is_ascii_alphanumeric() || matches!(c, b'-' | b'_' | b'.'))
                     })
                     .ok_or_else(|| invalid("exec output is outside the target instance"))?;
-                let path = format!("/instances/{}/logs/exec-output/{file}", escape(name));
+                let path = format!("/instances/{}/logs/{dir}{file}", escape(name));
                 streams.push(self.get_bytes(&path, &[]).await?);
             }
             let stderr = streams.pop().unwrap_or_default();
