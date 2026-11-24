@@ -204,9 +204,10 @@ profile and device in; device defaults to the session id).
 * Runs `nextdns run -listen 127.0.0.1:53 -report-client-info -profile <id> -forwarder https://dns.nextdns.io/<id>/<device>`.
   nextdns has **no device-name flag**; the device name rides on the DoH path (as the old
   `nextdns.conf.template` did). The ID is never hardcoded or echoed by the run script.
-* ⚠ Flag: the container has no NIC (chatbot has no internet; `ID-N` get egress only via
-  `ct-egress-relay`), so upstream DoH needs that egress path. Pointing the container's
-  `/etc/resolv.conf` at `127.0.0.1` (template `/etc/resolv.conf.opdbus`) is left to the operator.
+* ⚠ Flag: the container has no NIC. Every container gets egress via
+  `ct-egress-bpf` (BPF-transparent TCP, host direct dial, DNS stub
+  `127.0.0.2`), so upstream DoH uses that path. Seed `/etc/resolv.conf`
+  lists `127.0.0.1` (this client) then `127.0.0.2` (the BPF stub).
   nextdns' own log lines may include the profile in its DoH URL; `/var/log/nextdns` stays in the container.
 
 ### Runtime token  (blocker resolved by step 3c)
@@ -271,7 +272,7 @@ snippet to the bridge run script, then link into the runsvdir.
 * ZeroClaw source read is the golden-run checkout (`/var/tmp/golden-run-20261118-native-recovery.0NqTu0/source`);
   its CLI help matches the installed binary, but its exact commit vs the binary was not proven.
 * The gateway is loopback on the host. A bridge **inside** a NIC-less container cannot reach host
-  `127.0.0.1:8084`; container use needs a relay (like `ct-egress-relay`) or a gateway in the image.
+  `127.0.0.1:8084`; container use needs the host gateway in the image (BPF egress reaches public endpoints only, never host loopback).
 * `@antix-seed` still carries the earlier `runit/op-grpc-bridge/run` (no gateway wait); refresh with
   `UNSEAL=1 20-seed-overlay.sh` when approved.
 

@@ -41,21 +41,16 @@ for name in guest-env nextdns-run; do
 done
 install -m 0644 "$REPO/deploy/config/profile.d/op-dbus-env.sh" "$R/etc/profile.d/op-dbus-env.sh"
 install -m 0644 /etc/op-dbus/decoy-trust.json "$R/etc/op-dbus/decoy-trust.json"
-G=$REPO/deploy/runit/ct-egress-relay/guest
-for unit in opdbus-egress-proxy.service opdbus-egress-nextdns.service; do
-    install -m 0644 "$G/$unit" "$R/etc/systemd/system/$unit"
-done
+# NIC-less BPF egress (owner 2026-11-23): no in-guest relay at all. The
+# host loader (ct-egress-bpf-<instance>) serves DNS on 127.0.0.2:53 in
+# this netns and redirects TCP connect() transparently; the guest only
+# needs resolv.conf. No Xray/socat units, no apt proxy, no proxy env.
+# Same DNS shape as every seed: in-guest NextDNS (sealed identity)
+# first, the BPF stub as fallback; nextdns's own DoH TCP is carried by
+# the BPF egress like any other flow.
 install -m 0644 "$REPO/deploy/seed/rootfs/etc/systemd/system/nextdns.service" "$R/etc/systemd/system/nextdns.service"
-install -m 0644 "$G/nextdns.service.d/20-egress.conf" "$R/etc/systemd/system/nextdns.service.d/20-egress.conf"
-install -m 0644 "$G/95opdbus-egress-proxy" "$R/etc/apt/apt.conf.d/95opdbus-egress-proxy"
-for key in http-proxy https-proxy; do printf '%s\n' 'http://127.0.0.1:3128' >"$R/etc/op-dbus/env/$key"; done
-printf '%s\n' 'localhost,127.0.0.1,::1' >"$R/etc/op-dbus/env/no-proxy"
-printf '%s\n' '127.0.0.3' >"$R/etc/op-dbus/env/nextdns-bootstrap"
-chmod 0600 "$R/etc/op-dbus/env/"*
-printf '%s\n' 'nameserver 127.0.0.1' >"$R/etc/resolv.conf"
-for unit in opdbus-egress-proxy.service opdbus-egress-nextdns.service nextdns.service; do
-    ln -sfn "../$unit" "$R/etc/systemd/system/multi-user.target.wants/$unit"
-done
+install -m 0644 "$REPO/deploy/seed/rootfs/etc/resolv.conf" "$R/etc/resolv.conf"
+ln -sfn "../nextdns.service" "$R/etc/systemd/system/multi-user.target.wants/nextdns.service"
 ln -sfn /lib/systemd/system/multi-user.target "$R/etc/systemd/system/default.target"
 awk -F: 'length($2)>3{print "password set: "$1; b=1}END{exit b}' "$R/etc/shadow"
 install -d "$W/img/templates"

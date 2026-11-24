@@ -124,3 +124,6 @@ jq -e --argjson want "$payload" '.result.result.result | . as $got
     | select(([$got.expanded_config | keys[] | select(startswith("raw."))] | length) == 0)
     | {name, status, admission:.config["user.opdbus.admission"]}' <<<"$instance" ||
     fail "creation was receipted, but $name could not be verified; inspect it through LXD before retrying"
+# NIC-less BPF egress is a host service, installed when the subsidiary is
+# started (this script creates it stopped): sudo deploy/runit/ct-egress-bpf/install.sh <name>
+# The service discovers LXD containers through /var/lib/lxd/unix.socket.

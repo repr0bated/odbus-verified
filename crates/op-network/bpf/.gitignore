@@ -1,1 +1,3 @@
-crates/op-network/bpf/vmlinux.h
+vmlinux.h
+*.o
+ct-egress-bpf

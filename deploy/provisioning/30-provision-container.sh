@@ -127,7 +127,8 @@ esac
 
 if [ "${START:-0}" = 1 ]; then
   incus start "$NAME"; log "started $NAME"
-  case $NAME in ID-*) "$REPO/deploy/runit/ct-egress-relay/install.sh" "$NAME" ;; esac
+  # NIC-less BPF egress for every container, not only ID-* (owner 2026-11-23).
+  "$REPO/deploy/runit/ct-egress-bpf/install.sh" "$NAME"
 else
   log "$NAME provisioned, NOT started (START=1 to start)"
 fi

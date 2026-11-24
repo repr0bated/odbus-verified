@@ -43,6 +43,15 @@ take precedence over the requirements below where they differ:
   Unix socket) unless the owner exempts it or it is carried through the
   bridge. Undecided. Effects otherwise go through FUSE call files and the
   bridge's tracked egress.
+- **Guest internet (owner, 2026-11-23, later same day):** decided, and it is
+  not the forwarded BGP socket and not Xray (owner: Xray was very slow).
+  Internet in every container, subsidiaries included, is the host BPF
+  egress `ct-egress-bpf-<instance>`: `connect()` transparently redirected,
+  public destinations dialed directly by the host loader, private/host
+  destinations refused, DNS from the loader stub `127.0.0.2:53`. This is
+  guest *internet*, separate from backend effects, which still go through
+  FUSE call files and the bridge's tracked egress exactly as above. The
+  BGP-over-forwarded-socket idea stays undecided and unimplemented.
 - **Root filesystem:** the owner accepts the earlier Ubuntu seed, which has
   FUSE: `/var/lib/opdbus/containers/3tchedChatbot/seed.img`, Btrfs label
   `3tched-seed`, SEEDING flag set, subvolumes `@` and `@seed-ro`, Ubuntu

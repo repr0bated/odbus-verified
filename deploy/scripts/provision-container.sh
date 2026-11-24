@@ -30,8 +30,10 @@
 #      (door-tls-init) and never exists on the host; its public certificate
 #      appears at /run/opdbus/ct/<name>/door.crt and its fingerprint is
 #      printed for pinning.
-#      The chatbot has no internet. ID-N get NIC-less egress from
-#      ct-egress-relay (loopback socat to host Unix sockets) after start.
+#      Every container (including the chatbot, owner 2026-11-23) gets
+#      NIC-less egress from ct-egress-bpf after start: BPF-transparent
+#      TCP + DNS stub 127.0.0.2, dialed directly by the host loader.
+#      No Xray, no socat relay, no proxy environment.
 #   4. The decoy minted the identity (IID1, delivered over WARP). The
 #      container IS the identity; its sled is the identity volume
 #      identity-<session> on the pool, mounted read-only at /agent/user:
@@ -118,9 +120,7 @@ incus config device add "$NAME" sled disk pool="$POOL" source="$SLED" path=/agen
 incus config device add "$NAME" decoy-trust disk source="$TRUST" path=/etc/op-dbus/decoy-trust.json readonly=true shift=true >/dev/null
 
 incus start "$NAME"
-if [ "$NAME" != "$CHATBOT_NAME" ]; then
-    "$(dirname -- "$(readlink -f "$0")")/../runit/ct-egress-relay/install.sh" "$NAME"
-fi
+"$(dirname -- "$(readlink -f "$0")")/../runit/ct-egress-bpf/install.sh" "$NAME"
 if [ "$NAME" = "$CHATBOT_NAME" ]; then
     i=0
     until [ -s "$RUNDIR/door.crt" ]; do
