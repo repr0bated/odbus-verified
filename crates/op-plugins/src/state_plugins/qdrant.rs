@@ -752,7 +752,19 @@ impl StatePlugin for QdrantPlugin {
     fn schema(&self) -> Option<PluginSchema> {
         let mut schema = qdrant_schema();
         super::common::oscal::ensure_category_metadata_fields(&mut schema);
-        Some(schema)
+        Some(schema.subsidiary(|capability| matches!(
+            capability,
+            "cap.data.qdrant.collection.create@v1"
+                | "cap.data.qdrant.collection.delete@v1"
+                | "cap.data.qdrant.collection.list@v1"
+                | "cap.data.qdrant.payload-index.create@v1"
+                | "cap.data.qdrant.point.delete@v1"
+                | "cap.data.qdrant.point.scroll@v1"
+                | "cap.data.qdrant.point.search@v1"
+                | "cap.data.qdrant.point.upsert@v1"
+                | "cap.data.qdrant.snapshot.create@v1"
+                | "cap.data.qdrant.snapshot.list@v1"
+        )))
     }
 
     async fn calculate_diff(&self, _current: &Value, _desired: &Value) -> Result<StateDiff> {

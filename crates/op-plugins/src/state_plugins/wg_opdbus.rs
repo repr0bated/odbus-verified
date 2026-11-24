@@ -147,7 +147,10 @@ impl StatePlugin for WgOpdbusPlugin {
         PLUGIN_VERSION
     }
     fn schema(&self) -> Option<PluginSchema> {
-        Some(wg_opdbus_schema())
+        Some(wg_opdbus_schema().subsidiary(|capability| matches!(
+            capability,
+            "wg_opdbus.read"
+        )))
     }
     async fn calculate_diff(&self, _current: &Value, _desired: &Value) -> Result<StateDiff> {
         anyhow::bail!("wg_opdbus is owned by the authenticated decoy D-Bus service")

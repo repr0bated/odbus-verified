@@ -178,7 +178,9 @@ impl StatePlugin for ThreeTchedFsPlugin {
         VERSION
     }
     fn schema(&self) -> Option<PluginSchema> {
-        Some(_3tched_fs_schema())
+        Some(_3tched_fs_schema().subsidiary(|capability| {
+            [READ_RECEIPT, READ_CONTRACT, READ_PROTOCOL].contains(&capability)
+        }))
     }
 
     async fn calculate_diff(&self, current: &Value, desired: &Value) -> Result<StateDiff> {

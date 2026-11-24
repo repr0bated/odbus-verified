@@ -518,7 +518,11 @@ impl StatePlugin for OscalSubidRegistryPlugin {
     }
 
     fn schema(&self) -> Option<op_state_store::PluginSchema> {
-        Some(oscal_subid_registry_schema())
+        Some(oscal_subid_registry_schema().subsidiary(|capability| matches!(
+            capability,
+            "cap.standard.oscal.field-classification.read@v1"
+                | "oscal.read"
+        )))
     }
 
     async fn calculate_diff(&self, _current: &Value, _desired: &Value) -> Result<StateDiff> {

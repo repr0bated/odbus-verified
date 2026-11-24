@@ -103,7 +103,11 @@ impl StatePlugin for AgentConfigPlugin {
     }
 
     fn schema(&self) -> Option<op_state_store::PluginSchema> {
-        Some(agent_config_schema())
+        Some(agent_config_schema().subsidiary(|capability| matches!(
+            capability,
+            "agent.invoke"
+                | "agent.read"
+        )))
     }
 
     async fn calculate_diff(&self, _current: &Value, _desired: &Value) -> Result<StateDiff> {

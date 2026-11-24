@@ -321,7 +321,7 @@ impl StatePlugin for ThreetchedPlugin {
         VERSION
     }
     fn schema(&self) -> Option<PluginSchema> {
-        Some(threetched_schema())
+        Some(threetched_schema().subsidiary(|_| false))
     }
     async fn calculate_diff(
         &self,

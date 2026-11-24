@@ -348,7 +348,13 @@ impl StatePlugin for IdentitySledPlugin {
     fn schema(&self) -> Option<PluginSchema> {
         let mut schema = super::plugin_scaffold_helpers::identity_sled_plugin_schema();
         super::common::oscal::ensure_category_metadata_fields(&mut schema);
-        Some(schema)
+        Some(schema.subsidiary(|capability| matches!(
+            capability,
+            "cap.identity.sled.self.read@v1"
+                | "cap.service.identity-sled.container.exec@v1"
+                | "identity_sled.inventory.read"
+                | "identity_sled.read"
+        )))
     }
 
     async fn calculate_diff(&self, _current: &Value, _desired: &Value) -> Result<StateDiff> {

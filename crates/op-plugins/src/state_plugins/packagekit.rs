@@ -160,7 +160,11 @@ impl StatePlugin for PackageKitPlugin {
     }
 
     fn schema(&self) -> Option<PluginSchema> {
-        Some(packagekit_schema())
+        Some(packagekit_schema().subsidiary(|capability| matches!(
+            capability,
+            "packagekit.admin"
+                | "packagekit.read"
+        )))
     }
 
     async fn calculate_diff(&self, _current: &Value, desired: &Value) -> Result<StateDiff> {

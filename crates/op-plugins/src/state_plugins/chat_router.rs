@@ -1735,13 +1735,33 @@ impl StatePlugin for ChatRouterPlugin {
     }
 
     fn schema(&self) -> Option<PluginSchema> {
-        if !super::threetched::is_schema_capture() {
-            return Some(chat_router_schema());
-        }
         let mut schema = chat_router_schema();
-        super::common::llm_projection::rewrite_projection_subids_for_plugin(&mut schema, "3tched");
-        super::common::oscal::ensure_category_metadata_fields(&mut schema);
-        Some(schema)
+        if super::threetched::is_schema_capture() {
+            super::common::llm_projection::rewrite_projection_subids_for_plugin(&mut schema, "3tched");
+            super::common::oscal::ensure_category_metadata_fields(&mut schema);
+        }
+        Some(schema.subsidiary(|capability| matches!(
+            capability,
+            "cap.software.chat-router.generation.cancel@v1"
+                | "cap.software.chat-router.generation.delete@v1"
+                | "cap.software.chat-router.generation.read@v1"
+                | "cap.software.chat-router.generation.recover@v1"
+                | "cap.software.chat-router.generation.start@v1"
+                | "cap.software.threetched.agent.route.self.read@v1"
+                | "cap.software.threetched.chat@v1"
+                | "cap.software.threetched.config.read@v1"
+                | "cap.software.threetched.mcp-config.read@v1"
+                | "cap.software.threetched.model.binding.read@v1"
+                | "cap.software.threetched.models.read@v1"
+                | "cap.software.threetched.providers.read@v1"
+                | "cap.software.threetched.route.resolve@v1"
+                | "cap.software.threetched.router.read@v1"
+                | "cap.software.threetched.routes.read@v1"
+                | "cap.software.threetched.state.read@v1"
+                | "cap.software.threetched.structured-output.read@v1"
+                | "cap.software.threetched.tools.read@v1"
+                | "cap.software.threetched.ui-surfaces.read@v1"
+        )))
     }
 
     async fn schema_live(&self) -> Option<PluginSchema> {

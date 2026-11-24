@@ -61,7 +61,20 @@ impl StatePlugin for CognitivePlugin {
     fn schema(&self) -> Option<PluginSchema> {
         let mut schema = cognitive_schema();
         super::common::oscal::ensure_category_metadata_fields(&mut schema);
-        Some(schema)
+        Some(schema.subsidiary(|capability| matches!(
+            capability,
+            "cognitive.code_review_orchestrator"
+                | "cognitive.context_manager"
+                | "cognitive.invoke"
+                | "cognitive.memory.write"
+                | "cognitive.python_pro"
+                | "cognitive.read"
+                | "cognitive.rust_pro"
+                | "cognitive.sequential_thinking"
+                | "cognitive.typescript_pro"
+                | "workflows.read"
+                | "workflows.write"
+        ) || super::cognitive_agents::agent_methods_are_conversational(capability)))
     }
 
     /// The cognitive runtime is a compiled component of `op-grpc-bridge`.

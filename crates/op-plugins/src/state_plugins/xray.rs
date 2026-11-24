@@ -204,7 +204,10 @@ impl StatePlugin for XrayPlugin {
     fn schema(&self) -> Option<op_state_store::PluginSchema> {
         let mut schema = xray_schema();
         super::common::oscal::ensure_category_metadata_fields(&mut schema);
-        Some(schema)
+        Some(schema.subsidiary(|capability| matches!(
+            capability,
+            "xray.read"
+        )))
     }
 
     fn capabilities(&self) -> PluginCapabilities {

@@ -135,7 +135,12 @@ impl op_state::StatePlugin for RovsCommandsPlugin {
     }
 
     fn schema(&self) -> Option<PluginSchema> {
-        Self::schema()
+        Self::schema().map(|schema| schema.subsidiary(|capability| matches!(
+            capability,
+            "cap.network.ovsdb.bridge.list@v1"
+                | "cap.network.ovsdb.db.list@v1"
+                | "cap.network.ovsdb.port.list@v1"
+        )))
     }
 
     async fn calculate_diff(

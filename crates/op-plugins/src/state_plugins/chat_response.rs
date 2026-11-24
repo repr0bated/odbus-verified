@@ -393,7 +393,12 @@ impl StatePlugin for ChatResponsePlugin {
     fn schema(&self) -> Option<PluginSchema> {
         let mut schema = chat_response_schema();
         super::common::oscal::ensure_category_metadata_fields(&mut schema);
-        Some(schema)
+        Some(schema.subsidiary(|capability| matches!(
+            capability,
+            "chat_response.read"
+                | "chat_response.respond"
+                | "chat_response.submit"
+        )))
     }
 
     fn is_available(&self) -> bool {

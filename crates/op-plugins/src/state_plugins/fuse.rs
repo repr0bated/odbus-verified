@@ -9919,7 +9919,7 @@ impl StatePlugin for FusePlugin {
     }
 
     fn schema(&self) -> Option<PluginSchema> {
-        Some(fuse_schema())
+        Some(fuse_schema().subsidiary(|_| false))
     }
 
     async fn calculate_diff(&self, _current: &Value, _desired: &Value) -> Result<StateDiff> {

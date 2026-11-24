@@ -403,6 +403,16 @@ pub fn catalog_agent_methods() -> impl Iterator<Item = &'static CatalogAgentMeth
     CATALOG.values()
 }
 
+/// Persona and orchestration capabilities: their steps re-enter the runtime.
+/// Execution agents run on the host and are never a subsidiary's.
+pub fn agent_methods_are_conversational(capability: &str) -> bool {
+    let mut used = catalog_agent_methods()
+        .filter(|method| method.declaration.required_capability.as_deref() == Some(capability))
+        .peekable();
+    used.peek().is_some()
+        && used.all(|method| matches!(method.category.as_str(), "persona" | "orchestration"))
+}
+
 pub fn append_catalog_methods(schema: &mut PluginSchema) {
     for method in catalog_agent_methods() {
         let capability = method

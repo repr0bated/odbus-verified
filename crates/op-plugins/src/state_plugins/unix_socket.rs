@@ -188,7 +188,7 @@ impl StatePlugin for UnixSocketPlugin {
         "2.0.0"
     }
     fn schema(&self) -> Option<PluginSchema> {
-        Some(unix_socket_schema_derived())
+        Some(unix_socket_schema_derived().subsidiary(|_| false))
     }
     async fn calculate_diff(&self, _: &OwnedValue, _: &OwnedValue) -> Result<StateDiff> {
         bail!("listener lifecycle is controlled by the bridge-owned plugin methods")

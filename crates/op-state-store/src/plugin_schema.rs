@@ -173,6 +173,19 @@ pub struct CapabilityDecl {
     pub description: String,
 }
 
+/// What a plugin schema is for beyond its methods. A purpose grants nothing:
+/// the caller still needs the exact principal grant.
+#[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq, Eq)]
+pub struct SchemaPurpose {
+    /// OSCAL subid of the subsidiary purpose.
+    #[serde(default)]
+    pub subid: String,
+    /// Whether a subsidiary may use each capability this plugin requires.
+    /// A capability that is absent is no.
+    #[serde(default)]
+    pub subsidiary: std::collections::BTreeMap<String, bool>,
+}
+
 /// True when `id` follows the canonical OSCAL capability form
 /// (`cap.<domain>.<subject>.<op>@vN`). Anything else is a legacy
 /// short-form id (`agent.read`, `factory.invoke`, …) tolerated until the
@@ -338,6 +351,9 @@ pub struct PluginSchema {
     /// legacy schema that predates the declaration point).
     #[serde(default)]
     pub capabilities: HashMap<String, CapabilityDecl>,
+    /// Purposes of this schema.
+    #[serde(default)]
+    pub purpose: SchemaPurpose,
     /// Legacy per-footprint grant annotations carried by older schemas.
     /// Runtime authorization uses the independent principal grant store, not
     /// this field. Wildcard entries are discarded on read and never sealed.
@@ -437,6 +453,24 @@ impl PluginSchema {
             SideEffect::Mutation => "invoke",
         };
         CapabilityResolution::Derived(format!("{}.{op}", self.name))
+    }
+
+    /// State subsidiary yes/no for every capability the methods require.
+    pub fn subsidiary(mut self, allowed: impl Fn(&str) -> bool) -> Self {
+        self.purpose.subid = format!(
+            "sch.service.{}.purpose.subsidiary@v1",
+            self.name.trim_start_matches('_').replace('_', "-")
+        );
+        self.purpose.subsidiary = self
+            .methods
+            .values()
+            .map(|method| {
+                let capability = self.resolve_method_capability(method).capability().to_owned();
+                let allowed = allowed(&capability);
+                (capability, allowed)
+            })
+            .collect();
+        self
     }
 
     /// Check capability closure across all methods: every method must
@@ -1260,6 +1294,7 @@ impl PluginSchemaBuilder {
             capabilities: self.capabilities,
             signals: self.signals,
             guarantees: self.guarantees,
+            purpose: SchemaPurpose::default(),
             capability_grants: HashMap::new(),
         }
     }

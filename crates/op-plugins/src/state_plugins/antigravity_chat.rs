@@ -163,7 +163,7 @@ impl StatePlugin for AntigravityChatPlugin {
     fn schema(&self) -> Option<PluginSchema> {
         let mut schema = antigravity_chat_schema();
         super::common::oscal::ensure_category_metadata_fields(&mut schema);
-        Some(schema)
+        Some(schema.subsidiary(|_| false))
     }
     async fn calculate_diff(&self, _current: &Value, _desired: &Value) -> Result<StateDiff> {
         anyhow::bail!("antigravity_chat reconciliation has no authoritative bridge backend")

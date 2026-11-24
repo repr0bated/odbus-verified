@@ -49,7 +49,19 @@ impl StatePlugin for MemoryPlugin {
     }
 
     fn schema(&self) -> Option<PluginSchema> {
-        Some(memory_schema())
+        Some(memory_schema().subsidiary(|capability| matches!(
+            capability,
+            "memory.entry.create"
+                | "memory.entry.delete"
+                | "memory.entry.read"
+                | "memory.entry.write"
+                | "memory.memory.compact"
+                | "memory.namespace.clear"
+                | "memory.namespace.create"
+                | "memory.namespace.delete"
+                | "memory.namespace.read"
+                | "memory.stats.read"
+        )))
     }
 
     async fn calculate_diff(&self, _current: &Value, _desired: &Value) -> Result<StateDiff> {

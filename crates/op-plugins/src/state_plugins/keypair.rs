@@ -167,7 +167,10 @@ impl StatePlugin for KeypairPlugin {
     }
 
     fn schema(&self) -> Option<PluginSchema> {
-        Some(keypair_schema())
+        Some(keypair_schema().subsidiary(|capability| matches!(
+            capability,
+            "cap.service.keypair.list@v1"
+        )))
     }
 
     async fn calculate_diff(&self, _current: &Value, _desired: &Value) -> Result<StateDiff> {

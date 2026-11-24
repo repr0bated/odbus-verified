@@ -933,7 +933,7 @@ impl StatePlugin for IncusPlugin {
     }
 
     fn schema(&self) -> Option<op_state_store::PluginSchema> {
-        Some(incus_schema())
+        Some(incus_schema().subsidiary(|_| false))
     }
 
     fn is_available(&self) -> bool {

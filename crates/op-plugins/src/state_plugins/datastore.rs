@@ -160,7 +160,10 @@ impl StatePlugin for DataStorePlugin {
     fn schema(&self) -> Option<PluginSchema> {
         let mut schema = datastore_schema();
         super::common::oscal::ensure_category_metadata_fields(&mut schema);
-        Some(schema)
+        Some(schema.subsidiary(|capability| matches!(
+            capability,
+            "datastore.read"
+        )))
     }
 
     async fn calculate_diff(&self, _current: &Value, _desired: &Value) -> Result<StateDiff> {

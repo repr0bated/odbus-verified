@@ -495,7 +495,10 @@ impl StatePlugin for FreeDesktopPlugin {
     }
 
     fn schema(&self) -> Option<PluginSchema> {
-        self.schema.clone()
+        self.schema.clone().map(|schema| schema.subsidiary(|capability| matches!(
+            capability,
+            "freedesktop.read"
+        )))
     }
 
     async fn calculate_diff(&self, _current: &Value, desired: &Value) -> anyhow::Result<StateDiff> {

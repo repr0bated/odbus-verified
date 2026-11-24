@@ -557,7 +557,7 @@ impl StatePlugin for NotebookLmPlugin {
         "5.0.0"
     }
     fn schema(&self) -> Option<PluginSchema> {
-        Some(notebooklm_schema())
+        Some(notebooklm_schema().subsidiary(|_| false))
     }
     async fn calculate_diff(&self, _current: &Value, _desired: &Value) -> Result<StateDiff> {
         Ok(StateDiff {

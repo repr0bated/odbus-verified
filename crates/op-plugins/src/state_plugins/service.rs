@@ -81,7 +81,12 @@ impl StatePlugin for ServicePlugin {
     }
 
     fn schema(&self) -> Option<op_state_store::PluginSchema> {
-        Some(service_schema())
+        Some(service_schema().subsidiary(|capability| matches!(
+            capability,
+            "cap.service.lifecycle.init@v1"
+                | "cap.service.lifecycle.run@v1"
+                | "cap.service.lifecycle.shutdown@v1"
+        )))
     }
 
     async fn calculate_diff(&self, _current: &Value, _desired: &Value) -> Result<StateDiff> {

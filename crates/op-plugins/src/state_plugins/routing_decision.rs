@@ -30,7 +30,11 @@ impl StatePlugin for RoutingDecisionPlugin {
         "1.0.0"
     }
     fn schema(&self) -> Option<PluginSchema> {
-        Some(routing_decision_schema())
+        Some(routing_decision_schema().subsidiary(|capability| matches!(
+            capability,
+            "cap.governance.routing-decision.read@v1"
+                | "cap.governance.routing-decision.record@v1"
+        )))
     }
     async fn calculate_diff(&self, _: &Value, _: &Value) -> Result<StateDiff> {
         bail!("routing decisions use the private admitted publisher")

@@ -1294,7 +1294,14 @@ impl StatePlugin for EmqxPlugin {
     }
 
     fn schema(&self) -> Option<PluginSchema> {
-        Some(emqx_schema())
+        Some(emqx_schema().subsidiary(|capability| matches!(
+            capability,
+            "cap.network.emqx.hooks.list@v1"
+                | "cap.network.emqx.hooks.status.get@v1"
+                | "cap.network.emqx.listeners.list@v1"
+                | "cap.network.emqx.mcp.status.get@v1"
+                | "cap.network.emqx.status.get@v1"
+        )))
     }
 
     async fn calculate_diff(&self, _current: &Value, _desired: &Value) -> Result<StateDiff> {

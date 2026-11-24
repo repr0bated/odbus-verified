@@ -332,7 +332,10 @@ impl StatePlugin for HardwarePlugin {
     }
 
     fn schema(&self) -> Option<op_state_store::PluginSchema> {
-        Some(hardware_schema())
+        Some(hardware_schema().subsidiary(|capability| matches!(
+            capability,
+            "hardware.read"
+        )))
     }
 
     async fn calculate_diff(&self, _current: &Value, _desired: &Value) -> Result<StateDiff> {

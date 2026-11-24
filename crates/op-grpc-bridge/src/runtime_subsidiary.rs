@@ -9,7 +9,7 @@ use op_cozo_store::{CozoGraphShuttle, LxdSubsidiary};
 use serde_json::Value;
 use tokio::sync::{Mutex, OnceCell};
 
-use super::{BackendContext, RuntimeError};
+use super::{BackendContext, Runtime, RuntimeError, VerifiedCaller};
 
 pub(crate) struct Scope {
     row: LxdSubsidiary,
@@ -67,11 +67,46 @@ pub(crate) fn binding(row: Option<LxdSubsidiary>, relation_json: &str) -> Result
     }
 }
 
+/// Execution-tracker admission for a subsidiary: the sealed schema purpose must
+/// mark the required capability subsidiary yes. A caller with any
+/// subsidiary mark but no native binding is refused, so it can never fall
+/// through to a host adapter.
+pub(crate) async fn admit(runtime: &Runtime, caller: &VerifiedCaller, allowed: bool)
+    -> Result<(), RuntimeError> {
+    let store = runtime.identity_store().clone();
+    let session = caller.session_id.clone();
+    let key = caller.claims().wireguard_pubkey.clone();
+    let (bound, marked) = tokio::task::spawn_blocking(move || -> Result<_> {
+        let rows = store.lxd_subsidiaries()?;
+        let by_key = rows.iter().any(|row| !key.is_empty() && row.wireguard_pubkey == key);
+        let row = rows.into_iter().find(|row| row.session_id == session);
+        let relation = store.read_identity_revision(&session)?.record
+            .map(|record| record.org_relation_json).unwrap_or_default();
+        let bound = binding(row, &relation)?.is_some();
+        Ok((bound, bound || by_key))
+    }).await.map_err(|error| RuntimeError::before_effect(error.into()))?
+        .map_err(|_| RuntimeError::denied("subsidiary authority could not be established"))?;
+    if !marked {
+        return Ok(());
+    }
+    if !bound || resolve_caller(runtime, caller).await?.is_none() {
+        return Err(RuntimeError::denied("subsidiary authority requires its native binding"));
+    }
+    if !allowed {
+        return Err(RuntimeError::denied("sealed purpose does not allow subsidiaries this capability"));
+    }
+    Ok(())
+}
+
 pub(crate) async fn resolve(ctx: &BackendContext<'_>) -> Result<Option<Scope>, RuntimeError> {
-    let store = ctx.runtime.identity_store().clone();
-    let session = ctx.caller.session_id.clone();
-    let key = ctx.caller.claims().wireguard_pubkey.clone();
-    let genesis = ctx.caller.session_genesis.clone();
+    resolve_caller(ctx.runtime, ctx.caller).await
+}
+
+async fn resolve_caller(runtime: &Runtime, caller: &VerifiedCaller) -> Result<Option<Scope>, RuntimeError> {
+    let store = runtime.identity_store().clone();
+    let session = caller.session_id.clone();
+    let key = caller.claims().wireguard_pubkey.clone();
+    let genesis = caller.session_genesis.clone();
     tokio::task::spawn_blocking(move || -> Result<Option<Scope>> {
         let identity = store.read_identity_revision(&session)?.record.context("backend caller identity absent")?;
         let row = store.lxd_subsidiaries()?.into_iter().find(|row| row.session_id == session);

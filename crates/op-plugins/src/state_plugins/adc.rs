@@ -55,7 +55,7 @@ impl StatePlugin for AdcPlugin {
     }
 
     fn schema(&self) -> Option<op_state_store::PluginSchema> {
-        Some(adc_schema())
+        Some(adc_schema().subsidiary(|capability| capability == "adc.read"))
     }
 
     async fn calculate_diff(&self, _current: &Value, _desired: &Value) -> Result<StateDiff> {

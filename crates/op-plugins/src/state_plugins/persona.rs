@@ -383,7 +383,11 @@ impl StatePlugin for PersonaPlugin {
     }
 
     fn schema(&self) -> Option<PluginSchema> {
-        Some(persona_schema())
+        Some(persona_schema().subsidiary(|capability| matches!(
+            capability,
+            "persona.execute"
+                | "persona.read"
+        )))
     }
 
     async fn calculate_diff(&self, _current: &Value, _desired: &Value) -> Result<StateDiff> {

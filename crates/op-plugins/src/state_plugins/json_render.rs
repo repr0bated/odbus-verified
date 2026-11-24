@@ -635,7 +635,10 @@ impl StatePlugin for JsonRenderPlugin {
     }
 
     fn schema(&self) -> Option<PluginSchema> {
-        Some(json_render_schema())
+        Some(json_render_schema().subsidiary(|capability| matches!(
+            capability,
+            "json_render.read"
+        )))
     }
 
     async fn calculate_diff(&self, _current: &Value, _desired: &Value) -> Result<StateDiff> {

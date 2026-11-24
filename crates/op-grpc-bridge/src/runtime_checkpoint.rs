@@ -130,12 +130,16 @@ impl Runtime {
 
     pub(super) async fn checkpoint_preflight(&self, caller: &VerifiedCaller,
         target: &CheckpointTarget, args: &Value) -> Result<(), RuntimeError> {
-        let (_, declaration) = self.pinned_method(&target.plugin_id, &target.method)?;
+        let (pinned, declaration) = self.pinned_method(&target.plugin_id, &target.method)?;
         op_state_store::method_receipt::validate_json_size(args,
             op_state_store::method_receipt::MAX_METHOD_ARGUMENT_BYTES)?;
         crate::method_contract_admission::validate_admitted_arguments(&declaration, args)
             .map_err(|_| RuntimeError::denied("method input contract is unavailable or not satisfied"))?;
         self.authorize_nested(caller, &target.plugin_id, &target.method).await?;
+        let subsidiary = declaration.required_capability.as_ref()
+            .and_then(|capability| pinned.schema.purpose.subsidiary.get(capability))
+            .copied().unwrap_or(false);
+        crate::runtime::subsidiary::admit(self, caller, subsidiary).await?;
         if caller.requires_checkpoint && caller.checkpoint.is_none() {
             return Err(RuntimeError::denied(
                 "tool call, chat or delegated operation has no trusted execution-tracker checkpoint binding"));

@@ -202,7 +202,10 @@ impl StatePlugin for ProcfsPlugin {
     }
 
     fn schema(&self) -> Option<PluginSchema> {
-        Some(procfs_schema())
+        Some(procfs_schema().subsidiary(|capability| matches!(
+            capability,
+            "procfs.read"
+        )))
     }
 
     async fn calculate_diff(&self, current: &Value, desired: &Value) -> Result<StateDiff> {

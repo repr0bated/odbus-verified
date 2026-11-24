@@ -695,7 +695,10 @@ impl StatePlugin for CtlPlaneChatbotPlugin {
     fn schema(&self) -> Option<PluginSchema> {
         let mut schema = ctl_plane_chatbot_schema();
         super::common::oscal::ensure_category_metadata_fields(&mut schema);
-        Some(schema)
+        Some(schema.subsidiary(|capability| matches!(
+            capability,
+            "chatbot.read"
+        )))
     }
 
     fn is_available(&self) -> bool {

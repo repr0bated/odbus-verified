@@ -88,7 +88,10 @@ impl StatePlugin for DnsResolverPlugin {
     }
 
     fn schema(&self) -> Option<PluginSchema> {
-        Some(dnsresolver_schema())
+        Some(dnsresolver_schema().subsidiary(|capability| matches!(
+            capability,
+            "dnsresolver.read"
+        )))
     }
 
     async fn calculate_diff(&self, _current: &Value, desired: &Value) -> Result<StateDiff> {

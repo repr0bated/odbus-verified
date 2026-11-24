@@ -765,7 +765,7 @@ impl StatePlugin for NetStatePlugin {
     }
 
     fn schema(&self) -> Option<op_state_store::PluginSchema> {
-        Some(net_schema())
+        Some(net_schema().subsidiary(|_| false))
     }
 
     fn is_available(&self) -> bool {

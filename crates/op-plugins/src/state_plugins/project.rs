@@ -376,7 +376,14 @@ impl StatePlugin for ProjectPlugin {
         "1.1.0"
     }
     fn schema(&self) -> Option<PluginSchema> {
-        Some(project_schema())
+        Some(project_schema().subsidiary(|capability| matches!(
+            capability,
+            "chat.context"
+                | "project.admin"
+                | "project.create"
+                | "project.read"
+                | "project.write"
+        )))
     }
     async fn calculate_diff(&self, _: &OwnedValue, _: &OwnedValue) -> Result<StateDiff> {
         bail!("projects require authenticated schema methods, not unscoped state replacement")

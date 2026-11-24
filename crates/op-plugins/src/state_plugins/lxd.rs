@@ -38729,7 +38729,16 @@ pub mod state_plugin {
         }
 
         fn schema(&self) -> Option<op_state_store::PluginSchema> {
-            Some(lxd_schema())
+            Some(lxd_schema().subsidiary(|capability| matches!(
+            capability,
+            "cap.lxd.images.get_image@v1"
+                | "cap.lxd.images.get_image_fingerprints@v1"
+                | "cap.lxd.images.get_images@v1"
+                | "cap.lxd.instances.get_instance@v1"
+                | "cap.lxd.instances.get_instance_names@v1"
+                | "cap.lxd.instances.get_instance_state@v1"
+                | "cap.lxd.storage_volumes.get_storage_pool_volume@v1"
+        )))
         }
 
         async fn calculate_diff(

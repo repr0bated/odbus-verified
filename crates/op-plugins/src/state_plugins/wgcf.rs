@@ -176,7 +176,10 @@ impl StatePlugin for WgcfPlugin {
     fn schema(&self) -> Option<PluginSchema> {
         let mut s = wgcf_schema();
         super::common::oscal::ensure_category_metadata_fields(&mut s);
-        Some(s)
+        Some(s.subsidiary(|capability| matches!(
+            capability,
+            "wgcf.read"
+        )))
     }
     fn capabilities(&self) -> PluginCapabilities {
         PluginCapabilities {

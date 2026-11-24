@@ -102,7 +102,10 @@ impl StatePlugin for SchemaRendererPlugin {
         "3.0.0"
     }
     fn schema(&self) -> Option<PluginSchema> {
-        Some(schema_renderer_schema())
+        Some(schema_renderer_schema().subsidiary(|capability| matches!(
+            capability,
+            "schema_renderer.read"
+        )))
     }
     async fn calculate_diff(&self, _current: &Value, _desired: &Value) -> Result<StateDiff> {
         Ok(StateDiff {

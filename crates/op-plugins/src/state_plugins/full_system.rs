@@ -827,7 +827,10 @@ impl StatePlugin for FullSystemPlugin {
             },
         );
 
-        Some(schema)
+        Some(schema.subsidiary(|capability| matches!(
+            capability,
+            "full_system.read"
+        )))
     }
 
     async fn calculate_diff(&self, current: &Value, desired: &Value) -> Result<StateDiff> {

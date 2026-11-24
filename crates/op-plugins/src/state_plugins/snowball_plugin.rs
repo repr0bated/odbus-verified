@@ -419,7 +419,11 @@ impl StatePlugin for SnowballPlugin {
     }
 
     fn schema(&self) -> Option<PluginSchema> {
-        Some(snowball_schema())
+        Some(snowball_schema().subsidiary(|capability| matches!(
+            capability,
+            "cap.obs.snowball.events.self.search@v1"
+                | "snowball.read"
+        )))
     }
 
     async fn calculate_diff(&self, current: &Value, desired: &Value) -> Result<StateDiff> {

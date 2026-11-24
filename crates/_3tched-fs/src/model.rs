@@ -186,6 +186,9 @@ pub struct PluginSchema {
     /// Declared capabilities, keyed by capability id.
     #[serde(default)]
     pub capabilities: BTreeMap<String, Value>,
+    /// What the schema is for, as sealed.
+    #[serde(default)]
+    pub purpose: op_state_store::SchemaPurpose,
     /// Exact per-footprint grant annotations carried by older schemas.
     #[serde(default)]
     pub capability_grants: BTreeMap<String, Vec<String>>,
@@ -583,6 +586,7 @@ pub fn from_sealed(sealed: op_state_store::PluginSchema) -> Result<PluginSchema>
         org,
         methods,
         capabilities,
+        purpose,
         capability_grants,
         signals,
         guarantees,
@@ -626,6 +630,7 @@ pub fn from_sealed(sealed: op_state_store::PluginSchema) -> Result<PluginSchema>
             .map(|(id, declaration)| Ok((id.clone(), to_json(declaration)?)))
             .collect::<Result<_>>()?,
         capability_grants: capability_grants.into_iter().collect(),
+        purpose,
         public_state: to_json(&public_state)?,
         field_writes: field_writes
             .iter()

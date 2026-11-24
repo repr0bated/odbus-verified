@@ -833,7 +833,21 @@ impl StatePlugin for BtrfsPlugin {
         "3.0.0"
     }
     fn schema(&self) -> Option<PluginSchema> {
-        Some(btrfs_schema())
+        Some(btrfs_schema().subsidiary(|capability| matches!(
+            capability,
+            "cap.storage.btrfs.balance.start@v1"
+                | "cap.storage.btrfs.balance.status@v1"
+                | "cap.storage.btrfs.device.add@v1"
+                | "cap.storage.btrfs.device.remove@v1"
+                | "cap.storage.btrfs.filesystem.df@v1"
+                | "cap.storage.btrfs.filesystem.usage@v1"
+                | "cap.storage.btrfs.scrub.start@v1"
+                | "cap.storage.btrfs.scrub.status@v1"
+                | "cap.storage.btrfs.snapshot.create@v1"
+                | "cap.storage.btrfs.subvolume.create@v1"
+                | "cap.storage.btrfs.subvolume.delete@v1"
+                | "cap.storage.btrfs.subvolume.list@v1"
+        )))
     }
     async fn calculate_diff(&self, _current: &Value, _desired: &Value) -> Result<StateDiff> {
         Ok(StateDiff {

@@ -216,7 +216,10 @@ impl StatePlugin for GcloudAdcPlugin {
         "2.0.0"
     }
     fn schema(&self) -> Option<PluginSchema> {
-        Some(gcloud_adc_schema())
+        Some(gcloud_adc_schema().subsidiary(|capability| matches!(
+            capability,
+            "gcloud_adc.read"
+        )))
     }
 
     async fn calculate_diff(&self, _current: &Value, _desired: &Value) -> Result<StateDiff> {

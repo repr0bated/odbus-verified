@@ -70,6 +70,16 @@ fn names_personal_relation(text: &str) -> bool {
         .any(|word| PERSONAL_RELATIONS.contains(&word))
 }
 
+/// Cozo's reader rules open any path as the bridge's own host user.
+fn refuse_file_readers(method: &str, args: &Value) -> Result<()> {
+    let query = args.get("query").and_then(Value::as_str).unwrap_or_default();
+    ensure!(
+        method != "run_query" || !["CsvReader", "JsonReader"].iter().any(|rule| query.contains(rule)),
+        "a subsidiary query cannot read host files"
+    );
+    Ok(())
+}
+
 fn string_list(args: &Value, field: &str) -> Vec<String> {
     args.get(field)
         .and_then(Value::as_array)
@@ -137,6 +147,7 @@ pub(super) async fn dispatch(
 ) -> Result<BackendOutcome, RuntimeError> {
     let subsidiary = crate::runtime::subsidiary::resolve(ctx).await?;
     let (store, archive_root) = if let Some(scope) = &subsidiary {
+        refuse_file_readers(method, args).map_err(RuntimeError::before_effect)?;
         let (store, archives) = ctx.runtime.subsidiary_stores().cozo(scope).await?;
         (store, Some(archives))
     } else {

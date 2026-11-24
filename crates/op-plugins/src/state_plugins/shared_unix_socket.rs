@@ -103,7 +103,10 @@ impl StatePlugin for SharedUnixSocketPlugin {
     fn schema(&self) -> Option<op_state_store::PluginSchema> {
         let mut schema = super::plugin_scaffold_helpers::shared_unix_socket_plugin_schema();
         super::common::oscal::ensure_category_metadata_fields(&mut schema);
-        Some(schema)
+        Some(schema.subsidiary(|capability| matches!(
+            capability,
+            "shared_unix_socket.read"
+        )))
     }
 
     async fn calculate_diff(&self, _current: &Value, _desired: &Value) -> Result<StateDiff> {

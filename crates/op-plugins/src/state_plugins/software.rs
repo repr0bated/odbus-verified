@@ -122,7 +122,11 @@ impl StatePlugin for SoftwarePlugin {
     }
 
     fn schema(&self) -> Option<op_state_store::PluginSchema> {
-        Some(software_schema())
+        Some(software_schema().subsidiary(|capability| matches!(
+            capability,
+            "software.read"
+                | "software.write"
+        )))
     }
 
     async fn calculate_diff(&self, _current: &Value, _desired: &Value) -> Result<StateDiff> {

@@ -38,7 +38,7 @@ pub use event_chain::{
 pub use execution_job::{ExecutionJob, ExecutionResult, ExecutionStatus};
 pub use memory_store::MemoryStore;
 pub use plugin_schema::{
-    CapabilityDecl, Constraint, DEFAULT_SCHEMA_DIALECT, FieldSchema, FieldType, FieldWriteDecl,
+    CapabilityDecl, Constraint, SchemaPurpose, DEFAULT_SCHEMA_DIALECT, FieldSchema, FieldType, FieldWriteDecl,
     MethodDecl, PluginCapabilities, PluginSchema, ReadOnlyCondition, SchemaCatalog,
     SchemaLoadError, SchemaRegistry, SideEffect, SignalDecl,
     ValidationResult as SchemaValidationResult, dialects,
