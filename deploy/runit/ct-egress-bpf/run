@@ -16,19 +16,23 @@ CT=${PWD##*/ct-egress-bpf-}
 BIN=/usr/local/libexec/op-dbus/bin/ct-egress-bpf
 DNS=${CT_EGRESS_DNS:-1.1.1.1}
 
-fail() { echo "$CT: $1"; sleep "${2:-10}"; exit 1; }
+# Wait inside the service instead of exit/restart cycling through
+# runit: a stopped container is the normal state for long stretches,
+# and a 10-second restart loop spams the log forever.
+while [ ! -x "$BIN" ] || [ ! -r /usr/local/lib/op-dbus/ct_egress.bpf.o ]; do sleep 30; done
 
-[ -x "$BIN" ] || fail "waiting for $BIN (ct-egress-bpf install)" 30
-[ -r /usr/local/lib/op-dbus/ct_egress.bpf.o ] || fail "waiting for ct_egress.bpf.o" 30
+container_pid() {
+    local sock p
+    for sock in /var/lib/incus/unix.socket /var/lib/lxd/unix.socket; do
+        [ -S "$sock" ] || continue
+        p=$(curl -s --max-time 5 --unix-socket "$sock" "http://localhost/1.0/instances/$CT/state" 2>/dev/null | jq -r '.metadata.pid // 0' 2>/dev/null) || p=
+        case $p in ''|*[!0-9]*|0) continue ;; *) printf '%s' "$p"; return 0 ;; esac
+    done
+    return 1
+}
 
-pid=
-for sock in /var/lib/incus/unix.socket /var/lib/lxd/unix.socket; do
-    [ -S "$sock" ] || continue
-    pid=$(curl -s --max-time 5 --unix-socket "$sock" "http://localhost/1.0/instances/$CT/state" 2>/dev/null | jq -r '.metadata.pid // 0' 2>/dev/null) || pid=
-    case $pid in ''|0) pid= ;; *) break ;; esac
-done
-case $pid in ''|*[!0-9]*) fail "container not running" 10 ;; esac
-[ "$pid" -gt 1 ] || fail "container not running" 10
+echo "$CT: waiting for the container to run"
+while ! pid=$(container_pid); do sleep 30; done
 
 echo "$CT: attaching BPF egress to init pid $pid (upstream DNS $DNS)"
 exec "$BIN" "$pid" "$DNS"

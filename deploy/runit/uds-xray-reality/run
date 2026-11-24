@@ -3,9 +3,9 @@
 # Replaces the Incus proxy device that used to bind 0.0.0.0:8444. Same listen
 # address, so consumers are unaffected; only the mechanism changed.
 exec 2>&1
+echo "uds-xray-reality: waiting for CT socket /run/ghostbridge/xray/reality.sock"
 until [ -S "/run/ghostbridge/xray/reality.sock" ]; do
-    echo "uds-xray-reality: waiting for CT socket /run/ghostbridge/xray/reality.sock"
-    sleep 1
+    sleep 10
 done
 /usr/local/libexec/3tched/runit-ready-signal uds-xray-reality 2>/dev/null || true
 exec /usr/local/libexec/3tched/op-uds-relay --tcp-to-unix "0.0.0.0:8444=/run/ghostbridge/xray/reality.sock"

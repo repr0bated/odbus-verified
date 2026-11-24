@@ -38,7 +38,19 @@ git -C "$REPO" show HEAD:deploy/seed/rootfs/usr/local/libexec/op-dbus/door-tls-i
 chmod 0755 "$R/usr/local/libexec/op-dbus/door-tls-init"
 write_guest_bridge_settings "$R"
 # 3. NextDNS: official release tarball, checksum pinned
-t=$(mktemp -d); trap 'rm -rf "$t"' EXIT
+t=$(mktemp -d)
+# On any exit (including a signal during the chroot apt below): unmount
+# the seed's /proc if we mounted it and put its own resolv.conf back, so
+# an interrupted run cannot leave the host resolver or a stale mount in
+# the seed for the next run to trip over.
+cleanup() {
+  mountpoint -q "$R/proc" 2>/dev/null && umount "$R/proc" 2>/dev/null || true
+  if [ -e "$t/resolv.saved" ] || [ -L "$t/resolv.saved" ]; then
+    rm -f "$R/etc/resolv.conf"; cp -a "$t/resolv.saved" "$R/etc/resolv.conf"
+  fi
+  rm -rf "$t"
+}
+trap cleanup EXIT
 curl -fsSL -o "$t/n.tgz" "https://github.com/nextdns/nextdns/releases/download/v$NEXTDNS_VERSION/nextdns_${NEXTDNS_VERSION}_linux_amd64.tar.gz"
 echo "$NEXTDNS_SHA256  $t/n.tgz" | sha256sum -c - >/dev/null || fail "nextdns checksum mismatch"
 tar -xzf "$t/n.tgz" -C "$t" nextdns; install -m 0755 "$t/nextdns" "$R/usr/bin/nextdns"
@@ -58,6 +70,7 @@ if [ -n "$(echo $pkgs)" ]; then
   rc=0; chroot "$R" sh -c "export DEBIAN_FRONTEND=noninteractive; apt-get update -q && apt-get install -y -q --no-install-recommends $pkgs" || rc=$?
   umount "$R/proc"; rm -f "$R/etc/resolv.conf"
   [ -e "$t/resolv.saved" ] || [ -L "$t/resolv.saved" ] && cp -a "$t/resolv.saved" "$R/etc/resolv.conf"
+  rm -f "$t/resolv.saved" # restored; the EXIT cleanup must not write into the sealed seed
   [ $rc = 0 ] || fail "apt in chroot failed"
 fi
 if [ $TOOLCHAIN = 1 ] && [ ! -x "$R/root/.cargo/bin/cargo" ]; then
