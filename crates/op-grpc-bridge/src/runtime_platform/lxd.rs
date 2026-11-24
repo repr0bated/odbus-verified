@@ -3,8 +3,8 @@
 //! Every catalog capability reaches `$ROOT`, so a grant alone must never turn
 //! an LXD payload into host authority. Mutations are fixed to the subsidiary
 //! shape and to a live human caller; exec, console, file, config, profile
-//! and network methods have no route here. Power is limited to the recorded
-//! parent starting or stopping its own admitted subsidiary.
+//! and network methods have no route here. Power and deletion are limited to
+//! the recorded parent acting on its own subsidiary.
 use crate::runtime::{BackendContext, RuntimeError};
 use anyhow::{Context, Result, ensure};
 use op_plugins::state_plugins::lxd as native_lxd;
@@ -44,7 +44,8 @@ pub(crate) fn supports(method: &str) -> bool {
 }
 
 fn mutates(method: &str) -> bool {
-    matches!(method, "create_image" | "create_instance" | "create_storage_pool_volume" | "update_instance_state")
+    matches!(method, "create_image" | "create_instance" | "create_storage_pool_volume" | "update_instance_state"
+        | "delete_instance")
 }
 
 pub(crate) async fn dispatch(ctx: &BackendContext<'_>, method: &str, args: &Value)
@@ -55,6 +56,7 @@ pub(crate) async fn dispatch(ctx: &BackendContext<'_>, method: &str, args: &Valu
             "create_instance" => validate_instance(args, &ctx.caller.principal_id),
             "create_storage_pool_volume" => validate_volume(args),
             "update_instance_state" => validate_state(args).map(|_| ()),
+            "delete_instance" => validate_delete(args).map(|_| ()),
             _ => validate_image(args).map(|_| ()),
         };
         check.map_err(|error| RuntimeError::denied(error.to_string()))?;
@@ -63,6 +65,7 @@ pub(crate) async fn dispatch(ctx: &BackendContext<'_>, method: &str, args: &Valu
         match method {
             "create_instance" => reserve(ctx, args).await?,
             "update_instance_state" => prepare_state(ctx, args).await?,
+            "delete_instance" => prepare_delete(ctx, args).await?,
             _ => {}
         }
     }
@@ -288,9 +291,48 @@ async fn reserve(ctx: &BackendContext<'_>, args: &Value) -> Result<(), RuntimeEr
         native_uuid: String::new(),
     };
     let store = ctx.runtime.identity_store().clone();
-    tokio::task::spawn_blocking(move || store.reserve_lxd_subsidiary(row)).await
+    let reader = store.clone();
+    let rows = tokio::task::spawn_blocking(move || reader.lxd_subsidiaries()).await
+        .map_err(|error| RuntimeError::backend(error.into()))?
+        .map_err(|error| RuntimeError::backend(error.into()))?;
+    // A recorded intent is superseded only when its own container is gone.
+    let old = rows.into_iter().find(|old| old.session_id == row.session_id
+        && (!old.native_uuid.is_empty() || old.request_json != row.request_json));
+    if let Some(old) = &old {
+        lxd_subsidiary::prove_absent(old).await.map_err(|error| RuntimeError::denied(error.to_string()))?;
+    }
+    tokio::task::spawn_blocking(move || match &old {
+        Some(old) => store.replace_lxd_subsidiary(old, row),
+        None => store.reserve_lxd_subsidiary(row),
+    }).await
         .map_err(|error| RuntimeError::backend(error.into()))?
         .map_err(|error| RuntimeError::denied(error.to_string()))
+}
+
+/// Forced deletion would stop a running guest, so it is never accepted.
+fn validate_delete(args: &Value) -> Result<&str> {
+    object(args, &["name", "force"])?;
+    ensure!(args.get("force").is_none_or(|force| force == &json!(false)), "forced deletion is not permitted");
+    args["name"].as_str().context("instance name is absent")
+}
+
+/// Only the recorded parent deletes its own exact, stopped container. The
+/// intent, identity and sled volume stay.
+async fn prepare_delete(ctx: &BackendContext<'_>, args: &Value) -> Result<(), RuntimeError> {
+    let denied = |error: anyhow::Error| RuntimeError::denied(error.to_string());
+    let row = owned_row(ctx, validate_delete(args).map_err(denied)?).await?;
+    lxd_subsidiary::prove_stopped(&row).await.map_err(denied)?;
+    ctx.caller.authority.revalidate().await.map_err(denied)
+}
+
+async fn owned_row(ctx: &BackendContext<'_>, name: &str) -> Result<op_cozo_store::LxdSubsidiary, RuntimeError> {
+    let store = ctx.runtime.identity_store().clone();
+    let rows = tokio::task::spawn_blocking(move || store.lxd_subsidiaries()).await
+        .map_err(|error| RuntimeError::backend(error.into()))?
+        .map_err(|error| RuntimeError::backend(error.into()))?;
+    rows.into_iter().find(|row| row.name == name && row.actor_id == ctx.caller.principal_id
+        && row.caller_session == ctx.caller.session_id && row.caller_genesis == ctx.caller.session_genesis)
+        .ok_or_else(|| RuntimeError::denied("LXD target is not this human's subsidiary"))
 }
 
 /// Instance name and whether it starts; no other power action is accepted.
@@ -311,13 +353,7 @@ async fn prepare_state(ctx: &BackendContext<'_>, args: &Value) -> Result<(), Run
     let denied = |error: anyhow::Error| RuntimeError::denied(error.to_string());
     let (name, start) = validate_state(args).map_err(denied)?;
     let store = ctx.runtime.identity_store().clone();
-    let reader = store.clone();
-    let rows = tokio::task::spawn_blocking(move || reader.lxd_subsidiaries()).await
-        .map_err(|error| RuntimeError::backend(error.into()))?
-        .map_err(|error| RuntimeError::backend(error.into()))?;
-    let row = rows.into_iter().find(|row| row.name == name && row.actor_id == ctx.caller.principal_id
-        && row.caller_session == ctx.caller.session_id && row.caller_genesis == ctx.caller.session_genesis)
-        .ok_or_else(|| RuntimeError::denied("LXD target is not this human's subsidiary"))?;
+    let row = owned_row(ctx, name).await?;
     if !start { return Ok(()) }
     if lxd_subsidiary::adopt(store.clone(), &row.session_id).await.map_err(denied)? {
         crate::runtime_identity::recover_startup(store.clone(), ctx.runtime.catalog_dir().to_path_buf())

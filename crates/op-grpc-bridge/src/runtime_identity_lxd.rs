@@ -67,6 +67,23 @@ pub(crate) async fn adopt(cozo: Arc<CozoGraphShuttle>, session: &str) -> anyhow:
     tokio::task::spawn_blocking(move || commit(&cozo, &row, instance)).await?
 }
 
+/// The exact admitted container, stopped: the only state that may be deleted.
+pub(crate) async fn prove_stopped(row: &LxdSubsidiary) -> anyhow::Result<()> {
+    let live = native_lxd::Client::local(Path::new(SOCKET))?.get_instance(&row.name).await?.0;
+    let instance = exact_instance(row, serde_json::to_value(live)?)?;
+    ensure!(instance.status == "Stopped", "LXD subsidiary must be stopped first");
+    Ok(())
+}
+
+/// Only an explicit 404 proves the container is gone.
+pub(crate) async fn prove_absent(row: &LxdSubsidiary) -> anyhow::Result<()> {
+    match native_lxd::Client::local(Path::new(SOCKET))?.get_instance(&row.name).await {
+        Err(native_lxd::LxdError::NotFound(_)) => Ok(()),
+        Ok(_) => anyhow::bail!("LXD subsidiary still exists; delete it first"),
+        Err(error) => Err(error.into()),
+    }
+}
+
 /// The admitted row for one session, if that identity is an LXD subsidiary.
 pub(super) async fn row(cozo: &Arc<CozoGraphShuttle>, session: &str) -> anyhow::Result<Option<LxdSubsidiary>> {
     let cozo = cozo.clone();

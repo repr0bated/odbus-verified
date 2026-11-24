@@ -114,6 +114,35 @@ impl CozoGraphShuttle {
         self.sync_identity_store()
     }
 
+    /// Supersede an intent whose container the caller has proved absent. The
+    /// parent, key, session and name stay fixed; only the request changes, and
+    /// the next admission pins the new native UUID.
+    pub fn replace_lxd_subsidiary(&self, old: &LxdSubsidiary, row: LxdSubsidiary) -> std::result::Result<(), CozoError> {
+        validate(&row)?;
+        let same = LxdSubsidiary {
+            request_json: row.request_json.clone(), native_uuid: String::new(), ..old.clone()
+        } == row;
+        if !same {
+            return Err(err("a replacement keeps its parent, key, session and name"));
+        }
+        let _guard = self.identity_transaction.lock().map_err(|_| err("identity owner poisoned"))?;
+        let tx = self.db.multi_transaction(true);
+        if !rows(&tx)?.contains(old) {
+            return Err(err("LXD subsidiary intent changed"));
+        }
+        let caller = read_one(&tx, &row.caller_session)?.0.record
+            .ok_or_else(|| err("subsidiary parent absent"))?;
+        if caller.principal_kind.as_deref() != Some("human") || !caller.active
+            || caller.session_genesis != row.caller_genesis
+            || op_identity::session::derive_principal_id(&caller.wireguard_pubkey) != row.actor_id
+        {
+            return Err(err("LXD subsidiary needs its live human parent"));
+        }
+        put(&tx, &row)?;
+        commit_checked(&tx)?;
+        self.sync_identity_store()
+    }
+
     /// Pin the verified native UUID once; a different UUID is never accepted.
     pub fn bind_lxd_subsidiary(&self, session: &str, uuid: &str) -> std::result::Result<(), CozoError> {
         let _guard = self.identity_transaction.lock().map_err(|_| err("identity owner poisoned"))?;

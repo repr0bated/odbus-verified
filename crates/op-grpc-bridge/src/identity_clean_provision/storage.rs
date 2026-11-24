@@ -574,8 +574,11 @@ pub(crate) fn verify_native(
     for (file, pin, is_root) in [(&root, &plan.root, true), (&sled, &plan.sled, false)] {
         fs_info(file, &plan.pool_fsid)?;
         let mut bytes = [0u8; 504];
+        // The kernel may return 1 with identity, flags and UUIDs filled but no
+        // back-reference (see op-container btrfs.rs); only negative is an error,
+        // and every field used below is compared with its exact pin.
         // SAFETY: held Btrfs descriptor and exact GET_SUBVOL_INFO output.
-        ensure!(unsafe { libc::ioctl(file.as_raw_fd(), 0x81f8_943c as libc::c_ulong, bytes.as_mut_ptr()) } == 0,
+        ensure!(unsafe { libc::ioctl(file.as_raw_fd(), 0x81f8_943c as libc::c_ulong, bytes.as_mut_ptr()) } >= 0,
             "native subvolume query failed");
         ensure!(u64::from_ne_bytes(bytes[..8].try_into()?) == pin.id
             && bytes[296..312] == *uuid::Uuid::parse_str(&pin.uuid)?.as_bytes()

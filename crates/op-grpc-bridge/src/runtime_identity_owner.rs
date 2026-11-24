@@ -537,7 +537,10 @@ fn commit_volume_identity(
                 && uuid_of(stored) == uuid_of(&instance);
             if !same {
                 let (old, new) = (uuid_of(stored), uuid_of(&instance));
-                ensure!(chatbot_rebind_allowed(key, &session, configured_chatbot_key().as_deref(),
+                // A subsidiary's UUID was just pinned in its durable parent intent,
+                // which only a proven-absent replacement can have cleared.
+                let replaced = admitted_subsidiary.is_some() && stored.name == instance.name && new.is_some();
+                ensure!(replaced || chatbot_rebind_allowed(key, &session, configured_chatbot_key().as_deref(),
                     control_plane_chatbot_session_id().as_deref(), old.as_deref(), new.as_deref(),
                     chatbot_previous_present),
                     "startup import cannot replace an existing native identity UUID");
@@ -553,8 +556,9 @@ fn commit_volume_identity(
         let operation = match &reprovisioned {
             Some((old_name, old, new)) => {
                 tracing::warn!(session = %session, %old_name, new_name = %sled.instance.as_ref().map_or("", |bound| bound.name.as_str()), %old, %new,
-                    "control-plane chatbot re-provisioned under a new native UUID");
-                format!("sled-chatbot-reprovision-{old}-{new}")
+                    "container re-provisioned under a new native UUID");
+                if admitted_subsidiary.is_some() { format!("sled-subsidiary-reprovision-{old}-{new}") }
+                else { format!("sled-chatbot-reprovision-{old}-{new}") }
             }
             None => format!("sled-rebind-{}", uuid::Uuid::new_v4().simple()),
         };
