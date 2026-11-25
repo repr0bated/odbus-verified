@@ -1324,9 +1324,9 @@ const CONTRACT: &str = r########"
         },
         "event_hash": {
           "type": "string",
-          "minLength": 32,
-          "maxLength": 32,
-          "pattern": "^[0-9a-f]{32}$"
+          "minLength": 64,
+          "maxLength": 64,
+          "pattern": "^[0-9a-f]{64}$"
         }
       },
       "required": [
@@ -1337,7 +1337,7 @@ const CONTRACT: &str = r########"
       "x-source-refs": [
         "crates/op-state-store/src/method_receipt.rs:9-16",
         "crates/op-state-store/src/method_receipt.rs:53-78",
-        "crates/op-state-store/src/event_chain.rs:1100-1109"
+        "crates/op-state-store/src/event_chain.rs:1100-1122"
       ]
     },
     "MethodRecoveryStatus": {
@@ -1376,9 +1376,9 @@ const CONTRACT: &str = r########"
         },
         "event_hash": {
           "type": "string",
-          "minLength": 32,
-          "maxLength": 32,
-          "pattern": "^[0-9a-f]{32}$"
+          "minLength": 64,
+          "maxLength": 64,
+          "pattern": "^[0-9a-f]{64}$"
         },
         "terminal_event_id": {
           "allOf": [
@@ -1390,9 +1390,9 @@ const CONTRACT: &str = r########"
         },
         "terminal_event_hash": {
           "type": "string",
-          "minLength": 32,
-          "maxLength": 32,
-          "pattern": "^[0-9a-f]{32}$"
+          "minLength": 64,
+          "maxLength": 64,
+          "pattern": "^[0-9a-f]{64}$"
         },
         "plugin_id": {
           "type": "string"
@@ -1420,7 +1420,7 @@ const CONTRACT: &str = r########"
       "x-source-refs": [
         "crates/op-state-store/src/method_receipt.rs:9-16",
         "crates/op-state-store/src/method_receipt.rs:53-78",
-        "crates/op-state-store/src/event_chain.rs:1100-1109"
+        "crates/op-state-store/src/event_chain.rs:1100-1122"
       ],
       "x-domain-validation": "result must validate against the exact admitted MethodDecl.returns; absent returns rejects before effects. Runtime additionally verifies UUID canonical form, exact target and ordered event proofs."
     },

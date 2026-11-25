@@ -1,6 +1,6 @@
 //! Safe control projection; native effect proofs remain in BridgeCore.
 use chrono::{DateTime, Utc};
-use op_state_store::method_receipt::MethodEventProof;
+use op_state_store::method_receipt::{MethodEventProof, valid_event_hash};
 use serde::{Deserialize, Serialize};
 use crate::execution_context::ExecutionContext;
 
@@ -52,8 +52,7 @@ impl ExecutionProof {
         anyhow::ensure!(self.operation_id == operation_id && self.attempt.event_id > 0,
             "execution proof attribution is invalid");
         for proof in std::iter::once(&self.attempt).chain(self.terminal.iter()) {
-            anyhow::ensure!(proof.event_hash.len() == 32
-                && proof.event_hash.bytes().all(|byte| byte.is_ascii_digit() || matches!(byte, b'a'..=b'f')),
+            anyhow::ensure!(valid_event_hash(&proof.event_hash),
                 "execution proof hash is invalid");
         }
         anyhow::ensure!(self.terminal.as_ref().is_none_or(|terminal|

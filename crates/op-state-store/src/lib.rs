@@ -34,6 +34,7 @@ pub use error::StateStoreError;
 pub use event_chain::{
     ActionOrigin, ChainConfig, ChainEvent, ChainVerificationResult, Decision, DenyReason,
     EventBatch, EventChain, MerkleProof, OperationType, StateSnapshot, TagImmutabilityProof,
+    legacy_genesis_hash,
 };
 pub use execution_job::{ExecutionJob, ExecutionResult, ExecutionStatus};
 pub use memory_store::MemoryStore;

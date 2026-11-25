@@ -375,8 +375,15 @@ impl PersistentCore {
                 ensure!(row.seq == sequence && row.kind == RECORD_KIND && row.content.len() <= MAX_RECORD_BYTES,
                     "bridge ledger sequence or record encoding invalid");
                 let record: LedgerRecord = serde_json::from_str(&row.content).context("decode bridge ledger record")?;
+                // The first record of a ledger persisted before the Keccak
+                // change links to the legacy (MD5) genesis hash, and legacy
+                // records verify under MD5 by their stored hash length (see
+                // ChainEvent::verify). Every later link must match exactly.
                 ensure!(record.version == 1 && record.event.event_id == sequence as u64 + 1
-                    && record.event.prev_hash == previous && record.event.verify(),
+                    && (record.event.prev_hash == previous
+                        || (sequence == 0
+                            && record.event.prev_hash == op_state_store::legacy_genesis_hash()))
+                    && record.event.verify(),
                     "bridge ledger event hash or linkage invalid");
                 validate_scope(&record.owner)?;
                 let payload = record.event.input_payload.as_ref().context("bridge event binding absent")?;

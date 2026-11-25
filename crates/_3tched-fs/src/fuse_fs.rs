@@ -1853,7 +1853,7 @@ mod tests {
             self.entered.send(()).unwrap();
             self.resume.notified().await;
             serde_json::json!({"success":true,"operation_id":operation_id,"outcome":"completed",
-                "event_id":7,"event_hash":"a".repeat(32),"terminal_event_id":8,"terminal_event_hash":"b".repeat(32),
+                "event_id":7,"event_hash":"a".repeat(64),"terminal_event_id":8,"terminal_event_hash":"b".repeat(64),
                 "plugin_id":"demo","method":method,"result":{"method":method,"args":json_args}}).to_string()
         }
     }

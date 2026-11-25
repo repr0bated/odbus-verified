@@ -893,13 +893,13 @@ mod tests {
         };
         cursor.document.receipt.attempt = Some(MethodEventProof {
             event_id: 1,
-            event_hash: "a".repeat(32),
+            event_hash: "a".repeat(64),
         });
         cursor.persist().await.unwrap();
         cursor.document.receipt.status = MethodRecoveryStatus::Completed;
         cursor.document.receipt.terminal = Some(MethodEventProof {
             event_id: 2,
-            event_hash: "b".repeat(32),
+            event_hash: "b".repeat(64),
         });
         cursor.persist().await.unwrap();
         drop(cursor);

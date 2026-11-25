@@ -23,6 +23,7 @@
 
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
+use sha3::Digest;
 use simd_json::OwnedValue as Value;
 use simd_json::prelude::*;
 use std::collections::HashMap;
@@ -256,6 +257,16 @@ impl ChainEvent {
     /// Public so callers that enrich an already-appended event with additional
     /// fields (e.g. `capability_id`) can recompute the hash after mutation.
     pub fn compute_hash(&self) -> String {
+        self.compute_hash_as(false)
+    }
+
+    /// Legacy MD5 form, used only to verify records persisted before the
+    /// Keccak-256 change. Nothing new is ever hashed this way.
+    fn legacy_compute_hash(&self) -> String {
+        self.compute_hash_as(true)
+    }
+
+    fn compute_hash_as(&self, legacy: bool) -> String {
         let canonical = if let Some(input_payload) = self.input_payload.as_ref() {
             simd_json::serde::to_owned_value(&CanonicalEventPayload {
                 event_id: self.event_id,
@@ -302,7 +313,11 @@ impl ChainEvent {
             .unwrap_or_default()
         };
         let canonical = canonicalize_json(&canonical);
-        compute_hash(&canonical)
+        if legacy {
+            compute_hash_legacy(&canonical)
+        } else {
+            compute_hash(&canonical)
+        }
     }
 
     /// Set the result effective hash after successful operation
@@ -326,14 +341,31 @@ impl ChainEvent {
         self
     }
 
-    /// Verify this event's hash against its content
+    /// Verify this event's hash against its content. The stored hash selects
+    /// the algorithm: 64 hex chars verify as Keccak-256 (all new records),
+    /// 32 as legacy MD5 (records persisted before the change). Anything else
+    /// cannot verify.
     pub fn verify(&self) -> bool {
-        if let Some(payload) = self.input_payload.as_ref()
-            && compute_hash(&canonicalize_json(payload)) != self.input_patch_hash
-        {
-            return false;
+        let legacy = match self.event_hash.len() {
+            64 => false,
+            32 => true,
+            _ => return false,
+        };
+        if let Some(payload) = self.input_payload.as_ref() {
+            let payload_hash = if self.input_patch_hash.len() == 32 {
+                compute_hash_legacy(&canonicalize_json(payload))
+            } else {
+                compute_hash(&canonicalize_json(payload))
+            };
+            if payload_hash != self.input_patch_hash {
+                return false;
+            }
         }
-        let computed = self.compute_hash();
+        let computed = if legacy {
+            self.legacy_compute_hash()
+        } else {
+            self.compute_hash()
+        };
         computed == self.event_hash
     }
 }
@@ -815,7 +847,14 @@ impl EventChain {
             errors: Vec::new(),
         };
 
-        let mut expected_prev = self.genesis_hash.clone();
+        // A chain persisted before the Keccak change starts from the legacy
+        // (MD5) genesis hash; follow its stored links exactly as written.
+        let mut expected_prev = self
+            .events
+            .first()
+            .filter(|event| event.prev_hash == legacy_genesis_hash())
+            .map(|event| event.prev_hash.clone())
+            .unwrap_or_else(|| self.genesis_hash.clone());
         for event in &self.events {
             let in_range =
                 (from == 0 || event.event_id >= from) && (to == 0 || event.event_id <= to);
@@ -896,7 +935,12 @@ impl EventChain {
         };
 
         // Verify event chain
-        let mut expected_prev = self.genesis_hash.clone();
+        let mut expected_prev = self
+            .events
+            .first()
+            .filter(|event| event.prev_hash == legacy_genesis_hash())
+            .map(|event| event.prev_hash.clone())
+            .unwrap_or_else(|| self.genesis_hash.clone());
         for event in &self.events {
             if event.prev_hash != expected_prev {
                 result.valid = false;
@@ -1097,15 +1141,45 @@ fn sensitive_payload_key(key: &str) -> bool {
         || normalized.ends_with("_private_key")
 }
 
+/// Every new hash in this chain (event links, Merkle pairs/roots, snapshot
+/// and genesis hashes, payload hashes) is Keccak-256 over the canonical
+/// bytes, hex-encoded (64 chars). This is Keccak-256 as used by Ethereum,
+/// not the NIST SHA3-256 variant (different padding). Records persisted
+/// before this change carry MD5 hashes (32 chars); they still verify, but
+/// only through the explicit legacy path below, selected by the stored
+/// hash's length — nothing new is ever hashed with MD5.
+fn keccak256_hex(bytes: &[u8]) -> String {
+    format!("{:x}", sha3::Keccak256::digest(bytes))
+}
+
 /// Compute hash of a JSON value
 fn compute_hash(value: &Value) -> String {
+    let canonical_str = simd_json::to_string(value).unwrap_or_default();
+    keccak256_hex(canonical_str.as_bytes())
+}
+
+/// Legacy MD5 hash of a JSON value (pre-Keccak persisted records only)
+fn compute_hash_legacy(value: &Value) -> String {
     let canonical_str = simd_json::to_string(value).unwrap_or_default();
     format!("{:x}", md5::compute(canonical_str.as_bytes()))
 }
 
+/// Legacy MD5 hash of a string (pre-Keccak persisted records only)
+fn compute_hash_str_legacy(s: &str) -> String {
+    format!("{:x}", md5::compute(s.as_bytes()))
+}
+
+/// Genesis `prev_hash` of chains persisted before the Keccak-256 change.
+/// A persisted chain whose first record links to this hash is a legacy
+/// chain; its records verify under the legacy algorithm and its stored
+/// links are followed exactly as written.
+pub fn legacy_genesis_hash() -> String {
+    compute_hash_str_legacy("genesis")
+}
+
 /// Compute hash of a string
 fn compute_hash_str(s: &str) -> String {
-    format!("{:x}", md5::compute(s.as_bytes()))
+    keccak256_hex(s.as_bytes())
 }
 
 /// Compute hash of two hashes concatenated

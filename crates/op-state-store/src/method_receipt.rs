@@ -51,7 +51,7 @@ impl AuditedMethodRefusal {
 pub struct MethodEventProof {
     #[schemars(range(min = 1))]
     pub event_id: u64,
-    #[schemars(length(min = 32, max = 32), regex(pattern = "^[0-9a-f]{32}$"))]
+    #[schemars(length(min = 64, max = 64), regex(pattern = "^[0-9a-f]{64}$"))]
     pub event_hash: String,
 }
 
@@ -107,10 +107,10 @@ pub struct MethodExecutionReceipt {
 }
 
 pub fn valid_event_hash(hash: &str) -> bool {
-    // ChainEvent::compute_hash delegates to event_chain::compute_hash, whose
-    // persisted wire format is lowercase hexadecimal MD5 (32 characters).
-    // This is an audit locator, not a plugin's BLAKE3 schema/content hash.
-    hash.len() == 32
+    // Current format: lowercase hex Keccak-256 (64 chars). The 32-char MD5
+    // grammar is accepted only for proofs persisted before that change.
+    // Attribution is checked separately, never inferred from hash length.
+    (hash.len() == 32 || hash.len() == 64)
         && hash
             .bytes()
             .all(|byte| byte.is_ascii_digit() || (b'a'..=b'f').contains(&byte))
@@ -214,9 +214,9 @@ mod tests {
             operation_id: "00000000-0000-4000-8000-000000000001".into(),
             outcome: "completed".into(),
             event_id: 7,
-            event_hash: "a".repeat(32),
+            event_hash: "a".repeat(64),
             terminal_event_id: 11,
-            terminal_event_hash: "b".repeat(32),
+            terminal_event_hash: "b".repeat(64),
             plugin_id: "fixture".into(),
             method: "read".into(),
             result: json!({"value": 42}),
@@ -275,9 +275,10 @@ mod tests {
         result.event_hash = event.event_hash.clone();
         result.terminal_event_hash = event.compute_hash();
         result.validate_attribution("fixture", "read").unwrap();
-        // Blob and schema digests are different locators, never audit proofs.
-        assert!(!valid_event_hash(&"a".repeat(64)));
-        assert!(!valid_event_hash(&"A".repeat(32)));
+        // Legacy MD5-grammar proofs remain recoverable; non-lowercase is not.
+        assert!(valid_event_hash(&"a".repeat(32)));
+        assert!(!valid_event_hash(&"a".repeat(16)));
+        assert!(!valid_event_hash(&"A".repeat(64)));
     }
 
     #[test]

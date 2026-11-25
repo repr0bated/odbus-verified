@@ -717,7 +717,7 @@ pub(crate) mod tests {
         json!({"plugin_id":"demo","method":"get_status","subid":decl.subid,"required_capability":decl.required_capability,
             "side_effect":decl.side_effect,"idempotent":decl.idempotent,"result":{
                 "success":true,"operation_id":"00000000-0000-4000-8000-000000000001","outcome":"completed",
-                "event_id":1,"event_hash":"a".repeat(32),"terminal_event_id":2,"terminal_event_hash":"b".repeat(32),
+                "event_id":1,"event_hash":"a".repeat(64),"terminal_event_id":2,"terminal_event_hash":"b".repeat(64),
                 "plugin_id":"demo","method":"get_status","result":{"answer":42}}})
     }
 

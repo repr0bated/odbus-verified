@@ -251,8 +251,8 @@ mod tests {
         tracker.reserve(context.clone()).await.unwrap();
         let proof = ExecutionProof {
             operation_id: context.operation_id.clone(),
-            attempt: op_state_store::method_receipt::MethodEventProof { event_id: 1, event_hash: "a".repeat(32) },
-            terminal: Some(op_state_store::method_receipt::MethodEventProof { event_id: 2, event_hash: "b".repeat(32) }),
+            attempt: op_state_store::method_receipt::MethodEventProof { event_id: 1, event_hash: "a".repeat(64) },
+            terminal: Some(op_state_store::method_receipt::MethodEventProof { event_id: 2, event_hash: "b".repeat(64) }),
         };
         tracker.finish(&context.operation_id, ExecutionStatus::ReceiptCompleted, Some(proof.clone())).await.unwrap();
         tracker.finish(&context.operation_id, ExecutionStatus::NeedsReview, Some(proof)).await.unwrap();
