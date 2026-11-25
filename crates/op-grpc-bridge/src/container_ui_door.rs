@@ -15,7 +15,7 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use _3tched_fs::model::{MethodDecl, PluginSchema};
-use _3tched_fs::mounted::{IdentityMode, MountedDiagnostic, MountedNamespace};
+use _3tched_fs::mounted::{MountedDiagnostic, MountedNamespace};
 use anyhow::{Context, Result, ensure};
 use serde_json::{Value, json};
 use tokio::sync::{Semaphore, broadcast, mpsc};
@@ -109,8 +109,7 @@ impl UiService {
         Self::with_opener(
             core,
             Arc::new(move || {
-                let namespace =
-                    MountedNamespace::open_for_identity_mode(&mount, IdentityMode::GuestKernel, None)?;
+                let namespace = crate::container_ui::open_own_mount(&mount)?;
                 Ok(Box::new(namespace) as Box<dyn UiNamespace>)
             }),
         )

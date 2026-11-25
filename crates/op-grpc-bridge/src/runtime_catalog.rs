@@ -24,8 +24,7 @@ pub(crate) async fn get_catalog(ctx: &BackendContext<'_>, args: &Value) -> Resul
         let mut views = Vec::with_capacity(2);
         let mut seen = std::collections::BTreeSet::new();
         for mount in mounts {
-            let namespace = _3tched_fs::mounted::MountedNamespace::open_for_identity_mode(
-                std::path::Path::new(&mount), _3tched_fs::mounted::IdentityMode::GuestKernel, None)
+            let namespace = crate::container_ui::open_own_mount(std::path::Path::new(&mount))
                 .context("required container schema mount is unavailable")?;
             let view = namespace.catalog_view()?;
             let mut plugins = Vec::new();
