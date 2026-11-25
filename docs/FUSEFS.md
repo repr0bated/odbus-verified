@@ -302,3 +302,79 @@ Services are runit: `sudo sv status 3tched-fs threetched-fs op-grpc-bridge`. Do 
 | Tests, clippy, fmt | Not run |
 
 Manual check when you want one: `findmnt -t fuse.3tchedFS`; read one `metadata.json`; one read-only call; confirm state from `plugins/<plugin>/value.json`, not from the write alone.
+
+## 12. How schema and state reach the UI (chatbot renderer)
+
+Sources: `crates/op-grpc-bridge/src/{container_ui,runtime_catalog,service_runtime,runtime,runtime_identity}.rs`, `crates/op-plugins/src/state_plugins/fuse.rs` (`GetCatalog*` types), `crates/_3tched-fs/src/{source,namespace,mounted,fuse_fs}.rs`, `crates/op-core/src/projection_shm.rs`.
+
+The chatbot is the UI: it renders every plugin for the human in the browser. That only works if three things the old code fused into the end user's identity are kept apart:
+
+| Concern | Identity | Where it is decided |
+|---|---|---|
+| Execution (any method call, any effect) | The requesting human's `VerifiedCaller` | `Runtime::call` grants, re-read at the call and the effect boundary (§10) |
+| Rendering reads (schema, committed state, subscriptions) | The designated chatbot **renderer principal** — its own service identity | `configured_renderer` / `can_render_plugin` (below) |
+| Private-state selection | The requesting human, and nobody else | `StateScope::Private { principal_id, session_id }` of the caller |
+
+### 12.1 Schema is delivered over FuseFS — but the browser never reads the mount
+
+Schema has exactly one authority chain:
+
+1. Each plugin declares its `PluginSchema` (state type, methods, `required_capability`, `side_effect`, `public_state.paths`) in `crates/op-plugins/src/state_plugins/`.
+2. `opblob seal-shm` seals it into `/dev/shm/opdbus/plugin-blobs/<plugin>.<schema_hash16>.blob` (`OPBLOB01`; schema JSON is section 1, SHA-256 pinned in the header) plus `.manifest.json` (`catalog_hash`, monotonic `generation`).
+3. `3tched-fs capture` (`_3tched-fs/src/source.rs`) decodes the manifest-pinned blobs, pairs them with committed state (below), and stores immutable, BLAKE3-content-addressed objects and a pinned view in the `ObjectStore`. **Schema is frozen at capture**; state is not.
+4. The FUSE daemon projects the view (§2): `plugins/<plugin>/schema.json`, `object.blob.json`, `object.hash`, `capabilities.json`, and under `operations/<method>/`: `input.schema.json`, `output.schema.json`, `metadata.json`, `call`. Views live at `/run/mounts/3tchedFS` (our plugins) and `/run/mounts/threetchedFS` (upstream binary), and per-container under `/run/mounts/by-container/<name>/`.
+5. The bridge carries the schema from the container's own mounts to the browser. The UI is static assets (`CHAT_UI_DIR`) served by `container_ui.rs` only after its mount verifies. When the renderer asks, `fuse.get_catalog` (`runtime_catalog.rs`) opens **both** mounts with `MountedNamespace` (`_3tched-fs/src/mounted.rs`: descriptor walk with `O_NOFOLLOW`, `.3tchedfs.json` cross-checked against `view.json`, mount `instance_uuid` pinned) **inside the container**, reads each `plugins/<plugin>/schema.json`, and **hard-fails if it differs from the sealed runtime catalog** — the UI can never render a schema the backend will not enforce.
+
+`get_catalog` returns `GetCatalogOutput { views[] { view_id, source_catalog_hash, source_catalog_generation, plugins[] { plugin_id, object_hash, schema_hash, schema, operations[] { method, call_path, metadata_path, currently_granted }, state: "not_requested" } } }`.
+
+Disclosure is **by flag, not by filter**: every plugin in both views is returned with its full method list. The requesting human's grants only annotate each operation (`currently_granted` is `true` when the method needs no capability or the human holds it). The renderer renders an ungranted operation as present-but-not-runnable; the grant still denies it in `Runtime::call` if invoked. Grants changing mid-read fail the call rather than return stale flags. State is deliberately **not** in this payload (`state: "not_requested"`); see §12.3.
+
+### 12.2 State is a pull, and FuseFS has no push
+
+State also has one authority chain: `MutationEngine` (the single write door) publishes one JSON file per plugin to `/dev/shm/opdbus/state/<plugin>.json` (atomic temp+rename; `.manifest.json` `generation` written last is the commit point). The value disclosed anywhere outside the bridge is only the projection through the sealed `public_state.paths` (`project_public_value`); an empty policy means nothing is public.
+
+In a **view** mount, `value.json` and every `data/` leaf is a live file: each `open()` re-reads the SHM state under the projection lock, re-verifies the pinned catalog before and after, re-projects, and snapshots bytes for that handle only. There is no polling, watching, inotify, or caching in the daemon. Reopening is the refresh. Workspace (COW) mounts are the opposite: frozen captured objects, no live reads.
+
+### 12.3 StateSync: the wakeup channel above FuseFS
+
+Freshness for the browser comes from `StateSync`, a gRPC/gRPC-Web service on the production bridge door (`BridgeService` in `service.rs`, production path in `service_runtime.rs`). It is not a FuseFS feature and not an execution channel:
+
+- **Hydrate, then wake.** The client subscribes before reading. `production_subscribe` opens the commit-notice receiver first (no race), then sends hydration frames: committed state for the public scope plus the caller's own private scope (`include_initial_state`), and one schema frame per catalog plugin (`include_schema`).
+- **Notices carry no state.** `Core::subscribe_commits()` emits metadata-only `StateNotice`s after a durable commit. For each notice in scope, the server re-reads the committed SHM value (`committed_frame`) and emits a `StateChange` with the fresh value and `state_generation`, deduplicated per `(plugin, scope, generation)`.
+- **Lag means re-read, not trust.** A lagged receiver gets `Status::data_loss("committed state stream lagged; hydrate again")`. Heartbeats keep the stream alive; they carry no new data. The rule for any UI client is: hydrate once, treat each frame as "state changed, here is the re-read value", and on disconnect/lag/catalog change, hydrate again. Never poll on a timer; if polling is unavoidable, key it on the SHM `generation`, not the clock.
+- **Not an authority.** StateSync frames are not the schema authority (the sealed catalog is), carry no grants, and execute nothing. Actions taken on rendered UI still go through `call` files / lungs / `Runtime::call` as the human (§4).
+
+### 12.4 The renderer principal (separating rendering from identity)
+
+Before this separation, `StateSync` and `GetState`/`GetProperty` gated every frame and read on the *human's* `can_read_plugin`, so a plugin the human could not read never hydrated, never updated, and could not even be re-read — the rendered UI silently lost state.
+
+Now the read gates use a dedicated renderer caller:
+
+- `designated_chatbot` (`runtime_identity.rs`) resolves the configured chatbot service identity from bridge configuration alone: the run script derives `OP_CONTROL_PLANE_CHATBOT_PRINCIPAL_ID` (and session) from the chatbot WireGuard key in `/etc/op-dbus/env/op-chatbot-wireguard-pubkey`; the committed identity registry must contain exactly one row for that principal with `principal_kind = "service"`. `ResponderAuthority::revalidate` re-checks the configuration and the authored transport wire. Nothing about this identity is ever accepted from a request.
+- `configured_renderer` admits that caller for reads only: it inherits no execution gate from the requester, carries no sealed identity for wire transport, and must never be passed to `Runtime::call`.
+- `can_render_plugin` (`runtime.rs`) is the renderer read gate: same sealed-schema pin check as `can_read_plugin`, but a capability-free `Read` method satisfies it, so a plugin is never lost for rendering merely because its reads need no grant. The human's `can_read_plugin` is unchanged and still guards the non-renderer channels (MQTT wakes, signal admission).
+- In `production_subscribe`, schema frames, hydration frames, and live notices are all gated on the renderer. The data selected is still only the public scope or `caller.private_scope()`, and the spawned loop revalidates the **human's** authority before every live frame — a revoked session ends the stream even though reads run as the renderer. `GetState`/`GetProperty` (`selected_snapshot`) use the same split: renderer gates the read, the human's scope selects the value.
+- If the renderer is not configured, subscription and state reads fail closed. There is no fallback to the old human-filtered behavior.
+
+```mermaid
+sequenceDiagram
+  participant B as Browser (human session)
+  participant Br as op-grpc-bridge
+  participant R as Renderer principal (chatbot service)
+  participant F as FuseFS mounts (in container)
+  participant S as SHM state + sealed catalog
+  B->>Br: fuse.get_catalog (as human)
+  Br->>F: MountedNamespace: schema.json per plugin
+  Br-->>B: full catalog; currently_granted from human grants
+  B->>Br: StateSync.Subscribe (as human)
+  Br->>R: configured_renderer (service identity)
+  Br->>S: hydration: public + human-private committed frames
+  Br-->>B: initial StateChange frames (renderer-gated)
+  S-->>Br: StateNotice (metadata only, after commit)
+  Br->>S: committed_frame re-read at new generation
+  Br-->>B: StateChange update (human revalidated first)
+  B->>Br: user action on rendered operation (as human)
+  Br->>Br: Runtime::call — human grants enforced; renderer never executes
+```
+
+Operational notes: the renderer principal currently sits in the `$ROOT` group of the durable grants document, which is broader than rendering needs; the code paths above only ever exercise it against read gates and committed-state reads, but a future `$RENDERER` group (all `Read` capabilities, no mutations, regenerated from the sealed catalog like `$ROOT`) would narrow it without changing this design. Lungs/`call`-file admission, MQTT wake doorbells, and the special private streams (chatbot episodes, generation jobs, UI workspace) keep their own identity checks and are not covered by the renderer gate.
