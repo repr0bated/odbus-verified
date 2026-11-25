@@ -5,15 +5,20 @@ use serde_json::{Value, json};
 use std::collections::HashMap;
 
 impl BridgeService {
+    /// State read for rendering: disclosure is gated on the renderer
+    /// principal (`renderer`), while the value itself is selected only from
+    /// the requesting human's private scope or the public scope. The human's
+    /// own grants never make rendered state unavailable.
     async fn selected_snapshot(
         &self,
         runtime: &Runtime,
         caller: &VerifiedCaller,
+        renderer: &VerifiedCaller,
         plugin: &str,
         path: &str,
     ) -> Result<Option<CommittedStateSnapshot>, Status> {
         if !runtime
-            .can_read_plugin(caller, plugin)
+            .can_render_plugin(renderer, plugin)
             .await
             .map_err(runtime_status)?
         {
@@ -38,7 +43,7 @@ impl BridgeService {
                 .map_err(|_| Status::unavailable("public committed state is unavailable"))?,
         };
         if !runtime
-            .can_read_plugin(caller, plugin)
+            .can_render_plugin(renderer, plugin)
             .await
             .map_err(runtime_status)?
         {
@@ -53,9 +58,13 @@ impl BridgeService {
         request: Request<GetStateRequest>,
     ) -> Result<Response<GetStateResponse>, Status> {
         let caller = self.authenticate(&request).await?;
+        let renderer = runtime
+            .configured_renderer(&caller)
+            .await
+            .map_err(runtime_status)?;
         let req = request.into_inner();
         let snapshot = self
-            .selected_snapshot(runtime, &caller, &req.plugin_id, &req.object_path)
+            .selected_snapshot(runtime, &caller, &renderer, &req.plugin_id, &req.object_path)
             .await?
             .ok_or_else(|| Status::not_found("committed state is absent"))?;
         Ok(Response::new(GetStateResponse {
@@ -72,9 +81,13 @@ impl BridgeService {
         request: Request<GetPropertyRequest>,
     ) -> Result<Response<GetPropertyResponse>, Status> {
         let caller = self.authenticate(&request).await?;
+        let renderer = runtime
+            .configured_renderer(&caller)
+            .await
+            .map_err(runtime_status)?;
         let req = request.into_inner();
         let snapshot = self
-            .selected_snapshot(runtime, &caller, &req.plugin_id, &req.object_path)
+            .selected_snapshot(runtime, &caller, &renderer, &req.plugin_id, &req.object_path)
             .await?
             .ok_or_else(|| Status::not_found("committed object is absent"))?;
         let value = snapshot
@@ -293,6 +306,15 @@ impl BridgeService {
         request: Request<SubscribeRequest>,
     ) -> Result<Response<ReceiverStream<Result<StateChange, Status>>>, Status> {
         let caller = self.authenticate(&request).await?;
+        // Rendering is separated from the requesting human: schema/state
+        // disclosure is gated on the designated chatbot renderer principal,
+        // while scopes below still select only public state or this human's
+        // own private scope, and execution remains the human's. No renderer
+        // configured means no subscription (never a human-filtered fallback).
+        let renderer = runtime
+            .configured_renderer(&caller)
+            .await
+            .map_err(runtime_status)?;
         let req = request.into_inner();
         let mut notices = self.core.subscribe_commits();
         let mut initial = Vec::new();
@@ -319,7 +341,7 @@ impl BridgeService {
         if req.include_schema {
             for plugin in runtime.catalog().plugins() {
                 if !runtime
-                    .can_read_plugin(&caller, &plugin.id)
+                    .can_render_plugin(&renderer, &plugin.id)
                     .await
                     .map_err(runtime_status)?
                 {
@@ -348,7 +370,7 @@ impl BridgeService {
                 let Ok(permit) = tx.reserve().await else {
                     return;
                 };
-                match runtime.can_read_plugin(&caller, &frame.plugin_id).await {
+                match runtime.can_render_plugin(&renderer, &frame.plugin_id).await {
                     Ok(true) => {
                         permit.send(Ok(frame));
                     }
@@ -380,11 +402,19 @@ impl BridgeService {
                 {
                     continue;
                 }
-                // Wait for capacity before the disclosure check, not after it.
+                // Wait for capacity before the disclosure checks, not after.
                 let Ok(permit) = tx.reserve().await else {
                     return;
                 };
-                match runtime.can_read_plugin(&caller, &notice.plugin_id).await {
+                // The human remains the egress authority: a revoked session
+                // ends the stream even though reads run as the renderer.
+                if caller.authority.revalidate().await.is_err() {
+                    permit.send(Err(Status::unauthenticated(
+                        "requesting identity is no longer valid",
+                    )));
+                    return;
+                }
+                match runtime.can_render_plugin(&renderer, &notice.plugin_id).await {
                     Ok(true) => {}
                     Ok(false) => continue,
                     Err(error) => {

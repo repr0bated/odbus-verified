@@ -886,6 +886,38 @@ impl Runtime {
         }))
     }
 
+    /// Read gate for the renderer principal only. Unlike `can_read_plugin`
+    /// (the requesting human's own disclosure gate), a capability-free read
+    /// satisfies the renderer: rendering must not lose a plugin merely
+    /// because its reads need no grant. The sealed-schema pin check is the
+    /// same. Never use this with an end-user caller.
+    pub(crate) async fn can_render_plugin(
+        &self,
+        renderer: &VerifiedCaller,
+        plugin: &str,
+    ) -> Result<bool, RuntimeError> {
+        let grants = self.current_grants(renderer).await?;
+        let pinned = crate::sealed_schema_reader::read_manifest_pinned_schema_document(
+            self.catalog_dir(),
+            plugin,
+        )?;
+        if self
+            .catalog()
+            .plugin(plugin)
+            .map(|p| p.schema_hash.as_str())
+            != Some(pinned.schema_hash.as_str())
+        {
+            return Ok(false);
+        }
+        Ok(pinned.schema.methods.values().any(|method| {
+            method.side_effect == op_state_store::SideEffect::Read
+                && method
+                    .required_capability
+                    .as_ref()
+                    .is_none_or(|cap| grants.contains(cap))
+        }))
+    }
+
     pub(crate) fn call<'a>(
         &'a self,
         mut caller: VerifiedCaller,
@@ -1350,6 +1382,12 @@ impl Runtime {
         caller: &VerifiedCaller,
     ) -> Result<VerifiedCaller, RuntimeError> {
         crate::runtime_identity::configured_responder(self, caller).await
+    }
+    pub(crate) async fn configured_renderer(
+        &self,
+        caller: &VerifiedCaller,
+    ) -> Result<VerifiedCaller, RuntimeError> {
+        crate::runtime_identity::configured_renderer(self, caller).await
     }
     pub(crate) async fn create_project_container(
         &self,

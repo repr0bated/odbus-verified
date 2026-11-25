@@ -308,11 +308,11 @@ impl CallerAuthority for ResponderAuthority {
     }
 }
 
-pub(crate) async fn configured_responder(
-    runtime: &Runtime,
-    requester: &VerifiedCaller,
-) -> Result<VerifiedCaller, RuntimeError> {
-    requester.authority.revalidate().await?;
+/// The designated control-plane chatbot's own service caller, resolved only
+/// from bridge configuration and the committed identity registry. It is never
+/// accepted from a request: session and principal are derived from the
+/// configured WireGuard key, and the registry row must be a service identity.
+async fn designated_chatbot(runtime: &Runtime) -> Result<VerifiedCaller, RuntimeError> {
     let principal = std::env::var("OP_CONTROL_PLANE_CHATBOT_PRINCIPAL_ID")
         .map_err(|_| RuntimeError::denied("designated responder principal is not configured"))?;
     let catalog = runtime.catalog_dir().to_owned();
@@ -347,7 +347,29 @@ pub(crate) async fn configured_responder(
         identity: identity.clone(),
         principal,
     });
-    let mut caller = VerifiedCaller::new(&identity, authority);
+    Ok(VerifiedCaller::new(&identity, authority))
+}
+
+/// Renderer principal for schema/state reads on behalf of the UI. Same
+/// designated chatbot service identity as the responder, but admitted only
+/// for read gates (catalog, committed state, subscriptions): it inherits no
+/// execution gate from the requester, carries no sealed identity for wire
+/// transport, and must never be passed to `Runtime::call`. Execution and
+/// private scope remain the requesting human's.
+pub(crate) async fn configured_renderer(
+    runtime: &Runtime,
+    requester: &VerifiedCaller,
+) -> Result<VerifiedCaller, RuntimeError> {
+    requester.authority.revalidate().await?;
+    designated_chatbot(runtime).await
+}
+
+pub(crate) async fn configured_responder(
+    runtime: &Runtime,
+    requester: &VerifiedCaller,
+) -> Result<VerifiedCaller, RuntimeError> {
+    requester.authority.revalidate().await?;
+    let mut caller = designated_chatbot(runtime).await?;
     caller.inherit_execution(requester);
     runtime
         .authorize_nested(&caller, "chat_response", "respond_to_user")
