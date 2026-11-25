@@ -284,7 +284,7 @@ impl PersistentCore {
             if catalog.plugin(&publication.plugin_id).is_none() {
                 continue;
             }
-            owner.pin(catalog, &publication.plugin_id, &publication.schema_hash)?;
+            owner.pin_projection(catalog, &publication.plugin_id, &publication.schema_hash)?;
             recovered.entry(publication.scope).or_default().insert(
                 publication.plugin_id,
                 publication
@@ -317,12 +317,40 @@ impl PersistentCore {
         plugin_id: &str,
         expected: &str,
     ) -> Result<op_state_store::PluginSchema> {
+        self.pin_schema(catalog, plugin_id, expected, false)
+    }
+
+    fn pin_projection(
+        &self,
+        catalog: &Catalog,
+        plugin_id: &str,
+        expected: &str,
+    ) -> Result<op_state_store::PluginSchema> {
+        self.pin_schema(catalog, plugin_id, expected, true)
+    }
+
+    fn pin_schema(
+        &self,
+        catalog: &Catalog,
+        plugin_id: &str,
+        expected: &str,
+        persisted_projection: bool,
+    ) -> Result<op_state_store::PluginSchema> {
+        // Tunnel 1.1 adds optional observation fields and defaulted method
+        // input. The 1.0 tree remains valid verbatim; keep its ledger and
+        // state hash unchanged until a normal observation replaces it.
+        const TUNNEL_V1_BLOB: &str = "a2fc5ffa89ae4a5cdc51fceabbc4920bffb10f2c56b6cec454405fee2ebd11fb";
+        const TUNNEL_V1_CONTRACT: &str = "e49d181730c8604640234e4326143746e73d74b101ad809b175d438d66fff30c";
+        const TUNNEL_V1_1_CONTRACT: &str = "8cf1658a3d9918f109a5c7a91544291e75e6ff9e42b39fb8384d5e38b3044a01";
         let selected = catalog
             .plugin(plugin_id)
             .context("plugin absent from admitted catalog")?;
         let contract = self.contract_hash(catalog, plugin_id)?;
         ensure!(
-            selected.schema_hash == expected || contract == expected,
+            selected.schema_hash == expected || contract == expected
+                || (persisted_projection && plugin_id == "tunnel"
+                    && contract == TUNNEL_V1_1_CONTRACT
+                    && matches!(expected, TUNNEL_V1_BLOB | TUNNEL_V1_CONTRACT)),
             "state schema pin mismatch for {plugin_id}"
         );
         let current = Catalog::sealed_plugin(&self.catalog_dir, plugin_id)?;
@@ -566,7 +594,7 @@ impl PersistentCore {
             let (_, publication) = latest.get(&(scope.clone(), id.clone())).context(
                 "pending bridge publication has no durable predecessor; explicit recovery required",
             )?;
-            self.pin(catalog, id, &publication.schema_hash)?;
+            self.pin_projection(catalog, id, &publication.schema_hash)?;
             documents.insert(
                 id.clone(),
                 publication
@@ -674,7 +702,7 @@ impl PersistentCore {
         let head = self.heads.get(&(scope.clone(), plugin.to_owned()));
         let mut event_id = head.map_or(0, |head| head.event_id);
         if let Some(head) = head {
-            self.pin(catalog, plugin, &head.schema_hash)?;
+            self.pin_projection(catalog, plugin, &head.schema_hash)?;
             ensure!(
                 head.state_hash == state_hash(Some(&raw))?,
                 "committed SHM differs from the durable bridge state"
@@ -864,7 +892,7 @@ impl BridgeCore {
         })?;
         let (event_id, publication) =
             latest.context("no durable bridge tree exists for explicit recovery")?;
-        owner.pin(&self.inner.catalog, plugin_id, &publication.schema_hash)?;
+        owner.pin_projection(&self.inner.catalog, plugin_id, &publication.schema_hash)?;
         let pending = match scope {
             StateScope::Public => {
                 projection_shm::pending_projection_publication_in(&owner.state_dir)?

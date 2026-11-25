@@ -36,3 +36,8 @@ fallback to the chatbot. `zcall tunnel status` reports aggregate browser counts.
 Use the `browser` door argument when closing browser splices; omitting it
 continues to select the control-plane door. A guest needs its own running TLS
 UI listener and `op-tunnel-door`; exposing the socket alone does not install a UI.
+
+The bridge can replay a tunnel 1.0 observation under the sealed 1.1 contract
+without rewriting the ledger. Once a 1.1 observation is committed, a 1.0
+bridge cannot replay it; reverting the catalog and binary alone is not a
+supported downgrade after that point.
