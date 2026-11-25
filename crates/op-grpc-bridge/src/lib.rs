@@ -36,6 +36,7 @@ pub(crate) mod chat_link;
 pub(crate) mod chat_response_turns;
 pub(crate) mod responder_wake;
 pub(crate) mod container_ui;
+pub(crate) mod container_ui_door;
 pub(crate) mod runtime_catalog;
 #[path = "chat_router_agent_route.rs"]
 pub(crate) mod chat_router_agent_route;

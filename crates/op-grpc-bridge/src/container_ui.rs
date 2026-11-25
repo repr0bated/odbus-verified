@@ -1,5 +1,7 @@
-//! Optional container-owned browser assets on the existing TLS door. No host
-//! HTTP listener, desktop, identity endpoint, credential injection or RPC proxy.
+//! Optional container-owned browser assets. They are served on the container's
+//! own UI door (`container_ui_door.rs`) when `OP_UI_LISTEN` enables it, else on
+//! the identity door. No host HTTP listener, desktop, identity endpoint or
+//! credential injection.
 use std::path::PathBuf;
 use anyhow::{Context, Result, ensure};
 use tower_http::services::{ServeDir, ServeFile};
@@ -16,15 +18,26 @@ pub(crate) fn setting(name: &str) -> Result<Option<String>> {
     }
 }
 
+pub(crate) fn mount_path() -> Result<PathBuf> {
+    Ok(PathBuf::from(setting("CHAT_UI_MOUNT")?
+        .unwrap_or_else(|| "/run/mounts/3tchedFS".to_owned())))
+}
+
+/// Assets on the identity door, unless the container's UI door owns them.
 pub(crate) fn mount(app: axum::Router) -> Result<axum::Router> {
+    if crate::container_ui_door::enabled()? { return Ok(app); }
+    assets(app)
+}
+
+pub(crate) fn assets(app: axum::Router) -> Result<axum::Router> {
     let Some(directory) = setting("CHAT_UI_DIR")? else { return Ok(app); };
     let root = PathBuf::from(directory);
     ensure!(root.is_absolute() && root.join("index.html").is_file() && root.join("assets").is_dir(),
         "configured container browser payload is absent");
-    let mount = PathBuf::from(setting("CHAT_UI_MOUNT")?
-        .unwrap_or_else(|| "/run/mounts/3tchedFS".to_owned()));
-    // Public application bytes do not establish browser identity. The existing
-    // generic door still validates every human credential and declared grant.
+    let mount = mount_path()?;
+    // The container is the identity (owner, 2026-11-25): calls from this UI run
+    // through the container's own mount under its grants, on the UI door only.
+    // The identity door still validates every credential and declared grant.
     // A host-session/credential/unbound mount is never a container substitute.
     let namespace = _3tched_fs::mounted::MountedNamespace::open_for_identity_mode(
         &mount, _3tched_fs::mounted::IdentityMode::GuestKernel, None)?;

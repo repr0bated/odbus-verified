@@ -64,6 +64,11 @@ wire_devices() { # name
     mkdir -p "$RUNDIR/tunnel-browser"
     dev_add "$n" tunnel-browser disk source=/run/opdbus/tunnel-browser path=/run/mounts/opdbus/tunnel-browser readonly=true shift=true
     python3 "$HERE/browser-port.py" "$SESSION" "${OP_UI_LISTEN:-10.0.0.2:8090}" "$DIR"
+    # The bridge's UI door must bind the address op-tunnel-door splices to.
+    if [ -n "${OP_UI_LISTEN:-}" ]; then
+      printf '%s\n' "$OP_UI_LISTEN" | incus file push --uid 0 --gid 0 --mode 0600 - "$n/etc/op-dbus/env/OP_UI_LISTEN" ||
+        fail "could not write the UI door address into $n"
+    fi
   fi; }
 
 case ${1:-} in

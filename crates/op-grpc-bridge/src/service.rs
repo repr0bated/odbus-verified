@@ -268,7 +268,7 @@ impl BridgeService {
     }
 }
 
-fn mutation_error(code: ErrorCode, message: String) -> MutationError {
+pub(crate) fn mutation_error(code: ErrorCode, message: String) -> MutationError {
     MutationError {
         code: code as i32,
         message,
@@ -345,7 +345,7 @@ fn glob_match(pattern: &str, text: &str) -> bool {
     walk(pattern.as_bytes(), text.as_bytes())
 }
 
-fn state_matches(req: &SubscribeRequest, frame: &StateChange) -> bool {
+pub(crate) fn state_matches(req: &SubscribeRequest, frame: &StateChange) -> bool {
     (req.plugin_ids.is_empty() || req.plugin_ids.contains(&frame.plugin_id))
         && (req.path_patterns.is_empty()
             || req

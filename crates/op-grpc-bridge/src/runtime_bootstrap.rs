@@ -146,12 +146,10 @@ pub async fn run_from_env() -> anyhow::Result<()> {
         .map(PathBuf::from)
         .unwrap_or_else(|| "/etc/op-dbus/tls/tonic-svc0.key".into());
     let service = BridgeService::production(runtime.clone(), oracle.clone());
-    let door = crate::server::bind_production(
-        addr,
-        service,
-        PemIdentity::from_root_owned_files(cert, key)?,
-    )
-    .await?;
+    let identity = PemIdentity::from_root_owned_files(cert, key)?;
+    let ui_door =
+        crate::container_ui_door::UiDoor::bind(addr, runtime.core().clone(), &identity).await?;
+    let door = crate::server::bind_production(addr, service, identity).await?;
     let mut terminate = tokio::signal::unix::signal(tokio::signal::unix::SignalKind::terminate())?;
     let mut lungs = crate::runtime_lungs::start(runtime.clone()).await?;
     // Bridge-hosted FUSE mounts (socketless local dispatch): auto-enumerated
@@ -177,6 +175,9 @@ pub async fn run_from_env() -> anyhow::Result<()> {
         };
         ready = Some(ReadyReceipt::publish(door.local_addr(), lungs.socket_path(), exhook_addr)?);
         spawn_owner(&mut workers, "TLS door", door.serve(stopping(receive.clone())));
+        if let Some(ui_door) = ui_door {
+            spawn_owner(&mut workers, "container UI door", ui_door.serve(stopping(receive.clone())));
+        }
         // Host only: a container bridge's door is reached through op-tunnel-door
         // and must not rebind the shared door socket or the door address.
         if crate::runtime_tunnel::owns_tunnel_from_env() {

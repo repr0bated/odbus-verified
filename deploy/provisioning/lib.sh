@@ -39,4 +39,8 @@ OPDBUS_READY_PATH /run/op-grpc-bridge/ready
 THREETCHED_TLS_CERT_FILE /var/lib/op-dbus/door-tls/door.crt
 THREETCHED_TLS_KEY_FILE /var/lib/op-dbus/door-tls/door.key
 SETTINGS
+  # The container's own UI door stays off unless it is given its own address.
+  [ -n "${OP_UI_LISTEN:-}" ] || return 0
+  printf '%s\n' "$OP_UI_LISTEN" >"$root/etc/op-dbus/env/OP_UI_LISTEN"
+  chmod 0600 "$root/etc/op-dbus/env/OP_UI_LISTEN"
 }
