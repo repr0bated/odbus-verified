@@ -188,9 +188,8 @@ container's own FuseFS mount. It is off unless `/etc/op-dbus/env/OP_UI_LISTEN`
 in the guest differs from `OP_GRPC_BRIDGE_LISTEN`; it then requires
 `CHAT_UI_DIR`. Use a guest-local address (for example `10.0.0.2:8443`), the same
 one as `/agent/user/OP_UI_LISTEN`. Passing `OP_UI_LISTEN` to
-`30-provision-container.sh` writes both. Anyone who can reach the container's
-host browser port acts as that container under its grants; decide who can reach
-that port before enabling the door.
+`30-provision-container.sh` writes both. The container is the
+identity and is already authenticated; the browser is never authenticated again.
 
 ### Browser port assignment and existing guests
 
