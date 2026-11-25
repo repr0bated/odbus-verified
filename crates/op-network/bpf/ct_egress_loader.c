@@ -412,6 +412,34 @@ static int enter_netns(int pid) {
     if (fd < 0) return -1;
     int rc = setns(fd, CLONE_NEWNET); close(fd); return rc;
 }
+/* Legacy bpf_prog_attach() attachments outlive the loader process, so a
+ * restarted loader stacks another pair on the same cgroup; the oldest
+ * (dead) instance then owns every connection's orig_by_srcport map entry
+ * and the live server reports "no dst for srcport". Detach every stale
+ * egress program of ours at this cgroup before attaching our own pair. */
+static void detach_stale_egress(int cg) {
+    static const struct { enum bpf_attach_type type; const char *name; } kinds[] = {
+        { BPF_CGROUP_INET4_CONNECT, "cg_connect4" },
+        { BPF_CGROUP_SOCK_OPS, "cg_sockops" },
+    };
+    for (size_t k = 0; k < sizeof kinds / sizeof kinds[0]; k++) {
+        for (int round = 0; round < 64; round++) {
+            __u32 ids[32]; __u32 cnt = 32; __u32 flags = 0;
+            if (bpf_prog_query(cg, kinds[k].type, 0, &flags, ids, &cnt) || cnt == 0) break;
+            int detached = 0;
+            for (__u32 i = 0; i < cnt; i++) {
+                int fd = bpf_prog_get_fd_by_id(ids[i]);
+                if (fd < 0) continue;
+                struct bpf_prog_info info = {}; __u32 len = sizeof info;
+                if (!bpf_obj_get_info_by_fd(fd, &info, &len) && !strcmp(info.name, kinds[k].name)) {
+                    if (!bpf_prog_detach2(fd, cg, kinds[k].type)) detached++;
+                }
+                close(fd);
+            }
+            if (!detached) break;
+        }
+    }
+}
 static int guest_cgroup(char *out, size_t outlen, int pid) {
     char path[64]; snprintf(path, sizeof path, "/proc/%d/cgroup", pid);
     FILE *f = fopen(path, "r"); if (!f) return -1;
@@ -420,7 +448,18 @@ static int guest_cgroup(char *out, size_t outlen, int pid) {
         char *p = strstr(line, "::");
         if (p) { snprintf(out, outlen, "/sys/fs/cgroup%s", p + 2); out[strcspn(out, "\n")] = 0; rc = 0; break; }
     }
-    fclose(f); return rc;
+    fclose(f); if (rc < 0) return rc;
+    /* The container init lives in the leaf <payload>/init.scope, which holds
+     * PID 1 alone; guest services and sessions run in sibling system.slice /
+     * user.slice cgroups under the payload root. A cgroup BPF program only
+     * covers its own cgroup and descendants, so attaching to the leaf scope
+     * redirects almost nothing. Attach to the payload root instead. */
+    char *slash = strrchr(out, '/');
+    if (slash) {
+        size_t len = strlen(slash);
+        if (len > 6 && strcmp(slash + len - 6, ".scope") == 0) *slash = 0;
+    }
+    return rc;
 }
 
 int main(int argc, char **argv) {
@@ -458,6 +497,7 @@ int main(int argc, char **argv) {
     close(dns_pair[0]); close(egress_pair[0]);
     guest_dns_chan = dns_pair[1]; guest_egress_chan = egress_pair[1];
 
+
     char cgroup[512];
     if (guest_cgroup(cgroup, sizeof cgroup, pid) < 0) { fprintf(stderr, "ct-egress-bpf: no cgroup for pid %d\n", pid); return 1; }
     struct bpf_object *obj = bpf_object__open_file("/usr/local/lib/op-dbus/ct_egress.bpf.o", NULL);
@@ -467,6 +507,7 @@ int main(int argc, char **argv) {
     if (cg < 0) { fprintf(stderr, "ct-egress-bpf: open cgroup %s: %s\n", cgroup, strerror(errno)); return 1; }
     struct bpf_program *c4 = bpf_object__find_program_by_name(obj, "cg_connect4");
     struct bpf_program *so = bpf_object__find_program_by_name(obj, "cg_sockops");
+    detach_stale_egress(cg);
     if (!c4 || !so ||
         bpf_prog_attach(bpf_program__fd(c4), cg, BPF_CGROUP_INET4_CONNECT, BPF_F_ALLOW_MULTI) ||
         bpf_prog_attach(bpf_program__fd(so), cg, BPF_CGROUP_SOCK_OPS, BPF_F_ALLOW_MULTI)) {
