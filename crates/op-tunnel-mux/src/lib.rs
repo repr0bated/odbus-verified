@@ -13,6 +13,7 @@
 //! this socket.
 
 use std::collections::HashMap;
+use std::hash::Hash;
 use std::net::SocketAddr;
 use std::pin::Pin;
 use std::sync::Arc;
@@ -37,60 +38,99 @@ pub use proto::{frame, Frame, Target};
 
 const CHUNK: usize = 16 * 1024;
 
-#[derive(Clone, Default)]
-struct AcceptQueue {
-    inner: Arc<Mutex<HashMap<u32, Vec<oneshot::Sender<TcpStream>>>>>,
+mod browser;
+pub use browser::{BrowserMux, BrowserStatus, ListenerMeta, Selector, WaiterIdentity, WaiterProof, serve_browser, serve_browser_listener};
+
+#[cfg(test)]
+mod browser_tests;
+
+struct Waiter<K> {
+    proof: Option<Arc<WaiterProof<K>>>,
+    tx: oneshot::Sender<TcpStream>,
 }
 
-impl AcceptQueue {
-    async fn push(&self, uid: u32, tx: oneshot::Sender<TcpStream>) {
-        self.inner.lock().await.entry(uid).or_default().push(tx);
+#[derive(Clone)]
+struct AcceptQueue<K> {
+    inner: Arc<Mutex<HashMap<K, Vec<Waiter<K>>>>>,
+}
+
+impl<K> Default for AcceptQueue<K> {
+    fn default() -> Self { Self { inner: Arc::default() } }
+}
+
+impl<K: Hash + Eq> AcceptQueue<K> {
+    async fn push(&self, key: K, waiter: Waiter<K>) {
+        self.inner.lock().await.entry(key).or_default().push(waiter);
+    }
+
+    async fn deliver_to(&self, key: &K, mut stream: TcpStream) -> Result<(), &'static str> {
+        let mut queue = self.inner.lock().await;
+        if let Some(waiters) = queue.get_mut(key) {
+            waiters.retain(|w| !w.tx.is_closed());
+            while let Some(waiter) = waiters.pop() {
+                if !waiter.proof.is_some_and(|p| (p.revalidate)()) {
+                    continue;
+                }
+                match waiter.tx.send(stream) {
+                    Ok(()) => {
+                        if waiters.is_empty() { queue.remove(key); }
+                        return Ok(());
+                    }
+                    Err(returned) => stream = returned,
+                }
+            }
+            queue.remove(key);
+        }
+        Err("no live waiter for selected door")
     }
 
     /// Deliver an inbound TCP connection to the one waiting container.
     /// More than one uid is ambiguous for the single published door, so refuse.
-    async fn deliver(&self, stream: TcpStream) -> Result<(), &'static str> {
+    async fn deliver_sole(&self, stream: TcpStream) -> Result<(), &'static str> {
         let mut guard = self.inner.lock().await;
         guard.retain(|_, waiters| {
-            waiters.retain(|tx| !tx.is_closed());
+            waiters.retain(|w| !w.tx.is_closed());
             !waiters.is_empty()
         });
-        let uids: Vec<u32> = guard.keys().copied().collect();
-        if uids.len() != 1 {
+        if guard.len() != 1 {
             return Err("inbound door owner is not a single connected container");
         }
-        let uid = uids[0];
-        let waiter = guard.get_mut(&uid).and_then(|w| w.pop());
+        let waiter = guard.values_mut().next().and_then(|w| w.pop());
         drop(guard);
         match waiter {
-            Some(tx) => tx.send(stream).map_err(|_| "container accept ended"),
+            Some(w) => w.tx.send(stream).map_err(|_| "container accept ended"),
             None => Err("no container accept stream"),
         }
     }
 }
 
 struct Active {
-    uid: u32,
+    uid: Option<u32>,
     since: i64,
     abort: tokio::task::AbortHandle,
 }
 
 #[derive(Clone)]
 pub struct Mux {
-    accepts: AcceptQueue,
-    open: Arc<AtomicBool>,
-    next_id: Arc<AtomicU64>,
-    active: Arc<std::sync::Mutex<HashMap<u64, Active>>>,
+    accepts: AcceptQueue<u32>,
+    splices: Arc<Splices>,
+}
+
+struct Splices {
+    open: AtomicBool,
+    next_id: AtomicU64,
+    active: std::sync::Mutex<HashMap<u64, Active>>,
+}
+
+impl Default for Splices {
+    fn default() -> Self {
+        Self { open: AtomicBool::new(true), next_id: AtomicU64::new(1), active: Default::default() }
+    }
 }
 
 impl Default for Mux {
     fn default() -> Self {
-        Self {
-            accepts: AcceptQueue::default(),
-            open: Arc::new(AtomicBool::new(true)),
-            next_id: Arc::new(AtomicU64::new(1)),
-            active: Arc::default(),
-        }
+        Self { accepts: Default::default(), splices: Default::default() }
     }
 }
 
@@ -112,30 +152,25 @@ impl Mux {
     }
 
     pub async fn deliver_inbound(&self, stream: TcpStream) -> Result<(), &'static str> {
-        if !self.open.load(Ordering::SeqCst) {
+        if !self.is_open() {
             return Err("door is closed");
         }
-        self.accepts.deliver(stream).await
+        self.accepts.deliver_sole(stream).await
     }
 
     pub fn is_open(&self) -> bool {
-        self.open.load(Ordering::SeqCst)
+        self.splices.open.load(Ordering::SeqCst)
     }
 
     /// Open or close the door. Closing refuses new door connections and
     /// drops every active splice; returns how many were dropped.
     pub fn set_open(&self, open: bool) -> usize {
-        self.open.store(open, Ordering::SeqCst);
-        if open { 0 } else { self.close_active() }
+        self.splices.set_open(open)
     }
 
     /// Drop every active splice without changing open/closed.
     pub fn close_active(&self) -> usize {
-        let drained: Vec<Active> = self.active.lock().expect("active map").drain().map(|(_, a)| a).collect();
-        for conn in &drained {
-            conn.abort.abort();
-        }
-        drained.len()
+        self.splices.close_active()
     }
 
     pub async fn status(&self) -> MuxStatus {
@@ -144,7 +179,7 @@ impl Mux {
         {
             let mut guard = self.accepts.inner.lock().await;
             guard.retain(|_, waiters| {
-                waiters.retain(|tx| !tx.is_closed());
+                waiters.retain(|w| !w.tx.is_closed());
                 !waiters.is_empty()
             });
             for (uid, waiters) in guard.iter() {
@@ -153,7 +188,7 @@ impl Mux {
             }
         }
         waiting_uids.sort_unstable();
-        let active = self.active.lock().expect("active map");
+        let active = self.splices.active.lock().expect("active map");
         MuxStatus {
             open: self.is_open(),
             waiting_uids,
@@ -163,13 +198,9 @@ impl Mux {
         }
     }
 
-    fn untrack(&self, id: u64) {
-        self.active.lock().expect("active map").remove(&id);
-    }
-
     /// Active splices per owning uid (diagnostics).
     pub fn active_uids(&self) -> Vec<u32> {
-        let mut uids: Vec<u32> = self.active.lock().expect("active map").values().map(|a| a.uid).collect();
+        let mut uids: Vec<u32> = self.splices.active.lock().expect("active map").values().filter_map(|a| a.uid).collect();
         uids.sort_unstable();
         uids.dedup();
         uids
@@ -227,8 +258,9 @@ fn spawn_splice(
     done: impl FnOnce() + Send + 'static,
 ) -> (AbortOnDrop, tokio::task::AbortHandle) {
     let (tx, rx) = mpsc::channel(32);
+    let done = OnDrop(Some(done));
     let task = tokio::spawn(async move {
-        let _done = OnDrop(Some(done));
+        let _done = done;
         if let Some(frame) = first {
             if tx.send(Ok(frame)).await.is_err() {
                 return;
@@ -299,20 +331,40 @@ impl Tunnel for Mux {
         let uid = peer_uid(&request)?;
         let inbound = request.into_inner();
         let (tx, rx) = oneshot::channel();
-        self.accepts.push(uid, tx).await;
+        self.accepts.push(uid, Waiter { proof: None, tx }).await;
         let tcp = rx.await.map_err(|_| Status::cancelled("inbound splice cancelled"))?;
+        self.splices.start(Some(uid), inbound, tcp)
+    }
+}
+
+impl Splices {
+    fn set_open(&self, open: bool) -> usize {
+        self.open.store(open, Ordering::SeqCst);
+        if open { 0 } else { self.close_active() }
+    }
+
+    fn close_active(&self) -> usize {
+        let mut active = self.active.lock().expect("active map");
+        let count = active.len();
+        for (_, conn) in active.drain() { conn.abort.abort(); }
+        count
+    }
+
+    fn start(self: &Arc<Self>, uid: Option<u32>, inbound: Streaming<Frame>, tcp: TcpStream) -> Result<Response<AbortOnDrop>, Status> {
+        let mut active = self.active.lock().expect("active map");
+        if !self.open.load(Ordering::SeqCst) { return Err(Status::unavailable("door is closed")); }
         let remote = tcp.peer_addr().unwrap_or(SocketAddr::from(([0, 0, 0, 0], 0)));
         // Register before the splice can finish, so its untrack always follows.
         let id = self.next_id.fetch_add(1, Ordering::Relaxed);
-        let mux = self.clone();
-        let (stream, abort) = spawn_splice(inbound, tcp, Some(frame_target(remote)), move || mux.untrack(id));
+        let splices = self.clone();
+        let (stream, abort) = spawn_splice(inbound, tcp, Some(frame_target(remote)), move || {
+            splices.active.lock().expect("active map").remove(&id);
+        });
         let since = std::time::SystemTime::now()
             .duration_since(std::time::UNIX_EPOCH)
             .map(|d| d.as_secs() as i64)
             .unwrap_or_default();
-        if !abort.is_finished() {
-            self.active.lock().expect("active map").insert(id, Active { uid, since, abort });
-        }
+        active.insert(id, Active { uid, since, abort });
         Ok(Response::new(stream))
     }
 }
@@ -385,7 +437,7 @@ mod tests {
         (path.display().to_string(), door_addr)
     }
 
-    async fn client(path: &str) -> TunnelClient<tonic::transport::Channel> {
+    pub(super) async fn client(path: &str) -> TunnelClient<tonic::transport::Channel> {
         let path = path.to_string();
         let channel = Endpoint::try_from("http://[::]:0").unwrap()
             .connect_with_connector(service_fn(move |_: Uri| {

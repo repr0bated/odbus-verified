@@ -38,6 +38,11 @@ install -d -m 0755 "$STATE"
 if mountpoint -q "$RUN"; then umount -R -l "$RUN" || exit 1; fi
 mount -t tmpfs -o "nosuid,nodev,size=256m,mode=0755,uid=$OWNER,gid=$GROUP" tmpfs "$RUN" || exit 1
 install -d -m 0755 "$RUN/mounts" "$RUN/mounts/3tchedFS" "$RUN/mounts/threetchedFS" || exit 1
+# The original three-device intent cannot change. Populate its freshly built
+# /run before first exposure, never resolving a guest-controlled mount target.
+install -d -m 0755 "$RUN/mounts/opdbus/tunnel-browser"
+mount --bind /run/opdbus/tunnel-browser "$RUN/mounts/opdbus/tunnel-browser"
+mount -o remount,bind,ro,nosuid,nodev,noexec "$RUN/mounts/opdbus/tunnel-browser"
 # The copy at /usr/local/libexec/op-dbus/bin/3tched-fs is stale: it projects the
 # sealed threetched object and then grafts the binary, so /plugins/threetched
 # is created twice. Use the host view's pinned release binary.

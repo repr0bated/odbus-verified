@@ -91,6 +91,34 @@ pub(super) async fn row(cozo: &Arc<CozoGraphShuttle>, session: &str) -> anyhow::
     Ok(rows.into_iter().find(|row| row.session_id == session))
 }
 
+/// Pin the daemon's init process to the exact admitted LXD subsidiary.
+/// `pin` opens and checks its process namespaces before the second PID read.
+pub(crate) async fn pin_browser_init<T>(
+    cozo: &Arc<CozoGraphShuttle>,
+    sled: &ContainerIdentitySled,
+    pin: impl FnOnce(u32) -> anyhow::Result<T>,
+) -> anyhow::Result<T> {
+    let row = row(cozo, &sled.session_id).await?.context("LXD admission absent")?;
+    let relation = sled.org_relation.as_ref().context("subsidiary relation absent")?;
+    let bound = sled.instance.as_ref().context("subsidiary instance absent")?;
+    ensure!(relation.kind == op_plugins::state_plugins::identity_sled::OrgRelationKind::Subsidiary
+        && relation.name == row.name && relation.parent.as_deref() == Some(row.actor_id.as_str())
+        && sled.wireguard_pubkey == row.wireguard_pubkey && bound.name == row.name
+        && !row.native_uuid.is_empty()
+        && bound.config.as_ref().and_then(|c| c.get("volatile.uuid")) == Some(&row.native_uuid),
+        "subsidiary identity differs from its native admission");
+    let client = native_lxd::Client::local(Path::new(SOCKET))?;
+    let live = client.get_instance(&row.name).await?.0;
+    ensure!(exact_instance(&row, serde_json::to_value(live)?)?.status == "Running",
+        "LXD subsidiary is not running");
+    let pid = u32::try_from(client.get_instance_state(&row.name).await?.0.pid)?;
+    ensure!(pid > 0, "LXD init process absent");
+    let pinned = pin(pid)?;
+    ensure!(client.get_instance_state(&row.name).await?.0.pid == i64::from(pid),
+        "LXD subsidiary restarted during peer binding");
+    Ok(pinned)
+}
+
 /// Admit the subsidiary itself or its recorded human parent to execute inside
 /// this exact running container. Neither may substitute another native target.
 pub(super) async fn prove_exec(engine: &NativeOwner, store: &IdentitySledStore, row: &LxdSubsidiary)

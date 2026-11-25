@@ -165,6 +165,52 @@ pub(super) struct LungsIdentity {
     bound: tokio::sync::Notify,
 }
 
+/// Browser Accept connections use the same kernel and committed-volume proof as lungs,
+/// but never publish a D-Bus binding or select the configured host identity.
+pub(crate) struct BrowserWaiterIdentity {
+    host: Arc<ProcessIdentity>,
+    catalog_dir: PathBuf,
+    state_dir: String,
+    identity_store: Arc<op_cozo_store::CozoGraphShuttle>,
+}
+
+impl BrowserWaiterIdentity {
+    pub(crate) fn new(catalog_dir: PathBuf, state_dir: String,
+        identity_store: Arc<op_cozo_store::CozoGraphShuttle>) -> Result<Self> {
+        Ok(Self { host: Arc::new(ProcessIdentity::current()?), catalog_dir, state_dir, identity_store })
+    }
+}
+
+#[async_trait::async_trait]
+impl op_tunnel_mux::WaiterIdentity<String> for BrowserWaiterIdentity {
+    async fn identify(&self, stream: &tokio::net::UnixStream) -> Result<op_tunnel_mux::WaiterProof<String>> {
+        let peer = LungsIdentity::capture(stream, self.host.clone(), self.catalog_dir.clone(),
+            self.state_dir.clone(), self.identity_store.clone())?;
+        let binding = tokio::time::timeout(NEGOTIATION_TIMEOUT, peer.current_binding(true))
+            .await.context("browser peer identification timed out")??;
+        let container = require_browser_container(binding)?;
+        peer.revalidate_peer()?;
+        Ok(op_tunnel_mux::WaiterProof { key: container.session_id,
+            revalidate: Box::new(move || peer.revalidate_peer().is_ok() && container.init.revalidate().is_ok()) })
+    }
+}
+
+fn require_browser_container(binding: Binding) -> Result<ContainerBinding> {
+    match binding {
+        Binding::Host => anyhow::bail!("host process has no container binding"),
+        Binding::Container(container) => Ok(container),
+    }
+}
+
+fn host_binding(cmdline: &[u8]) -> Result<Binding> {
+    ensure!(!is_incus_forkproxy(cmdline), "host process has no container binding");
+    Ok(Binding::Host)
+}
+
+fn committed_binding(candidate: Option<ContainerBinding>) -> Result<Binding> {
+    candidate.map(Binding::Container).context("peer has no committed live identity container")
+}
+
 impl LungsIdentity {
     pub(super) fn capture(
         stream: &tokio::net::UnixStream,
@@ -212,7 +258,7 @@ impl LungsIdentity {
         crate::identity_receiver::verify_bound_registry(bound).await
     }
 
-    async fn container_binding(&self, sled: &ContainerIdentitySled) -> Result<ContainerBinding> {
+    async fn container_binding(&self, sled: &ContainerIdentitySled, browser: bool) -> Result<ContainerBinding> {
         self.revalidate_peer()?;
         ensure!(sled.active && sled.is_anchored(), "identity is not active");
         ensure!(sled.expires_at.is_none_or(|expiry| expiry == 0 || expiry > chrono::Utc::now().timestamp()),
@@ -221,22 +267,34 @@ impl LungsIdentity {
         ensure!(crate::identity_binding::identity_instance_matches(sled, stored),
             "identity container does not match");
         let native_uuid = instance_uuid(stored)?;
-        let native = IncusRootRepairBackend::local();
-        let (metadata, _) = native.instance(&stored.name).await?;
-        let current = IncusPlugin::instance_from_native_metadata(metadata)?;
-        ensure!(current.name == stored.name && current.instance_type == "container"
-            && current.status == "Running" && current.project.as_deref() == Some("default")
-            && current.location.as_deref() == Some("none")
-            && instance_uuid(&current)? == native_uuid
-            && crate::identity_binding::identity_instance_matches(sled, &current),
-            "native identity container does not match");
-        let init_pid = native.instance_init_pid(&stored.name).await?;
-        let init = ProcessIdentity::read(init_pid)?;
-        ensure!(self.peer.same_namespaces(&init), "peer is outside identity container");
-        self.revalidate_peer()?;
-        init.revalidate()?;
-        ensure!(native.instance_init_pid(&stored.name).await? == init_pid,
-            "identity container restarted");
+        let pin = |pid| {
+            let init = ProcessIdentity::read(pid)?;
+            ensure!(self.peer.same_namespaces(&init), "peer is outside identity container");
+            self.revalidate_peer()?;
+            init.revalidate()?;
+            Ok(init)
+        };
+        let init = if browser && sled.org_relation.as_ref().is_some_and(|r|
+            r.kind == op_plugins::state_plugins::identity_sled::OrgRelationKind::Subsidiary)
+        {
+            crate::runtime_identity_owner::lxd_subsidiary::pin_browser_init(
+                &self.identity_store, sled, pin,
+            ).await?
+        } else {
+            let native = IncusRootRepairBackend::local();
+            let (metadata, _) = native.instance(&stored.name).await?;
+            let current = IncusPlugin::instance_from_native_metadata(metadata)?;
+            ensure!(current.name == stored.name && current.instance_type == "container"
+                && current.status == "Running" && current.project.as_deref() == Some("default")
+                && current.location.as_deref() == Some("none")
+                && instance_uuid(&current)? == native_uuid
+                && crate::identity_binding::identity_instance_matches(sled, &current),
+                "native identity container does not match");
+            let pid = native.instance_init_pid(&stored.name).await?;
+            let init = pin(pid)?;
+            ensure!(native.instance_init_pid(&stored.name).await? == pid, "identity container restarted");
+            init
+        };
         init.revalidate()?;
         self.revalidate_peer()?;
         Ok(ContainerBinding {
@@ -268,44 +326,42 @@ impl LungsIdentity {
     pub(super) async fn bind_current_container(&self) -> Result<()> {
         tokio::time::timeout(NEGOTIATION_TIMEOUT, async {
             let _bootstrap = self.bootstrap.lock().await;
-            self.revalidate_peer()?;
             ensure!(self.binding.get().is_none(), "lungs connection is already bound");
-            if self.peer.pid_namespace == self.host.pid_namespace {
-                // The kernel peer proof captured at accept already identifies a
-                // host caller. Accept that one binding: host root maps to the
-                // configured host identity (Bind's own authority, no session
-                // argument); there is no second, container lookup for it.
-                let session_id = host_peer_session(self.host_root(), |name| std::env::var(name).ok())?;
-                // An Incus proxy device relays a guest through a host-root
-                // forkproxy; that peer is a container, never the host identity.
-                let cmdline = std::fs::read(format!("/proc/{}/cmdline", self.peer.pid))
-                    .context("host peer command line unavailable")?;
-                self.revalidate_peer()?;
-                ensure!(!is_incus_forkproxy(&cmdline), "host process has no container binding");
-                return self.publish_binding(Binding::Host, &session_id).await;
-            }
-            let mut candidate = self.find_container_binding().await?;
-            if candidate.is_none() {
-                // The container IS the identity and its sled volume is the
-                // source: index any not yet adopted, republish, look again.
-                let adopted = crate::runtime_identity_owner::adopt_identity_volumes(self.identity_store.clone()).await?;
-                if adopted > 0 {
-                    crate::runtime_identity::recover_startup(self.identity_store.clone(), self.catalog_dir.clone()).await?;
-                    self.revalidate_peer()?;
-                    candidate = self.find_container_binding().await?;
-                }
-            }
-            let binding = candidate.context("peer has no committed live identity container")?;
-            let session_id = binding.session_id.clone();
-            self.publish_binding(Binding::Container(binding), &session_id).await
+            let binding = self.current_binding(false).await?;
+            let session_id = match &binding {
+                Binding::Host => host_peer_session(self.host_root(), |name| std::env::var(name).ok())?,
+                Binding::Container(container) => container.session_id.clone(),
+            };
+            self.publish_binding(binding, &session_id).await
         }).await.context("container binding timed out")?
     }
 
-    async fn find_container_binding(&self) -> Result<Option<ContainerBinding>> {
+    async fn current_binding(&self, browser: bool) -> Result<Binding> {
+        self.revalidate_peer()?;
+        if self.peer.pid_namespace == self.host.pid_namespace {
+            let cmdline = std::fs::read(format!("/proc/{}/cmdline", self.peer.pid))
+                .context("host peer command line unavailable")?;
+            self.revalidate_peer()?;
+            return host_binding(&cmdline);
+        }
+        let mut candidate = self.find_container_binding(browser).await?;
+        if candidate.is_none() && !browser {
+            // The sled volume is authoritative: adopt unindexed volumes once.
+            let adopted = crate::runtime_identity_owner::adopt_identity_volumes(self.identity_store.clone()).await?;
+            if adopted > 0 {
+                crate::runtime_identity::recover_startup(self.identity_store.clone(), self.catalog_dir.clone()).await?;
+                self.revalidate_peer()?;
+                candidate = self.find_container_binding(false).await?;
+            }
+        }
+        committed_binding(candidate)
+    }
+
+    async fn find_container_binding(&self, browser: bool) -> Result<Option<ContainerBinding>> {
         let sessions = self.sessions().await?;
         let mut candidate = None;
         for sled in sessions.iter().filter(|sled| sled.active && sled.is_anchored()) {
-            if let Ok(binding) = self.container_binding(sled).await {
+            if let Ok(binding) = self.container_binding(sled, browser).await {
                 ensure!(candidate.is_none(), "peer has no unique identity container");
                 candidate = Some(binding);
             }
@@ -349,7 +405,7 @@ impl LungsIdentity {
                 let sled = self.sessions().await?.into_iter()
                     .find(|sled| sled.session_id == binding.session_id)
                     .context("identity container disappeared")?;
-                let current = self.container_binding(&sled).await?;
+                let current = self.container_binding(&sled, false).await?;
                 ensure!(*binding == current, "identity container binding changed");
             }
         }
@@ -446,6 +502,21 @@ pub(super) fn require_peer_pidfd() -> Result<()> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn browser_waiter_refuses_host_peers() {
+        assert!(host_binding(b"/usr/bin/host-client\0").and_then(require_browser_container).is_err());
+    }
+
+    #[test]
+    fn browser_waiter_refuses_host_forkproxy() {
+        assert!(host_binding(b"/usr/bin/lxd\0forkproxy\0").is_err());
+    }
+
+    #[test]
+    fn browser_waiter_refuses_unmatched_container_peer() {
+        assert!(committed_binding(None).and_then(require_browser_container).is_err());
+    }
 
     #[test]
     fn process_names_cannot_shift_the_start_time_field() {

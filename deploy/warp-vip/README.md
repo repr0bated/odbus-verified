@@ -22,3 +22,17 @@ the host `tonic-svc0` certificate.
 
 Install: copy `op-warp-vip-ports.sh` to `/usr/local/sbin/` (0755) and `sv/<name>` to `/etc/sv/<name>`,
 then `ln -s /etc/sv/<name> /etc/service/<name>`.
+
+## User browser doors
+
+`OP_BROWSER_DOOR` selects the host IP, not a shared port. A provisioned user opens
+`https://<host>:<assigned-port>/`; the port selects that identity's waiting
+door. The container terminates TLS and serves its own UI. Nothing on the host
+parses the ClientHello, and the port does not authorize the user.
+
+Browser waiters use `/run/opdbus/tunnel-browser/browser.sock`, separate from
+the MCP tunnel. No waiter for the selected identity means refusal, not a
+fallback to the chatbot. `zcall tunnel status` reports aggregate browser counts.
+Use the `browser` door argument when closing browser splices; omitting it
+continues to select the control-plane door. A guest needs its own running TLS
+UI listener and `op-tunnel-door`; exposing the socket alone does not install a UI.

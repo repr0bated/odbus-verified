@@ -31,6 +31,7 @@ git -C "$REPO" ls-files -s deploy/seed/rootfs | while read -r mode _ _ path; do
   keep "$dst"; install -m "${mode#100}" "$tmp" "$dst"; rm -f "$tmp"
   log "file ${dst#$R}"
 done
+install -m 0755 "$REPO/deploy/provisioning/runit/op-tunnel-door/run" "$R/usr/local/libexec/op-dbus/tunnel-door-run"
 
 # 2. binaries: byte-identical with the current @seed
 for f in usr/local/libexec/op-dbus/bin/3tched-fs usr/local/libexec/op-dbus/bin/op-grpc-bridge \
@@ -68,13 +69,13 @@ if grep -vE '^\s*(#|$)' "$R/etc/fstab" 2>/dev/null | grep -qv '^tmpfs[[:space:]]
   log "fstab reduced to /tmp tmpfs"
 fi
 
-# 6. subsidiary: same image, no in-container bridge/door
+# 6. Subsidiaries use their own UI, not the seed bridge. Keep the waiter.
 btrfs subvolume snapshot "$U" "$S" >/dev/null
-for u in op-grpc-bridge opdbus-lo door-tls-init op-tunnel-door; do
+for u in op-grpc-bridge opdbus-lo door-tls-init; do
   rm -f "$S/rootfs/etc/systemd/system/multi-user.target.wants/$u.service"
 done
 sed -i 's/op-dbus identity seed (@ubuntu-user)/op-dbus subsidiary seed (@ubuntu-subsidiary)/' "$S/metadata.yaml"
-log "subsidiary: bridge, lo address, door TLS, tunnel door disabled"
+log "subsidiary: seed bridge disabled; browser tunnel waiter retained"
 
 # 7. seal both
 btrfs property set -ts "$U" ro true; btrfs property set -ts "$S" ro true

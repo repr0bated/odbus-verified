@@ -21,6 +21,7 @@ for c in /var/lib/incus/containers/*; do
 	n=${c##*/}
 	install -d -o root -g root -m 0755 "/run/opdbus" "/run/opdbus/ct" \
 		"/run/opdbus/ct/$n" "/run/opdbus/ct/$n/lungs" "/run/opdbus/ct/$n/tunnel"
+	install -d -o root -g root -m 0755 "/run/opdbus/ct/$n/tunnel-browser" /run/opdbus/tunnel-browser
 	# The container's /dev/shm disk (shm) with the catalog mount target inside it.
 	install -d -o root -g root -m 0755 "/run/opdbus/shm"
 	install -d -o root -g root -m 1777 "/run/opdbus/shm/$n"

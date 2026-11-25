@@ -62,7 +62,9 @@ payload=$(jq -nc --arg name "$name" --arg parent "$parent" --arg session "$sessi
         {name:"sled",device:{type:"disk",path:"/agent/user",pool:$pool,
           source:("identity-" + $session),readonly:"true"}},
         {name:"run",device:{type:"disk",path:"/run",recursive:"true",
-          source:("/run/opdbus/subsidiary/" + $session + "/run")}}],
+          source:("/run/opdbus/subsidiary/" + $session + "/run")}},
+        {name:"tunnel-browser",device:{type:"disk",path:"/run/mounts/opdbus/tunnel-browser",
+          source:"/run/opdbus/tunnel-browser",readonly:"true"}}],
       config:{
         "boot.autostart":"false",
         "security.privileged":"false",
@@ -99,6 +101,7 @@ if [[ $dry_run == 1 ]]; then
     done
     exit 0
 fi
+[[ $EUID == 0 && -n ${OP_UI_LISTEN:-} ]] || fail 'host root and the subsidiary TLS OP_UI_LISTEN are required for browser provisioning'
 
 invoke=$here/../scripts/3tchedfs-invoke.sh
 image=$("$invoke" lxd get_image "$(jq -nc --arg f "$fingerprint" '{fingerprint:$f}')")
@@ -119,11 +122,12 @@ jq -e '.result.result.result | .status_code == 200' <<<"$outcome" >/dev/null ||
 instance=$("$invoke" lxd get_instance "$(jq -nc --arg name "$name" '{name:$name}')")
 jq -e --argjson want "$payload" '.result.result.result | . as $got
     | select(.name == $want.instance.name and .status == "Stopped" and .profiles == []
-        and (.expanded_devices | length) == 3)
+        and (.expanded_devices | length) == 4)
     | select(all($want.instance.config | to_entries[]; $got.expanded_config[.key] == .value))
     | select(([$got.expanded_config | keys[] | select(startswith("raw."))] | length) == 0)
     | {name, status, admission:.config["user.opdbus.admission"]}' <<<"$instance" ||
     fail "creation was receipted, but $name could not be verified; inspect it through LXD before retrying"
+python3 "$here/browser-port.py" "$session" "$OP_UI_LISTEN" "/var/lib/lxd/storage-pools/$pool/custom/default_identity-$session"
 # NIC-less BPF egress is a host service, installed when the subsidiary is
 # started (this script creates it stopped): sudo deploy/runit/ct-egress-bpf/install.sh <name>
 # The service discovers LXD containers through /var/lib/lxd/unix.socket.

@@ -58,6 +58,12 @@ wire_devices() { # name
   dev_add "$n" decoy-trust disk source="$TRUST" path=/etc/op-dbus/decoy-trust.json readonly=true shift=true
   if [ "$(incus config get "$n" user.opdbus.wireguard_public_key)" = "$CHATBOT_KEY" ] && [ -n "$CHATBOT_KEY" ]; then
     dev_add "$n" tunnel disk source=/run/opdbus/tunnel path=/run/mounts/opdbus/tunnel shift=true
+  else
+    dev_has "$n" tunnel && fail "refusing browser provisioning for a container with a control tunnel"
+    [ ! -L "$RUNDIR/tunnel-browser" ] || fail "unsafe browser mount target"
+    mkdir -p "$RUNDIR/tunnel-browser"
+    dev_add "$n" tunnel-browser disk source=/run/opdbus/tunnel-browser path=/run/mounts/opdbus/tunnel-browser readonly=true shift=true
+    python3 "$HERE/browser-port.py" "$SESSION" "${OP_UI_LISTEN:-10.0.0.2:8090}" "$DIR"
   fi; }
 
 case ${1:-} in

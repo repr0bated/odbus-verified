@@ -127,6 +127,7 @@ pub(super) fn validate_instance(raw: &JsonValue, sid: &str, key: &str, parent: O
                     let pair = (device["source"].as_str(), device["path"].as_str());
                     (device["readonly"] == "true" && matches!(pair,
                         (Some("/run/opdbus/lungs"), Some("/run/opdbus/lungs" | "/run/mounts/opdbus/lungs" | "/opt/run-mounts/opdbus/lungs"))
+                        | (Some("/run/opdbus/tunnel-browser"), Some("/run/mounts/opdbus/tunnel-browser"))
                         | (Some("/var/lib/opdbus/plugin-blobs"), Some("/var/lib/opdbus/plugin-blobs"))
                         | (Some("/dev/shm/opdbus/plugin-blobs"), Some("/dev/shm/opdbus/plugin-blobs"))
                         | (Some("/etc/op-dbus/decoy-trust.json"), Some("/etc/op-dbus/decoy-trust.json"))))

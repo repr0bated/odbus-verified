@@ -15,12 +15,13 @@ if findmnt -rn -o TARGET | awk -v root="$R" '$0==root || index($0,root"/")==1 {f
     echo 'refusing a mounted template root' >&2; exit 78
 fi
 jq -e '.exit == 0 and (.source_commit | test("^[0-9a-f]{40}$"))' "$BUILD/execution-receipt.json" >/dev/null
-for name in zcall op-guest-backend op-identity-accept; do
+for name in zcall op-guest-backend op-identity-accept op-tunnel-door; do
     sha=$(jq -er --arg name "$name" '.artifacts[$name] | select(test("^[0-9a-f]{64}$"))' "$BUILD/execution-receipt.json")
     bin=$BUILD/target/x86_64-unknown-linux-gnu/release/$name
     printf '%s  %s\n' "$sha" "$bin" | sha256sum -c -
     dest=$R/usr/local/bin/$name
     [[ $name != op-guest-backend ]] || dest=$R/usr/local/libexec/op-dbus/$name
+    [[ $name != op-tunnel-door ]] || dest=$R/usr/local/libexec/op-dbus/bin/$name
     install -D -m 0755 "$bin" "$dest"
     printf '%s  %s\n' "$sha" "$dest" | sha256sum -c -
 done
@@ -49,6 +50,9 @@ install -m 0644 /etc/op-dbus/decoy-trust.json "$R/etc/op-dbus/decoy-trust.json"
 # first, the BPF stub as fallback; nextdns's own DoH TCP is carried by
 # the BPF egress like any other flow.
 install -m 0644 "$REPO/deploy/seed/rootfs/etc/systemd/system/nextdns.service" "$R/etc/systemd/system/nextdns.service"
+install -m 0755 "$REPO/deploy/provisioning/runit/op-tunnel-door/run" "$R/usr/local/libexec/op-dbus/tunnel-door-run"
+install -m 0644 "$REPO/deploy/seed/rootfs/etc/systemd/system/op-tunnel-door.service" "$R/etc/systemd/system/op-tunnel-door.service"
+ln -sfn ../op-tunnel-door.service "$R/etc/systemd/system/multi-user.target.wants/op-tunnel-door.service"
 install -m 0644 "$REPO/deploy/seed/rootfs/etc/resolv.conf" "$R/etc/resolv.conf"
 ln -sfn "../nextdns.service" "$R/etc/systemd/system/multi-user.target.wants/nextdns.service"
 # gRPC-ready client config (all seeds/containers): env store defaults —

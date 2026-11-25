@@ -30,9 +30,10 @@ profile has only the root disk (on 3tched-pool) and the shared lungs socket.
 - `sysusers.d/opdbus.conf`: creates the `secrets` group at boot. The bridge's identity
   projection needs its credential reader group (`OP_IDENTITY_PROJECTION_GROUP`, default
   `secrets`, `crates/op-grpc-bridge/src/runtime_identity.rs`); the host has it, the seed did not.
-- `op-tunnel-door.service`: only where provisioning bound `/run/opdbus/tunnel`
-  (the chatbot); holds the shared door socket and splices the host door into
-  the container door. Binary: `op-tunnel-door` from `crates/op-tunnel-mux`.
+- `op-tunnel-door.service`: runs the shared guest launcher `tunnel-door-run`
+  (install `deploy/provisioning/runit/op-tunnel-door/run` mode 0755). Only the chatbot
+  receives the control socket; user guests receive the read-only browser socket
+  directory and forward to their own TLS UI at `/agent/user/OP_UI_LISTEN`.
 - `opdbus-sockets.conf`: `/run/opdbus` -> `/run/mounts/opdbus`, where
   provisioning binds the host directories (`lungs` read-only, `tunnel` for
   the chatbot).
@@ -120,9 +121,8 @@ container has egress.
 
 The container bridge does not own the door tunnel: the seed's `bridge.env` leaves
 `OP_TUNNEL_DOOR` unset, so `op-grpc-bridge` only serves its own TLS door on
-`10.0.0.2:8090` (lo) and `op-tunnel-door` splices the host door into it over
-`/run/opdbus/tunnel/tunnel.sock`. Only the host bridge, which sets `OP_TUNNEL_DOOR`
-(`deploy/runit/op-grpc-bridge/run`), binds that socket.
+`10.0.0.2:8090` (lo). Only the host sets `OP_TUNNEL_DOOR` and `OP_BROWSER_DOOR`.
+See `deploy/provisioning/README.md` for socket selection and existing-guest rollout.
 
 Base-OS fixes in the seed (antiX trixie rootfs, applied 2026-11-22):
 - `/etc/initrd-release` is removed. antiX ships it unowned by any package; when

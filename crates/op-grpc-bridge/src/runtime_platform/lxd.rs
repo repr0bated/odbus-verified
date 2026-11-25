@@ -265,14 +265,16 @@ fn validate_instance(args: &Value, caller: &str) -> Result<()> {
         && op_identity::session::derive_session_id(text("user.opdbus.wireguard_public_key")) == session,
         "a subsidiary is a pending service identity of its calling parent");
     let devices = instance["devices"].as_array().context("devices are absent")?;
-    ensure!(devices.len() == 3, "a subsidiary has exactly its root, identity sled and run directory");
+    ensure!(devices.len() == 4, "a subsidiary requires four fixed devices");
     let root = json!({"name":"root","device":{"type":"disk","path":"/","pool":POOL}});
     let sled = json!({"name":"sled","device":{"type":"disk","path":"/agent/user","pool":POOL,
         "source":format!("identity-{session}"),"readonly":"true"}});
     let run = json!({"name":"run","device":{"type":"disk","path":"/run",
         "source":lxd_subsidiary::run_source(session),"recursive":"true"}});
-    ensure!(devices.contains(&root) && devices.contains(&sled) && devices.contains(&run),
-        "only the pool root, the read-only identity sled and its own run directory may be attached");
+    let browser = json!({"name":"tunnel-browser","device":{"type":"disk","path":"/run/mounts/opdbus/tunnel-browser",
+        "source":"/run/opdbus/tunnel-browser","readonly":"true"}});
+    ensure!(devices.contains(&root) && devices.contains(&sled) && devices.contains(&run) && devices.contains(&browser),
+        "subsidiary requires its root, identity sled, private run directory and read-only browser socket directory");
     Ok(())
 }
 

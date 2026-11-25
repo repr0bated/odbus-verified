@@ -62,15 +62,17 @@ possible, never deletes a seed or a container, and starts nothing unless `START=
 ### LXD subsidiary from the golden snapshot
 
 ```sh
-./deploy/provisioning/30-provision-container.sh --subsidiary 3tchedChatbot \
-    --name kiroween --lxd-pool <pool> --image <full-image-fingerprint> --dry-run
+OP_UI_LISTEN="$GUEST_TLS_ADDRESS" ./deploy/provisioning/30-provision-container.sh \
+    --subsidiary "$PARENT_PRINCIPAL_ID" --name kiroween --pubkey "$PUBLIC_KEY" \
+    --image "$IMAGE_FINGERPRINT" --seed-uuid "$SEED_UUID" --dry-run
 ```
 
 The image must already be published privately in LXD from the golden live
-snapshot. Its `opdbus.golden.commit` and `opdbus.golden.subvolume` properties
-must match the golden state file. Remove `--dry-run` to create the stopped
-instance through the mounted `lxd` plugin. The subsidiary has a root disk
-and a parent reference. It stays pending until its own identity is admitted.
+snapshot. Its seed UUID (or named template) must match the private image.
+Remove `--dry-run` to create the stopped instance through the mounted `lxd`
+plugin and assign its browser port. The subsidiary has a managed root, its
+own sled, a private `/run` and the read-only browser socket. It stays pending
+until its own identity is admitted.
 After admission, grant policy can assign the child principal to
 `$SUBSIDIARY`. Root inside the subsidiary is UID 0 in that container's own
 user namespace. The isolated ID mapping keeps that authority inside the
@@ -169,6 +171,7 @@ The Ubuntu/systemd `@seed` already carries the systemd versions of these units
 | `decoy-trust` | `/etc/op-dbus/decoy-trust.json` | same path (ro, shift) |
 | `sled` | pool volume `identity-<session>` | `/agent/user` (ro) |
 | `tunnel` | `/run/opdbus/tunnel` | `/run/mounts/opdbus/tunnel` (chatbot key only) |
+| `tunnel-browser` | `/run/opdbus/tunnel-browser` | `/run/mounts/opdbus/tunnel-browser` (read-only, users only) |
 
 Mount layering: no mount covers another. Each parent is mounted before anything under it:
 `runtime-run` (`/run`) before `opdbus-run`, `opdbus-run` before `lungs`/`tunnel` (Incus orders disks by path).
@@ -176,6 +179,51 @@ The catalog is not under `/dev/shm`: the guest init mounts its own tmpfs there. 
 `shm` disk was a workaround for that placement and the bridge refuses it on human containers;
 it is not added to new containers. The running chatbot still has it until it is rewired. S96
 recreates the `/run/opdbus/ct` host dirs at boot; it still creates the old `shm` dirs, which new containers do not use.
+
+### Browser port assignment and existing guests
+
+The browser port lives in the host-owned `browser_port` file on the committed
+identity volume. The guest must see `/agent/user` read-only. A separate durable
+reservation under `/var/lib/op-dbus/browser-ports` prevents port recycling;
+preserve it on backup/restore. It is **not** a routing table. Removing an
+identity from the committed records removes its route even if its reservation
+survives. Provisioning selects a free TCP port on `10.0.0.2` in 20000–29999.
+
+For existing Incus guests, confirm the instance has only its own `sled` at
+`/agent/user`, no control device, and a TLS listener owned by that guest.
+Example for Jeremy (run from the repo as host root):
+
+```sh
+n=Jeremy
+sled=$(incus config device get "$n" sled source)
+sid=$(incus config get "$n" user.opdbus.session_id)
+test "$sled" = "identity-$sid" && test "$(incus config device get "$n" sled readonly)" = true || exit 1
+install -d -m 0755 "/run/opdbus/ct/$n/tunnel-browser"
+incus config device add "$n" tunnel-browser disk source=/run/opdbus/tunnel-browser path=/run/mounts/opdbus/tunnel-browser readonly=true shift=true
+python3 deploy/provisioning/browser-port.py "$sid" 10.0.0.2:8090 "/var/lib/incus/storage-pools/3tched-pool/custom/default_$sled"
+incus file push --mode 0755 deploy/provisioning/runit/op-tunnel-door/run "$n/usr/local/libexec/op-dbus/tunnel-door-run"
+incus file push --mode 0644 deploy/seed/rootfs/etc/systemd/system/op-tunnel-door.service "$n/etc/systemd/system/op-tunnel-door.service"
+incus exec "$n" -- systemctl daemon-reload
+incus exec "$n" -- systemctl enable op-tunnel-door.service
+incus exec "$n" -- systemctl restart op-tunnel-door.service
+```
+
+The host socket must exist before starting the waiter; if it was idle, restart
+it after the mount appears. Install the verified binary under
+`/usr/local/libexec/op-dbus/bin/op-tunnel-door` if the guest image lacks it.
+The browser branch does not depend on a guest-local threetchedFS mount.
+
+For new LXD subsidiaries set `OP_UI_LISTEN` to the subsidiary's own TLS UI
+when provisioning; the four-device request includes only the read-only browser
+socket in addition to the original three devices. For an existing three-device
+kiroween, do **not** add an LXD device: its durable admission pins the original
+request. Stop the guest, install the revised `subsidiary-kiroween-3tchedfs`
+service and restart it so the read-only directory is bound in a **fresh** `/run`
+before the guest starts. Never mount through paths in a previously exposed run
+tree. Use the helper above with its own `/var/lib/lxd/storage-pools/lxd-pool/custom/default_identity-<sid>`
+and actual guest TLS listener. Install the same verified waiter and launcher
+and enable its systemd unit. A missing guest UI is a deployment prerequisite,
+not grounds to forward to an egress proxy or borrow another guest's TLS key.
 
 Config: `user.opdbus.session_id`, `user.opdbus.wireguard_public_key`, `security.idmap.isolated=true`,
 unprivileged, no nesting, `boot.autostart=false`, `raw.lxc`: `lxc.uts.name = <session>` (**hostname**),

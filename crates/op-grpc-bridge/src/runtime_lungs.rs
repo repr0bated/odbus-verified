@@ -22,6 +22,7 @@ use crate::runtime::{Runtime, RuntimeError};
 
 #[path = "runtime_lungs_identity.rs"]
 mod identity;
+pub(crate) use identity::BrowserWaiterIdentity;
 use identity::{LungsIdentity, ProcessIdentity};
 
 pub(crate) const DEFAULT_LUNGS_SOCKET: &str = "/run/opdbus/lungs/lungs.sock";

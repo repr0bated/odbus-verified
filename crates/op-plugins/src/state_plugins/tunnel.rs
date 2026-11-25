@@ -34,6 +34,30 @@ pub struct TunnelState {
     /// Unix seconds of the oldest active connection.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub oldest_active_since: Option<i64>,
+    /// Browser listener host, absent when the browser door is not configured.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[schemars(extend("x-oscal-subid" = "sch.software.plugin.tunnel.browser-door@v1"))]
+    pub browser_door: Option<String>,
+    /// Whether the browser door delivers new connections.
+    #[serde(default)]
+    #[schemars(extend("x-oscal-subid" = "sch.software.plugin.tunnel.browser-open@v1"))]
+    pub browser_open: bool,
+    /// Total pending browser accepts across all containers.
+    #[serde(default)]
+    #[schemars(extend("x-oscal-subid" = "sch.software.plugin.tunnel.browser-waiting@v1"))]
+    pub browser_waiting: u32,
+    /// Total active browser splices across all containers.
+    #[serde(default)]
+    #[schemars(extend("x-oscal-subid" = "sch.software.plugin.tunnel.browser-active@v1"))]
+    pub browser_active: u32,
+}
+
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize, schemars::JsonSchema)]
+#[serde(rename_all = "lowercase")]
+pub enum Door {
+    #[default]
+    Control,
+    Browser,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, schemars::JsonSchema)]
@@ -42,6 +66,15 @@ pub struct SetOpenInput {
     /// true delivers new door connections; false refuses them and drops every
     /// active connection.
     pub open: bool,
+    #[serde(default)]
+    pub door: Door,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, schemars::JsonSchema)]
+#[serde(deny_unknown_fields)]
+pub struct CloseConnectionsInput {
+    #[serde(default)]
+    pub door: Door,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, schemars::JsonSchema)]
@@ -66,7 +99,7 @@ impl StatePlugin for TunnelPlugin {
         "tunnel"
     }
     fn version(&self) -> &str {
-        "1.0.0"
+        "1.1.0"
     }
     fn schema(&self) -> Option<PluginSchema> {
         let mut schema = tunnel_schema();
@@ -124,8 +157,8 @@ pub(crate) fn tunnel_schema() -> PluginSchema {
     let root = serde_json::to_value(schemars::schema_for!(TunnelState)).expect("schema serializes");
     let mut schema = super::schemars_adapter::plugin_schema_from_json(
         "tunnel",
-        "1.0.0",
-        "Door tunnel: the host door spliced into the door-owning container's tonic door; status and open/close only, bytes stay on the socket",
+        "1.1.0",
+        "Control-plane and browser tunnel doors: status and open/close controls only; bytes stay on the sockets",
         &root,
     );
     let example = simd_json::serde::to_owned_value(TunnelState {
@@ -159,7 +192,7 @@ pub(crate) fn tunnel_schema() -> PluginSchema {
     );
     schema.methods.insert(
         "close_connections".into(),
-        method_decl_from_schemars_with_output::<EmptyInput, CloseConnectionsOutput>(
+        method_decl_from_schemars_with_output::<CloseConnectionsInput, CloseConnectionsOutput>(
             "close_connections",
             SideEffect::Mutation,
             false,
@@ -190,6 +223,23 @@ mod tests {
         methods.sort();
         assert_eq!(methods, ["close_connections", "set_open", "status"]);
         assert_eq!(schema.methods["status"].side_effect, SideEffect::Read);
+    }
+
+    #[test]
+    fn browser_fields_publish_distinct_subids() {
+        let schema = tunnel_schema();
+        for field in ["browser_door", "browser_open", "browser_waiting", "browser_active"] {
+            let subid = format!("sch.software.plugin.tunnel.{}@v1", field.replace('_', "-"));
+            assert_eq!(schema.subids.get(field), Some(&subid));
+        }
+    }
+
+    #[test]
+    fn controls_default_to_control_and_reject_unknown_doors() {
+        assert_eq!(serde_json::from_str::<SetOpenInput>(r#"{"open":true}"#).unwrap().door, Door::Control);
+        assert_eq!(serde_json::from_str::<CloseConnectionsInput>("{}").unwrap().door, Door::Control);
+        assert_eq!(serde_json::from_str::<CloseConnectionsInput>(r#"{"door":"browser"}"#).unwrap().door, Door::Browser);
+        assert!(serde_json::from_str::<SetOpenInput>(r#"{"door":"other","open":true}"#).is_err());
     }
 }
 

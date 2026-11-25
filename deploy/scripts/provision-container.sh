@@ -103,6 +103,9 @@ incus config device add "$NAME" lungs disk source=/run/opdbus/lungs path=/run/mo
 incus config device add "$NAME" catalog disk source="$CATALOG" path=/dev/shm/opdbus/plugin-blobs readonly=true shift=true >/dev/null
 if [ "$NAME" = "$CHATBOT_NAME" ]; then
     incus config device add "$NAME" tunnel disk source=/run/opdbus/tunnel path=/run/mounts/opdbus/tunnel shift=true >/dev/null
+else
+    mkdir "$RUNDIR/tunnel-browser"
+    incus config device add "$NAME" tunnel-browser disk source=/run/opdbus/tunnel-browser path=/run/mounts/opdbus/tunnel-browser readonly=true shift=true >/dev/null
 fi
 
 "$OP_CONTAINER" from-seed "$NAME"
@@ -118,6 +121,9 @@ install -m 0600 "$ISSUED" "$SLED_DIR/issued_identity.iid1"
 install -d -m 0700 "$SLED_DIR/ledger"
 incus config device add "$NAME" sled disk pool="$POOL" source="$SLED" path=/agent/user readonly=true >/dev/null
 incus config device add "$NAME" decoy-trust disk source="$TRUST" path=/etc/op-dbus/decoy-trust.json readonly=true shift=true >/dev/null
+if [ "$NAME" != "$CHATBOT_NAME" ]; then
+    python3 "$(dirname -- "$(readlink -f "$0")")/../provisioning/browser-port.py" "$SESSION" "${OP_UI_LISTEN:-10.0.0.2:8090}" "$SLED_DIR"
+fi
 
 incus start "$NAME"
 "$(dirname -- "$(readlink -f "$0")")/../runit/ct-egress-bpf/install.sh" "$NAME"

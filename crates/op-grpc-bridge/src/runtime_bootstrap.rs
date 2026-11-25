@@ -188,6 +188,16 @@ pub async fn run_from_env() -> anyhow::Result<()> {
                 }
             });
         }
+        if let Some(host) = crate::runtime_tunnel::browser_host_from_env() {
+            let browser_runtime = runtime.clone();
+            let browser_stop = receive.clone();
+            spawn_owner(&mut workers, "browser door tunnel", async move {
+                tokio::select! {
+                    result = crate::runtime_tunnel::serve_browser_from_env(browser_runtime, host) => result,
+                    _ = stopping(browser_stop) => Ok(()),
+                }
+            });
+        }
         let observed_runtime = runtime.as_ref().clone();
         let observer_stop = receive.clone();
         spawn_owner(&mut workers, "native network observations", async move {
