@@ -6,6 +6,8 @@ umask 022
 REPO=$(cd -- "$(dirname -- "$0")/../.." && pwd)
 W=${1:-/var/lib/op-dbus/lxd-template-build-$(date -u +%Y%m%dT%H%M%SZ)}
 OUT=${2:-/var/lib/op-dbus/lxd-images/ubuntu-resolute-template-$(date -u +%Y%m%dT%H%M%SZ).tar.zst}
+# The browser UI served by the container's own door (kiroween `ui/`, `npm run build`).
+UI=${OP_SUBSIDIARY_UI:?OP_SUBSIDIARY_UI: built browser UI directory required}
 U=https://cdimage.ubuntu.com/ubuntu-base/releases/26.04/release; T=ubuntu-base-26.04.1-base-amd64.tar.gz
 KR=/mnt/cozo-btrfs-lxd/seeds/@ubuntu-subsidiary/rootfs/usr/share/keyrings/ubuntu-archive-keyring.gpg
 BUILD=/mnt/@opdbus-system-a/opt/op-build
@@ -43,4 +45,4 @@ rm -rf "$R"/var/lib/apt/lists/* "$R"/var/log/*.log "$R"/var/log/apt/* "$R"/root/
 : >"$R/etc/machine-id"; : >"$R/etc/resolv.conf"; : >"$R/etc/hostname"
 install -d -m 0755 "$R/agent/user" "$R/run"
 umount -R "$R/dev"; umount "$R/proc"; umount "$R"
-"$REPO/deploy/lxd/finish-resolute-template.sh" "$W" "$OUT"
+"$REPO/deploy/lxd/finish-resolute-template.sh" "$W" "$OUT" "$UI"

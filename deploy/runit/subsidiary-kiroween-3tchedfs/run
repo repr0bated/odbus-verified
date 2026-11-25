@@ -43,6 +43,11 @@ install -d -m 0755 "$RUN/mounts" "$RUN/mounts/3tchedFS" "$RUN/mounts/threetchedF
 install -d -m 0755 "$RUN/mounts/opdbus/tunnel-browser"
 mount --bind /run/opdbus/tunnel-browser "$RUN/mounts/opdbus/tunnel-browser"
 mount -o remount,bind,ro,nosuid,nodev,noexec "$RUN/mounts/opdbus/tunnel-browser"
+# The container's door checks every mounted schema against the same sealed
+# catalog its views were captured from; it reads it here, read-only.
+install -d -m 0755 "$RUN/mounts/opdbus/plugin-blobs"
+mount --bind /dev/shm/opdbus/plugin-blobs "$RUN/mounts/opdbus/plugin-blobs"
+mount -o remount,bind,ro,nosuid,nodev,noexec "$RUN/mounts/opdbus/plugin-blobs"
 # The copy at /usr/local/libexec/op-dbus/bin/3tched-fs is stale: it projects the
 # sealed threetched object and then grafts the binary, so /plugins/threetched
 # is created twice. Use the host view's pinned release binary.
