@@ -220,3 +220,16 @@ fn state_frames_carry_only_the_mounts_projection() {
     assert_eq!(shown.state_generation, 3);
     assert!(UiService::mounted_frame(&namespace, &view, frame("absent")).unwrap().is_none());
 }
+
+#[test]
+fn sealed_schema_without_defaults_matches_the_mounted_one() {
+    let mounted = serde_json::to_value(schema()).unwrap();
+    let mut sealed = mounted.clone();
+    sealed.as_object_mut().unwrap().remove("capability_grants");
+    sealed.as_object_mut().unwrap().remove("org");
+    assert_ne!(sealed, mounted, "sealed JSON omits the mount's defaults");
+    assert!(enforces(Some(&sealed), &mounted));
+    sealed["version"] = json!("2.0.0");
+    assert!(!enforces(Some(&sealed), &mounted));
+    assert!(!enforces(None, &mounted));
+}

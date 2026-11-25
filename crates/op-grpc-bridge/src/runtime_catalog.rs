@@ -34,7 +34,7 @@ pub(crate) async fn get_catalog(ctx: &BackendContext<'_>, args: &Value) -> Resul
                 ensure!(seen.insert(plugin.clone()), "plugin appears in more than one container view");
                 let schema = namespace.schema(&plugin)?;
                 let pinned = catalog.plugin(&plugin).context("mounted plugin is absent from sealed runtime")?;
-                ensure!(pinned.schema.as_ref() == Some(&serde_json::to_value(&schema)?),
+                ensure!(crate::container_ui_door::enforces(pinned.schema.as_ref(), &serde_json::to_value(&schema)?),
                     "mounted schema differs from current sealed runtime");
                 let operations = schema.methods.iter()
                     .map(|(name, method)| {

@@ -175,6 +175,18 @@ fn mounted_schema(
     namespace.schema(plugin).map_err(read_failed)
 }
 
+/// The sealed JSON omits defaults the mount writes out. Decode it the way the
+/// mount does (`from_sealed`) and compare in the mount's typed form.
+pub(crate) fn enforces(sealed: Option<&Value>, mounted: &Value) -> bool {
+    sealed
+        .and_then(|sealed| {
+            serde_json::from_value::<op_state_store::PluginSchema>(sealed.clone()).ok()
+        })
+        .and_then(|sealed| _3tched_fs::model::from_sealed(sealed).ok())
+        .and_then(|sealed| serde_json::to_value(sealed).ok())
+        .is_some_and(|sealed| sealed == *mounted)
+}
+
 fn discloses_state(schema: &PluginSchema) -> bool {
     schema.public_state["paths"]
         .as_array()
@@ -481,7 +493,7 @@ impl UiService {
         let pinned = core
             .catalog()
             .plugin(plugin)
-            .filter(|pinned| pinned.schema.as_ref() == Some(&schema))
+            .filter(|pinned| enforces(pinned.schema.as_ref(), &schema))
             .ok_or_else(|| {
                 Status::failed_precondition("mounted schema differs from the sealed catalog")
             })?;
