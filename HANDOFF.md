@@ -10,24 +10,6 @@ Task `door-followups-20261125`. Correction to the 07:54 kiroween-crew summary: g
 
 Not done (need owner decision or another owner): decoy `wgcf_door` rule, kiroween image with bridge and UI (recreate destroys guest root), router key (Codex row).
 
-
-Task `door-followups-20261125`. Correction to the 07:54 kiroween-crew summary: golden `74091c7` is live as release 337 (receipt `golden-deploy-74091c7-20261125T125236Z.receipt`, `exit=0 phase=activated`); only the 12:04Z attempt was cancelled. Jeremy already has `OP_UI_LISTEN=10.0.0.2:8443`; kiroween has no bridge, TLS or UI in its image, so setting `OP_UI_LISTEN` there does nothing.
-
-- odbus-verified: `container_ui_door::enforces` decodes the sealed schema as `op_state_store::PluginSchema` and converts it with `_3tched_fs::model::from_sealed`, the mount's own path, before comparing. The earlier uncommitted version decoded the sealed JSON directly into the 3tchedFS type, which still mismatches typed defaults such as `public_state`. Used by Subscribe schema frames and `runtime_catalog::get_catalog`. Regression test `sealed_schema_without_defaults_matches_the_mounted_one`. **Not compiled, tests not run** (owner policy: on request).
-- kiroween `.kiro/scripts/idle-check.sh`: busy when any `*.jsonl` under `~/.omp/agent/sessions`, `~/.claude/projects`, `~/.codex/sessions` or `~/.grok/sessions` was written in the window (crew-born files ignored). Ran once: reports busy on this session.
-- kiroween UI: the session starts without `fuse.get_catalog` (absent from the live host view `operations/fuse/`, catalog `cd265f61…`, as are `get_contract`/`get_protocol`; cause not diagnosed). Catalog hash comes from the first frame; a new hash reloads components and hydrates again. No capability header; the door admits against the sealed one. Chat-canvas-ui spec updated. vitest/svelte-check not run.
-
-Not done (need owner decision or another owner): decoy `wgcf_door` rule, kiroween image with bridge and UI (recreate destroys guest root), router key (Codex row).
-
-
-Task `door-followups-20261125`. Correction to the 07:54 kiroween-crew summary: golden `74091c7` is live as release 337 (receipt `golden-deploy-74091c7-20261125T125236Z.receipt`, `exit=0 phase=activated`); only the 12:04Z attempt was cancelled. Jeremy already has `OP_UI_LISTEN=10.0.0.2:8443`; kiroween has no bridge, TLS or UI in its image, so setting `OP_UI_LISTEN` there does nothing.
-
-- odbus-verified: `container_ui_door::enforces` decodes the sealed schema as `op_state_store::PluginSchema` and converts it with `_3tched_fs::model::from_sealed`, the mount's own path, before comparing. The earlier uncommitted version decoded the sealed JSON directly into the 3tchedFS type, which still mismatches typed defaults such as `public_state`. Used by Subscribe schema frames and `runtime_catalog::get_catalog`. Regression test `sealed_schema_without_defaults_matches_the_mounted_one`. **Not compiled, tests not run** (owner policy: on request).
-- kiroween `.kiro/scripts/idle-check.sh`: busy when any `*.jsonl` under `~/.omp/agent/sessions`, `~/.claude/projects`, `~/.codex/sessions` or `~/.grok/sessions` was written in the window (crew-born files ignored). Ran once: reports busy on this session.
-- kiroween UI: the session starts without `fuse.get_catalog` (absent from the live host view `operations/fuse/`, catalog `cd265f61…`, as are `get_contract`/`get_protocol`; cause not diagnosed). Catalog hash comes from the first frame; a new hash reloads components and hydrates again. No capability header; the door admits against the sealed one. Chat-canvas-ui spec updated. vitest/svelte-check not run.
-
-Not done (need owner decision or another owner): decoy `wgcf_door` rule, kiroween image with bridge and UI (recreate destroys guest root), router key (Codex row).
-
 ## 2026-11-25 — Claude — container UI door: host release 337 live, door still off
 
 Golden `74091c7` is release `74091c71fddb-337`, receipt `/home/jeremy/provisioning/runs/golden-deploy-74091c7-20261125T125236Z.receipt` (`exit=0 phase=activated`); rollback is 335. Live and persisted catalog manifests match (75 plugins). Containers still run their own older bridge binaries and have mounts pinned to earlier catalog hashes, so the UI door is not running anywhere. Details of the change:
