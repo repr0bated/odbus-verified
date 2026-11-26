@@ -262,14 +262,6 @@ impl OpenFlowClient {
         Ok(())
     }
 
-    /// Add a flow rule from an ovs-ofctl format string.
-    ///
-    /// Currently logs a warning: full format parsing is not implemented.
-    pub async fn add_flow_rule(&mut self, rule: &str) -> Result<()> {
-        log::warn!("String-based flow rules not yet implemented: {}", rule);
-        Ok(())
-    }
-
     /// Delete all flows on the switch (wildcard delete).
     pub async fn delete_all_flows(&mut self) -> Result<()> {
         let xid = self.next_xid();
@@ -320,11 +312,175 @@ impl OpenFlowClient {
             .context("FeaturesReply not received")?;
         Ok(())
     }
+}
 
-    /// Dump all flows from the switch.
-    pub async fn query_flows(&mut self) -> Result<Vec<String>> {
-        // Return empty list: callers that use this path rely on ovs-ofctl text parsing.
-        Ok(Vec::new())
+/// `ofp_flow_desc` fixed part: length, pad, table, pad, priority, idle,
+/// hard, flags, importance, cookie.
+const FLOW_DESC_FIXED: usize = 24;
+/// Multipart type of a flow description/stats request.
+const OFPMP_FLOW_DESC: u16 = 1;
+/// Multipart reply flag: more replies follow.
+const OFPMPF_REPLY_MORE: u16 = 1;
+/// OXS class of the standard flow statistics.
+const OXS_CLASS_OPENFLOW_BASIC: u16 = 0x8002;
+const OXS_DURATION: u8 = 0;
+const OXS_IDLE_TIME: u8 = 1;
+const OXS_PACKET_COUNT: u8 = 4;
+const OXS_BYTE_COUNT: u8 = 5;
+/// Ceiling on one flow dump, so a broken peer cannot exhaust memory.
+const MAX_DUMP_BYTES: usize = 8 * 1024 * 1024;
+
+/// One flow as the switch reports it at OpenFlow 1.5 (`ofp_flow_desc`).
+#[derive(Debug, Clone)]
+pub struct SwitchFlow {
+    pub table_id: u8,
+    pub priority: u16,
+    pub idle_timeout: u16,
+    pub hard_timeout: u16,
+    pub flags: u16,
+    pub importance: u16,
+    pub cookie: u64,
+    pub match_fields: FlowMatch,
+    pub instructions: rovs_openflow::InstructionList,
+    pub duration_sec: u32,
+    pub duration_nsec: u32,
+    /// Seconds since the flow last matched, when the switch reports it.
+    pub idle_time_sec: Option<u32>,
+    pub packet_count: u64,
+    pub byte_count: u64,
+}
+
+fn be16(b: &[u8], at: usize) -> u16 {
+    u16::from_be_bytes([b[at], b[at + 1]])
+}
+
+fn be32(b: &[u8], at: usize) -> u32 {
+    u32::from_be_bytes([b[at], b[at + 1], b[at + 2], b[at + 3]])
+}
+
+fn be64(b: &[u8], at: usize) -> u64 {
+    u64::from_be_bytes(b[at..at + 8].try_into().expect("8 bytes"))
+}
+
+fn pad8(n: usize) -> usize {
+    n.div_ceil(8) * 8
+}
+
+/// Decode one OpenFlow 1.5 `ofp_flow_desc` entry; returns the flow and the
+/// bytes it used. rovs 0.2.0 only decodes the 1.3 `ofp_flow_stats` layout, so
+/// the framing and OXS statistics are read here and the match and
+/// instructions are decoded by rovs.
+pub fn decode_flow_desc(data: &[u8]) -> Result<(SwitchFlow, usize)> {
+    anyhow::ensure!(
+        data.len() >= FLOW_DESC_FIXED,
+        "flow entry shorter than its fixed part"
+    );
+    let len = usize::from(be16(data, 0));
+    anyhow::ensure!(
+        len >= FLOW_DESC_FIXED,
+        "flow entry length {len} below the fixed part"
+    );
+    anyhow::ensure!(
+        data.len() >= len,
+        "flow entry truncated: {} of {len} bytes",
+        data.len()
+    );
+    let e = &data[..len];
+
+    let (match_fields, match_used) = rovs_openflow::Match::decode(&e[FLOW_DESC_FIXED..])
+        .map_err(|err| anyhow::anyhow!("flow match: {err}"))?;
+    let stats_at = FLOW_DESC_FIXED + match_used;
+    anyhow::ensure!(stats_at + 4 <= len, "flow entry ends before its statistics");
+    let stats_len = usize::from(be16(e, stats_at + 2));
+    anyhow::ensure!(
+        stats_len >= 4,
+        "statistics length {stats_len} below its header"
+    );
+    let stats_end = stats_at + stats_len;
+    let instr_at = stats_at + pad8(stats_len);
+    anyhow::ensure!(instr_at <= len, "statistics run past the flow entry");
+
+    let mut flow = SwitchFlow {
+        table_id: e[4],
+        priority: be16(e, 6),
+        idle_timeout: be16(e, 8),
+        hard_timeout: be16(e, 10),
+        flags: be16(e, 12),
+        importance: be16(e, 14),
+        cookie: be64(e, 16),
+        match_fields,
+        instructions: rovs_openflow::InstructionList::decode(&e[instr_at..])
+            .map_err(|err| anyhow::anyhow!("flow instructions: {err}"))?,
+        duration_sec: 0,
+        duration_nsec: 0,
+        idle_time_sec: None,
+        packet_count: 0,
+        byte_count: 0,
+    };
+
+    let mut at = stats_at + 4;
+    while at + 4 <= stats_end {
+        let class = be16(e, at);
+        let field = e[at + 2] >> 1;
+        let vlen = usize::from(e[at + 3]);
+        let v = at + 4;
+        anyhow::ensure!(
+            v + vlen <= stats_end,
+            "statistic field runs past the statistics"
+        );
+        if class == OXS_CLASS_OPENFLOW_BASIC {
+            match (field, vlen) {
+                (OXS_DURATION, 8) => {
+                    flow.duration_sec = be32(e, v);
+                    flow.duration_nsec = be32(e, v + 4);
+                }
+                (OXS_IDLE_TIME, 8) => flow.idle_time_sec = Some(be32(e, v)),
+                (OXS_PACKET_COUNT, 8) => flow.packet_count = be64(e, v),
+                (OXS_BYTE_COUNT, 8) => flow.byte_count = be64(e, v),
+                _ => {} // other statistics (e.g. flow_count) are not used
+            }
+        }
+        at = v + vlen;
+    }
+    Ok((flow, len))
+}
+
+impl OpenFlowClient {
+    /// Read every flow on the switch (all tables), following multipart
+    /// replies until the last one.
+    pub async fn dump_flows(&mut self) -> Result<Vec<SwitchFlow>> {
+        let xid = self.next_xid();
+        let req = rovs_openflow::FlowStatsRequest::new().to_message(self.version, xid);
+        self.send(&req).await?;
+        let mut flows = Vec::new();
+        let mut total = 0usize;
+        loop {
+            let reply = self.await_reply(xid, MessageType::MultipartReply).await?;
+            let b = &reply.body;
+            total += b.len();
+            anyhow::ensure!(
+                total <= MAX_DUMP_BYTES,
+                "flow dump larger than {MAX_DUMP_BYTES} bytes"
+            );
+            anyhow::ensure!(b.len() >= 8, "multipart reply shorter than its header");
+            anyhow::ensure!(
+                be16(b, 0) == OFPMP_FLOW_DESC,
+                "unexpected multipart type {}",
+                be16(b, 0)
+            );
+            let more = be16(b, 2) & OFPMPF_REPLY_MORE != 0;
+            let mut at = 8;
+            while at < b.len() {
+                let (flow, used) = decode_flow_desc(&b[at..])?;
+                flows.push(flow);
+                at += used;
+            }
+            if !more {
+                break;
+            }
+        }
+        self.reconnect.activity();
+        Ok(flows)
     }
 }
 
@@ -389,6 +545,9 @@ mod tests {
         CloseAfterHello,
         /// Answer a flow-mod with an Error, then the barrier.
         RefuseFlowMod,
+        /// Answer a flow multipart request with two replies (REPLY_MORE, then last),
+        /// each holding the captured `ovsbr0` entry.
+        FlowDump,
     }
 
     type Seen = Arc<Mutex<Vec<(MessageType, Version)>>>;
@@ -448,6 +607,20 @@ mod tests {
                         MessageType::FlowMod if matches!(script, Script::RefuseFlowMod) => {
                             refuse_xid = Some(xid);
                         }
+                        MessageType::MultipartRequest if matches!(script, Script::FlowDump) => {
+                            for more in [true, false] {
+                                let mut body = vec![0, 1, 0, u8::from(more), 0, 0, 0, 0];
+                                body.extend_from_slice(&ovsbr0_normal_entry());
+                                fake_send(
+                                    &mut s,
+                                    Version::Of15,
+                                    MessageType::MultipartReply,
+                                    xid,
+                                    Bytes::from(body),
+                                )
+                                .await;
+                            }
+                        }
                         MessageType::BarrierRequest => {
                             if let Some(bad) = refuse_xid.take() {
                                 fake_send(
@@ -488,6 +661,96 @@ mod tests {
             }
         });
         path
+    }
+
+    /// One `ofp_flow_desc` entry captured from `ovsbr0.mgmt` on 2026-11-26
+    /// (read-only probe): the priority-0 NORMAL flow, cookie 0, duration
+    /// 15031 s, 977674 packets, 0x355baca0 bytes.
+    fn ovsbr0_normal_entry() -> Vec<u8> {
+        const HEX: &str = "0070000000000000000000000000000000000000000000000001000400000000\
+                           000000348002000800003ab710089d40800202080000000000000000800208080000\
+                           0000000eeb0a80020a0800000000355baca000000000000400180000000000000010\
+                           fffffffa0000000000000000";
+        (0..HEX.len())
+            .step_by(2)
+            .map(|i| u8::from_str_radix(&HEX[i..i + 2], 16).unwrap())
+            .collect()
+    }
+
+    #[test]
+    fn decodes_the_captured_ovsbr0_flow_desc_entry() {
+        let raw = ovsbr0_normal_entry();
+        assert_eq!(raw.len(), 112);
+        let (f, used) = decode_flow_desc(&raw).unwrap();
+        assert_eq!(used, 112);
+        assert_eq!((f.table_id, f.priority, f.cookie), (0, 0, 0));
+        assert_eq!(
+            (f.idle_timeout, f.hard_timeout, f.flags, f.importance),
+            (0, 0, 0, 0)
+        );
+        assert_eq!(f.duration_sec, 0x3ab7);
+        assert_eq!(f.duration_nsec, 0x1008_9d40);
+        assert_eq!(f.idle_time_sec, Some(0));
+        assert_eq!(f.packet_count, 977_674);
+        assert_eq!(f.byte_count, 0x355b_aca0);
+        assert_eq!(
+            f.match_fields.encode(),
+            [0, 1, 0, 4, 0, 0, 0, 0],
+            "empty match"
+        );
+        // One apply-actions instruction holding output:NORMAL. (Not compared
+        // byte for byte: rovs re-encodes output max_len as 0xffff, OVS sent 0.)
+        match f.instructions.instructions() {
+            [rovs_openflow::Instruction::ApplyActions(a)] => assert!(
+                matches!(
+                    a.actions(),
+                    [rovs_openflow::Action::Output(
+                        rovs_openflow::OutputPort::Normal
+                    )]
+                ),
+                "{a:?}"
+            ),
+            other => panic!("expected one apply-actions instruction, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn flow_desc_decoder_rejects_truncation_and_bad_lengths() {
+        let raw = ovsbr0_normal_entry();
+        assert!(
+            decode_flow_desc(&raw[..20]).is_err(),
+            "shorter than the fixed part"
+        );
+        assert!(
+            decode_flow_desc(&raw[..100]).is_err(),
+            "shorter than its length field"
+        );
+        let mut bad = raw.clone();
+        bad[0] = 0;
+        bad[1] = 8;
+        assert!(
+            decode_flow_desc(&bad).is_err(),
+            "length below the fixed part"
+        );
+        let mut bad_stats = raw.clone();
+        bad_stats[35] = 0x60; // stats length runs past the entry
+        assert!(decode_flow_desc(&bad_stats).is_err(), "stats overrun");
+    }
+
+    #[tokio::test]
+    async fn dump_flows_reads_every_multipart_reply_at_of15() {
+        let dir = tempfile::tempdir().unwrap();
+        let seen: Seen = Default::default();
+        let path = fake_switch(dir.path(), vec![Script::FlowDump], seen.clone());
+        let mut c = OpenFlowClient::connect_unix(&path).await.unwrap();
+        let flows = c.dump_flows().await.unwrap();
+        assert_eq!(flows.len(), 2, "one entry per reply, REPLY_MORE followed");
+        assert!(flows.iter().all(|f| f.packet_count == 977_674));
+        assert!(
+            seen.lock()
+                .unwrap()
+                .contains(&(MessageType::MultipartRequest, Version::Of15))
+        );
     }
 
     fn entry() -> FlowEntry {
