@@ -16,8 +16,11 @@ mount --make-rshared /run/mounts
 # Per-container host run dirs (Incus "opdbus-run" disk source and the nested
 # idmapped lungs/tunnel targets). /run is tmpfs, and these were only created at
 # provision time, so containers failed to start after a reboot.
+# Each entry is a symlink into its storage pool, which is not mounted yet this
+# early in boot (the pool is on the cozo ublk disk), so test for the link, not
+# the directory it points to; only the name is needed here.
 for c in /var/lib/incus/containers/*; do
-	[ -d "$c" ] || continue
+	[ -e "$c" ] || [ -L "$c" ] || continue
 	n=${c##*/}
 	install -d -o root -g root -m 0755 "/run/opdbus" "/run/opdbus/ct" \
 		"/run/opdbus/ct/$n" "/run/opdbus/ct/$n/lungs" "/run/opdbus/ct/$n/tunnel"
