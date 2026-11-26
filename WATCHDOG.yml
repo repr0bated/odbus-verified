@@ -1,6 +1,6 @@
 advisors:
   - name: default
-    model: openai-codex/gpt-6-sol:xhigh
+    model: opencode-go/kimi-k3.1-pro:high
     tools:
       - read
       - security_scan
