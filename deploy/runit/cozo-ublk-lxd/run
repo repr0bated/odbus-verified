@@ -7,6 +7,9 @@ set -eu
 PATH=/usr/sbin:/usr/bin:/sbin:/bin
 export PATH
 exec 2>&1
+# A user-space block device server must not be OOM-killed: losing it turns
+# the mounted Btrfs read-only (2026-11-25 20:47). The daemon inherits this.
+echo -1000 > /proc/self/oom_score_adj
 die() { printf 'cozo-ublk-lxd: %s\n' "$*" >&2; exit 1; }
 bootstrap=/usr/local/libexec/opdbus-ublk
 dev=/dev/ublkb4
