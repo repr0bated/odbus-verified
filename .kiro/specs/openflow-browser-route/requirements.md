@@ -17,9 +17,10 @@ This replaces the current tunnel path (`op-tunnel-mux`, `op-tunnel-door`, `Brows
 
 ## Glossary
 
-- **Route port**: an OVS internal port on `ovsbr0`, moved into one identity's container namespace and named from that identity's `session_id`. It has no address of its own. The kernel datapath refuses `lo` itself as a port, so this named port delivers to loopback inside the namespace.
+- **Door address**: `10.0.0.2` is on the bridge `ovsbr0` on the host (an alias; `ovsbr0` is the LXD-visible bridge), not in the container (`docs/src/operations/network.md`). The container's `lo` also carries `10.0.0.2/32` and `127.0.0.1/8`; the bridge side is what connects to that loopback.
+- **Route port**: one port on `ovsbr0` per identity, named from its `session_id`, that connects the bridge to that identity's container loopback. It has no address of its own.
 - **Route flow**: a flow child of the `openflow` plugin that sends one identity's browser packets to its route port, rewritten to `127.0.0.1:8443`. A return flow carries the replies back.
-- **Entry**: one shared address and port on the host (`8080`) where every browser arrives.
+- **Entry**: `10.0.0.2:8080` on `ovsbr0`, shared by every browser (the decoy forwards `10.0.0.1:8080` to it today).
 
 ## Requirements
 
@@ -33,7 +34,7 @@ This replaces the current tunnel path (`op-tunnel-mux`, `op-tunnel-door`, `Brows
 2.2 THE match SHALL be refused at `add_flow` if it would also match another identity's existing route (collision refused, as for cookies).
 
 ### 3. Into the container's loopback
-3.1 EACH identity SHALL have one route port named from its `session_id`, in its own container namespace, with no address. Created and removed through the sealed plugins (`ovsdb_bridge`, `rovs_commands`, `rtnetlink`) only; never `ovs-*` and never `lxc exec`.
+3.1 EACH identity SHALL have one route port on `ovsbr0`, named from its `session_id`, connecting the bridge to its container's loopback, with no address. Created and removed through the sealed plugins (`ovsdb_bridge`, `rovs_commands`, `rtnetlink`) only; never `ovs-*` and never `lxc exec`.
 3.2 THE inbound route flow SHALL rewrite the destination to `127.0.0.1:8443` and output to the identity's route port; `route_localnet=1` in the namespace SHALL let the kernel deliver it to axum on loopback.
 3.3 THE return path SHALL be proved as well as the inbound one: replies from `127.0.0.1:8443` leave through the route port and are rewritten back to the entry address the browser connected to.
 3.4 TLS SHALL end at the container's UI door. Its certificate SHALL match the name the browser used for the entry.

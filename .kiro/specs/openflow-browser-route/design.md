@@ -5,15 +5,15 @@ Status: DRAFT for owner review, 2026-11-26. Requirements: `requirements.md` in t
 ## Path
 
 ```
-browser ──▶ host entry :8080 (shared) ──login──▶ login service on the host
+browser ──▶ 10.0.0.2:8080 on ovsbr0 (shared) ──login──▶ login service on the host
                                                │  identity known (sled session_id)
                                                ▼
                                sealed calls: route port + route flows (admitted, receipted)
 
-browser (after login) ──▶ :8080 ──▶ ovsbr0 route flow (match: the browser, see D3)
+browser (after login) ──▶ 10.0.0.2:8080 ──▶ ovsbr0 route flow (match: the browser, see D3)
                                        │ set dst 127.0.0.1:8443, output:<route port>
                                        ▼
-                         route port "s<session_id prefix>" in the container namespace
+                         route port "s<session_id prefix>" on ovsbr0, joined to the container loopback
                                        │ route_localnet=1
                                        ▼
                          axum UI door 127.0.0.1:8443 (TLS ends here) ──▶ container's 3tchedFS mount
@@ -25,8 +25,8 @@ replies ──▶ route port ──▶ return flow (set src back to the entry) �
 ### D1. The login is the only lookup
 The login service already knows the identity and its sled. At login it makes the sealed calls that create the route port (if absent) and the route flows; at logout, expiry or revocation it deletes the flows. After login nothing inspects the traffic: no mux, no relay, no second authentication.
 
-### D2. Route port: an OVS internal port, named from `session_id`, moved into the namespace
-- `lo` cannot be an OVS port (the kernel datapath refuses loopback devices), so each identity gets one OVS internal port, moved into its container namespace, with no address.
+### D2. Route port: a port on `ovsbr0`, named from `session_id`, joined to the container's loopback
+- The door address `10.0.0.2` is on `ovsbr0` on the host; the container's `lo` carries `10.0.0.2` and `127.0.0.1`. Each identity gets one `ovsbr0` port that connects the bridge to its container's loopback, with no address. `lo` itself cannot be an OVS port (the kernel datapath refuses loopback devices), so how the port joins the loopback is what task 1 proves.
 - Name: `s` + the first 14 hex characters of the sled `session_id` (interface names are at most 15 bytes). A collision between two sessions is refused.
 - Created and removed only through sealed plugins (`ovsdb_bridge` for the Interface row, `rtnetlink` to move it into the namespace and bring it up). Never `ovs-*`, never `lxc exec`.
 - The container is otherwise unchanged; its internet (BPF egress) does not use this port.
