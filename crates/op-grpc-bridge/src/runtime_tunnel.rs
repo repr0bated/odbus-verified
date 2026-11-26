@@ -11,17 +11,19 @@
 //! `op-tunnel-door`, and it must never rebind the shared door socket.
 use std::collections::{HashMap, HashSet};
 use std::net::{IpAddr, SocketAddr};
-use std::sync::Arc;
-use std::time::Duration;
 use std::os::unix::fs::PermissionsExt as _;
 use std::path::PathBuf;
+use std::sync::Arc;
 use std::sync::OnceLock;
+use std::time::Duration;
 
 use anyhow::{Context, Result};
-use op_plugins::state_plugins::tunnel::{CloseConnectionsInput, CloseConnectionsOutput, Door, SetOpenInput, TunnelState};
+use op_plugins::state_plugins::tunnel::{
+    CloseConnectionsInput, CloseConnectionsOutput, Door, SetOpenInput, TunnelState,
+};
 use op_tunnel_mux::{BrowserMux, ListenerMeta, Mux, Selector};
-use tokio::net::{TcpListener, TcpStream};
 use serde_json::Value;
+use tokio::net::{TcpListener, TcpStream};
 
 use crate::{
     core::{BackendStateUpdate, StateScope},
@@ -52,7 +54,9 @@ pub(crate) fn supports(plugin: &str, method: &str) -> bool {
 /// The host door this bridge splices, when it owns the tunnel. Only an
 /// explicit, non-empty OP_TUNNEL_DOOR makes this bridge the tunnel owner.
 fn tunnel_door(value: Option<String>) -> Option<String> {
-    value.map(|door| door.trim().to_string()).filter(|door| !door.is_empty())
+    value
+        .map(|door| door.trim().to_string())
+        .filter(|door| !door.is_empty())
 }
 
 /// Whether this bridge owns the door tunnel (host only).
@@ -63,7 +67,8 @@ pub(crate) fn owns_tunnel_from_env() -> bool {
 /// Bind the door socket and the host door, then serve until stopped.
 pub(crate) async fn serve_from_env() -> Result<()> {
     let socket = PathBuf::from(
-        std::env::var("OP_TUNNEL_SOCKET").unwrap_or_else(|_| "/run/opdbus/tunnel/tunnel.sock".into()),
+        std::env::var("OP_TUNNEL_SOCKET")
+            .unwrap_or_else(|_| "/run/opdbus/tunnel/tunnel.sock".into()),
     );
     let door = tunnel_door(std::env::var("OP_TUNNEL_DOOR").ok())
         .context("door tunnel owner requires an explicit OP_TUNNEL_DOOR")?;
@@ -73,7 +78,11 @@ pub(crate) async fn serve_from_env() -> Result<()> {
         .with_context(|| format!("bind host door {door}"))?;
     let mux = Mux::new();
     OWNER
-        .set(Owner { mux: mux.clone(), door: door.clone(), socket: socket.display().to_string() })
+        .set(Owner {
+            mux: mux.clone(),
+            door: door.clone(),
+            socket: socket.display().to_string(),
+        })
         .map_err(|_| anyhow::anyhow!("door tunnel owner started twice"))?;
     tracing::info!(%door, socket = %socket.display(), "door tunnel serving");
     op_tunnel_mux::serve(unix, Some(listener), mux).await
@@ -99,15 +108,23 @@ fn bind_socket(socket: &std::path::Path) -> Result<tokio::net::UnixListener> {
     Ok(unix)
 }
 
-const VOLUME_POOLS: &[&str] = &["/var/lib/incus/storage-pools/3tched-pool/custom", "/var/lib/lxd/storage-pools/lxd-pool/custom"];
+const VOLUME_POOLS: &[&str] = &[
+    "/var/lib/incus/storage-pools/3tched-pool/custom",
+    "/var/lib/lxd/storage-pools/lxd-pool/custom",
+];
 
 // Only committed, active identities are inputs. Files left by a removed
 // container are not authority, and a duplicate port has no unique target.
-fn assigned_ports(ids: impl Iterator<Item = String>, pools: &[&str]) -> Result<HashMap<u16, String>> {
+fn assigned_ports(
+    ids: impl Iterator<Item = String>,
+    pools: &[&str],
+) -> Result<HashMap<u16, String>> {
     let mut ports = HashMap::new();
     let mut duplicates = HashSet::new();
     for id in ids {
-        if std::path::Path::new(&id).file_name() != Some(std::ffi::OsStr::new(&id)) { continue; }
+        if std::path::Path::new(&id).file_name() != Some(std::ffi::OsStr::new(&id)) {
+            continue;
+        }
         let name = format!("default_identity-{id}");
         let mut volume = None;
         for pool in pools {
@@ -117,22 +134,37 @@ fn assigned_ports(ids: impl Iterator<Item = String>, pools: &[&str]) -> Result<H
                 volume = Some(candidate);
             }
         }
-        let Some(volume) = volume else { continue; };
+        let Some(volume) = volume else {
+            continue;
+        };
         let value = match std::fs::read_to_string(volume.join("browser_port")) {
             Ok(value) => value,
             Err(err) if err.kind() == std::io::ErrorKind::NotFound => continue,
             Err(err) => return Err(err.into()),
         };
-        anyhow::ensure!(std::fs::read_to_string(volume.join("session_id"))?.trim() == id, "volume identity mismatch");
+        anyhow::ensure!(
+            std::fs::read_to_string(volume.join("session_id"))?.trim() == id,
+            "volume identity mismatch"
+        );
         let port: u16 = value.trim().parse()?;
-        anyhow::ensure!((20000..30000).contains(&port), "invalid browser port assignment");
-        if ports.insert(port, id).is_some() { duplicates.insert(port); }
+        anyhow::ensure!(
+            (20000..30000).contains(&port),
+            "invalid browser port assignment"
+        );
+        if ports.insert(port, id).is_some() {
+            duplicates.insert(port);
+        }
     }
-    for port in duplicates { ports.remove(&port); }
+    for port in duplicates {
+        ports.remove(&port);
+    }
     Ok(ports)
 }
 
-struct PortSelector { catalog: PathBuf, state: String }
+struct PortSelector {
+    catalog: PathBuf,
+    state: String,
+}
 
 impl PortSelector {
     async fn assignments(self: &Arc<Self>) -> Result<HashMap<u16, String>> {
@@ -143,10 +175,16 @@ impl PortSelector {
     fn read_assignments(&self) -> Result<HashMap<u16, String>> {
         let records = crate::identity_receiver::committed_sessions_in(&self.catalog, &self.state)?;
         let now = chrono::Utc::now().timestamp();
-        let sessions = records.into_iter().filter(|record| {
-            record.active && record.is_anchored()
-                && record.expires_at.is_none_or(|expiry| expiry == 0 || expiry > now)
-        }).map(|record| record.session_id);
+        let sessions = records
+            .into_iter()
+            .filter(|record| {
+                record.active
+                    && record.is_anchored()
+                    && record
+                        .expires_at
+                        .is_none_or(|expiry| expiry == 0 || expiry > now)
+            })
+            .map(|record| record.session_id);
         assigned_ports(sessions, VOLUME_POOLS)
     }
 }
@@ -164,11 +202,19 @@ impl Selector<String> for BrowserSelector {
 fn prepare_browser_directory(socket: &std::path::Path) -> Result<()> {
     use std::os::unix::fs::MetadataExt as _;
     use std::path::Component;
-    let parent = socket.parent().context("browser socket requires a parent")?;
-    anyhow::ensure!(parent.is_absolute() && parent.parent().is_some() && socket.file_name().is_some(), "browser socket requires its own absolute directory");
+    let parent = socket
+        .parent()
+        .context("browser socket requires a parent")?;
+    anyhow::ensure!(
+        parent.is_absolute() && parent.parent().is_some() && socket.file_name().is_some(),
+        "browser socket requires its own absolute directory"
+    );
     let mut path = PathBuf::new();
     for component in parent.components() {
-        anyhow::ensure!(matches!(component, Component::RootDir | Component::Normal(_)), "invalid browser directory component");
+        anyhow::ensure!(
+            matches!(component, Component::RootDir | Component::Normal(_)),
+            "invalid browser directory component"
+        );
         path.push(component);
         let meta = match std::fs::symlink_metadata(&path) {
             Ok(meta) => meta,
@@ -178,31 +224,67 @@ fn prepare_browser_directory(socket: &std::path::Path) -> Result<()> {
             }
             Err(err) => return Err(err.into()),
         };
-        anyhow::ensure!(meta.is_dir() && meta.uid() == 0 && meta.mode() & 0o022 == 0,
-            "browser socket requires root-owned non-writable directory ancestors");
+        anyhow::ensure!(
+            meta.is_dir() && meta.uid() == 0 && meta.mode() & 0o022 == 0,
+            "browser socket requires root-owned non-writable directory ancestors"
+        );
     }
     std::fs::set_permissions(parent, std::fs::Permissions::from_mode(0o755))?;
     Ok(())
 }
 
-pub(crate) async fn serve_browser_from_env(runtime: Arc<crate::runtime::Runtime>, host: String) -> Result<()> {
-    let ip: IpAddr = host.parse().context("OP_BROWSER_DOOR must be a host IP address")?;
-    let socket = PathBuf::from(std::env::var_os("OP_BROWSER_SOCKET").unwrap_or_else(|| "/run/opdbus/tunnel-browser/browser.sock".into()));
-    let control = PathBuf::from(std::env::var_os("OP_TUNNEL_SOCKET").unwrap_or_else(|| "/run/opdbus/tunnel/tunnel.sock".into()));
-    anyhow::ensure!(socket.parent() != control.parent(), "browser socket requires a separate directory");
+pub(crate) async fn serve_browser_from_env(
+    runtime: Arc<crate::runtime::Runtime>,
+    host: String,
+) -> Result<()> {
+    // One or more host addresses, comma-separated (for example the bridge
+    // address and the WARP address): every identity port is bound on each.
+    let ips: Vec<IpAddr> = host
+        .split(',')
+        .map(str::trim)
+        .filter(|value| !value.is_empty())
+        .map(|value| {
+            value
+                .parse()
+                .context("OP_BROWSER_DOOR must list host IP addresses")
+        })
+        .collect::<Result<_>>()?;
+    anyhow::ensure!(!ips.is_empty(), "OP_BROWSER_DOOR lists no address");
+    let socket = PathBuf::from(
+        std::env::var_os("OP_BROWSER_SOCKET")
+            .unwrap_or_else(|| "/run/opdbus/tunnel-browser/browser.sock".into()),
+    );
+    let control = PathBuf::from(
+        std::env::var_os("OP_TUNNEL_SOCKET")
+            .unwrap_or_else(|| "/run/opdbus/tunnel/tunnel.sock".into()),
+    );
+    anyhow::ensure!(
+        socket.parent() != control.parent(),
+        "browser socket requires a separate directory"
+    );
     let catalog = runtime.catalog_dir().to_owned();
     let state = op_core::projection_shm::shm_state_dir();
-    let identity = crate::runtime_lungs::BrowserWaiterIdentity::new(catalog.clone(), state.clone(), runtime.identity_store().clone())?;
+    let identity = crate::runtime_lungs::BrowserWaiterIdentity::new(
+        catalog.clone(),
+        state.clone(),
+        runtime.identity_store().clone(),
+    )?;
     let records = Arc::new(PortSelector { catalog, state });
     let selector = Arc::new(BrowserSelector(records.clone()));
     prepare_browser_directory(&socket)?;
     let unix = bind_socket(&socket)?;
     let mux = BrowserMux::new();
-    BROWSER_OWNER.set(BrowserOwner { mux: mux.clone(), host }).map_err(|_| anyhow::anyhow!("browser tunnel owner started twice"))?;
+    BROWSER_OWNER
+        .set(BrowserOwner {
+            mux: mux.clone(),
+            host,
+        })
+        .map_err(|_| anyhow::anyhow!("browser tunnel owner started twice"))?;
     let socket_server = op_tunnel_mux::serve_browser(unix, mux.clone(), Arc::new(identity));
     tokio::pin!(socket_server);
     let mut workers = tokio::task::JoinSet::new();
-    let mut listening: HashMap<u16, tokio::task::AbortHandle> = HashMap::new();
+    let mut listening: HashMap<SocketAddr, tokio::task::AbortHandle> = HashMap::new();
+    let mut refused: HashSet<SocketAddr> = HashSet::new();
     let mut tick = tokio::time::interval(Duration::from_secs(2));
     tick.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Skip);
     loop {
@@ -217,18 +299,25 @@ pub(crate) async fn serve_browser_from_env(runtime: Arc<crate::runtime::Runtime>
                         HashMap::new()
                     }
                 };
-                listening.retain(|port, task| {
-                    if !ports.contains_key(port) { task.abort(); return false; }
+                listening.retain(|addr, task| {
+                    if !ports.contains_key(&addr.port()) { task.abort(); return false; }
                     !task.is_finished()
                 });
+                refused.retain(|addr| ports.contains_key(&addr.port()));
                 for port in ports.into_keys() {
-                    if listening.contains_key(&port) { continue; }
-                    match TcpListener::bind(SocketAddr::new(ip, port)).await {
-                        Ok(listener) => {
-                            let task = workers.spawn(op_tunnel_mux::serve_browser_listener(listener, mux.clone(), selector.clone()));
-                            listening.insert(port, task);
+                    for ip in &ips {
+                        let addr = SocketAddr::new(*ip, port);
+                        if listening.contains_key(&addr) { continue; }
+                        match TcpListener::bind(addr).await {
+                            Ok(listener) => {
+                                refused.remove(&addr);
+                                let task = workers.spawn(op_tunnel_mux::serve_browser_listener(listener, mux.clone(), selector.clone()));
+                                listening.insert(addr, task);
+                            }
+                            Err(error) => if refused.insert(addr) {
+                                tracing::warn!(%addr, %error, "browser listener bind refused");
+                            },
                         }
-                        Err(_) => tracing::warn!("browser listener bind refused"),
                     }
                 }
             }
@@ -244,7 +333,8 @@ mod port_tests {
     fn only_current_unambiguous_committed_ports_are_selected() {
         let dir = tempfile::tempdir().unwrap();
         let pools = [dir.path().to_str().unwrap()];
-        let snapshot = |ids: &[&str]| assigned_ports(ids.iter().map(|id| id.to_string()), &pools).unwrap();
+        let snapshot =
+            |ids: &[&str]| assigned_ports(ids.iter().map(|id| id.to_string()), &pools).unwrap();
         for (id, port) in [("first", "20001\n"), ("second", "20002\n")] {
             let volume = dir.path().join(format!("default_identity-{id}"));
             std::fs::create_dir(&volume).unwrap();
@@ -258,7 +348,11 @@ mod port_tests {
         let removed = snapshot(&["second"]);
         assert!(!removed.contains_key(&20001));
         assert_eq!(removed.get(&20002).map(String::as_str), Some("second"));
-        std::fs::write(dir.path().join("default_identity-second/browser_port"), "20001\n").unwrap();
+        std::fs::write(
+            dir.path().join("default_identity-second/browser_port"),
+            "20001\n",
+        )
+        .unwrap();
         assert!(!snapshot(&["first", "second"]).contains_key(&20001));
     }
 }
@@ -285,13 +379,20 @@ async fn observe() -> TunnelState {
     state
 }
 
-fn count(n: usize) -> u32 { u32::try_from(n).unwrap_or(u32::MAX) }
+fn count(n: usize) -> u32 {
+    u32::try_from(n).unwrap_or(u32::MAX)
+}
 
 pub(crate) async fn dispatch(
-    ctx: &BackendContext<'_>, method: &str, args: &Value,
+    ctx: &BackendContext<'_>,
+    method: &str,
+    args: &Value,
 ) -> Result<BackendOutcome, RuntimeError> {
-    let unavailable = || RuntimeError::unsupported_before_effect("requested tunnel owner is not running");
-    if OWNER.get().is_none() && BROWSER_OWNER.get().is_none() { return Err(unavailable()); }
+    let unavailable =
+        || RuntimeError::unsupported_before_effect("requested tunnel owner is not running");
+    if OWNER.get().is_none() && BROWSER_OWNER.get().is_none() {
+        return Err(unavailable());
+    }
     crate::runtime_misc::revalidate(ctx).await?;
     let closed = match method {
         "status" => None,
@@ -299,8 +400,16 @@ pub(crate) async fn dispatch(
             let input: SetOpenInput = serde_json::from_value(args.clone())
                 .map_err(|error| RuntimeError::before_effect(error.into()))?;
             match input.door {
-                Door::Control => OWNER.get().ok_or_else(unavailable)?.mux.set_open(input.open),
-                Door::Browser => BROWSER_OWNER.get().ok_or_else(unavailable)?.mux.set_open(input.open),
+                Door::Control => OWNER
+                    .get()
+                    .ok_or_else(unavailable)?
+                    .mux
+                    .set_open(input.open),
+                Door::Browser => BROWSER_OWNER
+                    .get()
+                    .ok_or_else(unavailable)?
+                    .mux
+                    .set_open(input.open),
             };
             None
         }
@@ -309,15 +418,26 @@ pub(crate) async fn dispatch(
                 .map_err(|error| RuntimeError::before_effect(error.into()))?;
             Some(count(match input.door {
                 Door::Control => OWNER.get().ok_or_else(unavailable)?.mux.close_active(),
-                Door::Browser => BROWSER_OWNER.get().ok_or_else(unavailable)?.mux.close_active(),
+                Door::Browser => BROWSER_OWNER
+                    .get()
+                    .ok_or_else(unavailable)?
+                    .mux
+                    .close_active(),
             }))
         }
-        _ => return Err(RuntimeError::unsupported_before_effect("tunnel method has no owner")),
+        _ => {
+            return Err(RuntimeError::unsupported_before_effect(
+                "tunnel method has no owner",
+            ));
+        }
     };
     let snapshot = observe().await;
     let state = serde_json::to_value(&snapshot)?;
     let result = match closed {
-        Some(closed) => serde_json::to_value(CloseConnectionsOutput { closed, state: snapshot })?,
+        Some(closed) => serde_json::to_value(CloseConnectionsOutput {
+            closed,
+            state: snapshot,
+        })?,
         None => state.clone(),
     };
     Ok(BackendOutcome {
@@ -339,7 +459,13 @@ mod tests {
         assert_eq!(tunnel_door(None), None);
         assert_eq!(tunnel_door(Some(String::new())), None);
         assert_eq!(tunnel_door(Some("  ".into())), None);
-        assert_eq!(tunnel_door(Some("10.0.0.2:8090".into())).as_deref(), Some("10.0.0.2:8090"));
-        assert_eq!(tunnel_door(Some(" 10.0.0.2:8090\n".into())).as_deref(), Some("10.0.0.2:8090"));
+        assert_eq!(
+            tunnel_door(Some("10.0.0.2:8090".into())).as_deref(),
+            Some("10.0.0.2:8090")
+        );
+        assert_eq!(
+            tunnel_door(Some(" 10.0.0.2:8090\n".into())).as_deref(),
+            Some("10.0.0.2:8090")
+        );
     }
 }

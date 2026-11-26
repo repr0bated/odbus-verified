@@ -170,7 +170,10 @@ FABRIC_BIND="127.0.0.1:8090"
 export OP_GRPC_BRIDGE_LISTEN="$FABRIC_BIND"
 export OP_TUNNEL_DOOR="10.0.0.2:8090"
 export OP_TUNNEL_SOCKET=/run/opdbus/tunnel/tunnel.sock
-export OP_BROWSER_DOOR=10.0.0.2
+# Comma-separated: every identity browser port is bound on each address
+# (10.0.0.2 on ovsbr0, 100.96.0.5 the WARP address), over tonic to the
+# identity's container through the shared browser socket. No socat.
+export OP_BROWSER_DOOR=10.0.0.2,100.96.0.5
 # Socketless bridge-hosted FUSE mounts (spec fusefs-socketless-dispatch):
 # container:3tched_mount:threetched_mount:call_owner_uid[:store_root], ';'-separated.
 # Optional override/disable knob only: unset or empty = auto-enumerate every
