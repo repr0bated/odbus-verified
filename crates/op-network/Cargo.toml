@@ -44,6 +44,7 @@ rovs-openflow = "0.2"
 rovs-jsonrpc = "0.2"
 rovs-types = "0.2"
 rovs-transport = "0.2"
+rovs-ext = "=0.2.0"
 
 # Bytes for wire-protocol encoding in controller.rs
 bytes = "1"

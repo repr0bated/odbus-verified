@@ -6652,6 +6652,7 @@ dependencies = [
  "op-core",
  "rcgen 0.13.2",
  "reqwest 0.11.27",
+ "rovs-ext",
  "rovs-jsonrpc",
  "rovs-openflow",
  "rovs-ovsdb",
@@ -8472,6 +8473,23 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7a4e1d4b9b938a26d2996af33229f0ca0956c652c1375067f0b45291c1df8417"
 dependencies = [
  "rmp",
+]
+
+[[package]]
+name = "rovs-ext"
+version = "0.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "71d3a9dafe1a144eb938336ad3d97e6bcba2d73f6a03effcf98a95b20d327300"
+dependencies = [
+ "rovs-jsonrpc",
+ "rovs-openflow",
+ "rovs-ovsdb",
+ "rovs-transport",
+ "rovs-types",
+ "serde_json",
+ "thiserror 2.0.19",
+ "tokio",
+ "tracing",
 ]
 
 [[package]]

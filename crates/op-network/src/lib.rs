@@ -17,6 +17,7 @@ pub mod dbus_tls;
 pub mod incus_root_subvolume;
 pub mod openflow;
 pub mod openflow_cookie;
+pub mod openflow_packet_in;
 pub mod openflow_translate;
 pub mod ovs_capabilities;
 pub mod ovs_error;

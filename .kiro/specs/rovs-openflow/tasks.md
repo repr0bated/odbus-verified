@@ -23,7 +23,7 @@ Branch `hackathon/kiroween`. Every commit ends with the trailer `Hackathon: kiro
   - [ ] 6.2 `set_fail_mode`, `set_controller`, `del_controller` over OVSDB (`ovsdb_bridge` path); `attach_controller_safe` pre-seeds the uplink flows.
   - [x] 6.3 Remove `ensure_fallback_normal` from the sealed schema; retire its subid.
   - [ ] 6.4 `ovsbr0` `protocols` includes `OpenFlow15` (OVSDB transact).
-- [ ] 7. Packet-in controller wiring: `rovs-ext::Controller` against `ptcp:6653:10.200.0.1`, off by default; test the connect path with a fake switch.
+- [x] 7. Packet-in controller wiring: `rovs-ext::Controller` against `ptcp:6653:10.200.0.1`, off by default; test the connect path with a fake switch.
 - [ ] 8. Move the other permit users (`obfuscation_methods.rs`, `decoy_network.rs`) to the in-process admitted path; their tests unchanged in behaviour.
 - [ ] 9. Remove the hand-rolled code: `controller.rs`, `controller_flow_verify.rs`, `bin/op-of-controller.rs`, the `org.opdbus.v1.plugins.openflow` D-Bus service, `openflow_permit.rs`, `vendor/rovs-openflow` and its `[patch.crates-io]` entry, `packet_type` in `openflow_translate.rs`; deploy references (`deploy/runit/op-of-controller/`, `managed-services`, golden `activate-services.tsv` and its test, `OF_CONTROLLER_*` in `network.conf`).
 - [ ] 10. Docs: `crates/op-chat/src/system_prompt.rs` network section (OpenFlow `10.200.0.1` on `ovsbr0` with `10.0.0.2` and `100.96.0.5`, port 6653, rovs, sealed plugins only); `deploy/` README for the network runtime.
