@@ -1,5 +1,7 @@
 # Tasks — `openflow-browser-route`
 
+> SUPERSEDED 2026-11-26 by `.kiro/specs/browser-lungs-handoff/`. Rejected by the owner: the architecture already works and is not changed. Do not implement.
+
 Branch `hackathon/kiroween`. Every commit ends with the trailer `Hackathon: kiroween`. One commit per task; proof of work per task in the kiroween repo (`docs/proof-of-work/openflow-browser-route/`). No `ovs-*` commands, no `lxc exec` data path. No tests until after deployment, and then only on the owner's request (AGENTS.md). Nothing is written to the live switch and nothing is deployed without the owner's OK.
 
 - [ ] 0. Owner decision: what the route flow matches (design D3).

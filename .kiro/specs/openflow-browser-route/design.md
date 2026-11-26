@@ -1,5 +1,7 @@
 # Design — `openflow-browser-route`
 
+> SUPERSEDED 2026-11-26 by `.kiro/specs/browser-lungs-handoff/`. Rejected by the owner: the architecture already works and is not changed. Do not implement.
+
 Status: DRAFT for owner review, 2026-11-26. Requirements: `requirements.md` in this directory.
 
 ## Path

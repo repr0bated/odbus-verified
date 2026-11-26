@@ -1,5 +1,7 @@
 # Requirements — `openflow-browser-route`
 
+> SUPERSEDED 2026-11-26 by `.kiro/specs/browser-lungs-handoff/`. Rejected by the owner: the architecture already works and is not changed. Do not implement.
+
 Status: DRAFT for owner review, 2026-11-26. Branch `hackathon/kiroween`; every commit carries the trailer `Hackathon: kiroween`. Builds on `rovs-openflow` (release 348, `9bc3aaf`): the bridge creates, changes and deletes flows on `ovsbr0` itself, admitted and verified.
 
 ## Why
