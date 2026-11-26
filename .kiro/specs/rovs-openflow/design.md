@@ -24,8 +24,8 @@ The bridge talks to OVS directly. There is no controller process between them, n
 ### D1. Transport: VConn over the bridge's `.mgmt` socket
 - `rovs_openflow::VConn::connect(&rovs_transport::Address::Unix(".../ovsbr0.mgmt"))`, hello at `Version::Of15`.
 - One long-lived VConn per managed bridge, owned by the network runtime in the bridge, reconnecting with `rovs_transport::Reconnect`. Echo replies keep it alive.
-- `op-network`'s `OpenFlowClient::connect` gains a Unix address; it stays the one wrapper around VConn.
-- To verify in task 1: `rovs_transport::Address` has a Unix variant that VConn accepts (docs list Unix, TCP, TLS streams).
+- `op-network`'s `OpenFlowClient::connect` gains a Unix address; it stays the one wrapper around the rovs connection.
+- Task 1 found that `VConn::connect` always negotiates OF1.3 (see *rovs 0.2.0 surface*). The client therefore runs the OF1.5 hello itself over `rovs_transport::Stream`, using rovs `Message`/`Header` encoding.
 
 ### D2. Flow identity: plugin-assigned cookies, derived, not stored
 - Cookie = `0x33444348_xxxxxxxx`: the high 32 bits are the fixed 3tched prefix (as in the archived fabric's NORMAL cookie `0x3344434800000001`); the low 32 bits are the first 32 bits of SHA-256 over the canonical `(bridge, table, priority, match)`.
@@ -50,7 +50,7 @@ The bridge talks to OVS directly. There is no controller process between them, n
 2. Read the target flow by cookie (strict identity).
 3. Compare with `expected` (absent for `add_flow`). Mismatch: refuse, nothing written.
 4. Run the call's `FinalAdmission` (the same closure the permit carries today), immediately before the write.
-5. Send the FLOW_MOD inside an OF1.5 **bundle** with `OFPBF_ATOMIC` where rovs supports it (verify in task 1; otherwise a single FLOW_MOD plus barrier).
+5. Send the FLOW_MOD inside an OF1.5 **bundle** with `OFPBF_ATOMIC` where rovs supports it, otherwise a single FLOW_MOD plus barrier. Task 1: rovs 0.2.0 has no bundle encoding, so this is a single FLOW_MOD plus barrier.
 6. Barrier, read back, verify the switch matches the request; project children; emit signals; return the receipt data.
 - Steps 2–6 run under the lock, so this process is the only writer. `ovs-*` commands are banned, so nothing else writes.
 
@@ -82,3 +82,22 @@ The bridge talks to OVS directly. There is no controller process between them, n
 - rovs 0.2.0 is young (one version). Mitigation: fake-switch tests on encode/decode; any upstream fix goes to rovs, not a new vendored copy.
 - OVS OpenFlow 1.5 support has gaps; any message OVS rejects at 1.5 falls back per message to the 1.3 form rovs also encodes, recorded in the code.
 - Removing the permit path touches `obfuscation_methods.rs` and `decoy_network.rs`; their tests must pass unchanged in behaviour.
+
+## rovs 0.2.0 surface (task 1, 2026-11-26)
+
+Evidence: read-only probe (`/tmp/rovs-probe-kiroween`, rovs code only: HELLO, BARRIER, ECHO, flow-stats and flow-monitor reads) against `/var/run/openvswitch/ovsbr0.mgmt`, plus the rovs 0.2.0 sources. No FLOW_MOD, no OVSDB write, no `ovs-*` command.
+
+| Item | Result | Consequence |
+|---|---|---|
+| `Address` Unix variant | `unix:/path` parses to `Address::Unix`; `Stream::connect` and `VConn::connect` accept it. | D1 transport holds. |
+| Hello at OF1.5 | `VConn::connect` hard-codes `Version::Of13` (its `version` field starts at `Of13`; `VConn::version()` reported `Of13`). A raw hello at `Version::Of15` over `rovs_transport::Stream` with rovs `Message` was answered by OVS with version `Of15`. | `OpenFlowClient` runs the OF1.5 hello itself and then uses `Message`, `Flow::to_message` and `FlowStatsRequest::to_message` at the negotiated version. `VConn` is not used for the live connection. |
+| Barrier, echo | OF1.5 `BarrierReply` and `EchoReply` returned. | Barrier after each FLOW_MOD works as designed. |
+| Cookie and strict | `Flow` has public `cookie`, `cookie_mask`, `command` with `ModifyStrict` and `DeleteStrict`. | D2 delete/modify by cookie with full mask is expressible. Not exercised live (no FLOW_MOD allowed). |
+| Bundles (`OFPBF_ATOMIC`) | Only the `MessageType::BundleControl`/`BundleAddMessage` numbers exist. No encoding. | D5 uses a single FLOW_MOD plus barrier. |
+| Flow dump at OF1.5 | OVS replies to `FlowStatsRequest` (multipart type 1) with `ofp_flow_desc` entries. Layout: `length, pad, table_id, pad, priority, idle, hard, flags, importance, cookie`, then an `ofp_match`, then OXS statistics (`duration`, `idle_time`, `packet_count`, `byte_count` as OXS TLVs, class `0x8002`), then instructions. `FlowStatsEntry::decode` expects the 1.3 layout and fails (`unsupported match type: 32770`). | The client decodes the OF1.5 entry itself (fixed header, rovs `Match` decode, OXS TLVs, rovs `InstructionList`) with fake-switch tests built from the captured bytes. The 1.3 decoder stays unused. |
+| Flow monitor | `FlowMonitorRequest` is rejected by OVS on `.mgmt` at both versions (`BAD_REQUEST`, "unknown experimenter type"). | D3 counters refresh on read, as the fallback in D3 says. Children change only through this runtime's own commits. |
+| `rovs-transport::Reconnect` | A backoff state machine (`connecting`, `connected`, `disconnected`, `should_connect`, `current_backoff`); it does not connect. | The client owns the connect loop and uses `Reconnect` for timing. |
+| `rovs-ext` 0.2.0 | Available and compiles (crates.io, with `rovs-openflow`/`rovs-transport` 0.2.0). `controller::Controller::new(&Address, ControllerConfig)` dials the address; `register` takes `PacketHandler`s. | D7 holds: OVS listens on `ptcp:6653:10.200.0.1`, the controller dials it. Its `Controller` holds a `VConn` (`conn()`), so it negotiates OF1.3 as shipped. Packet-in wiring is acceptable at 1.3; no flow in this spec needs packet-ins. |
+| `packet_type` match | rovs 0.2.0 lacks OXM `0x8000/44`. | No L3-only port exists (requirement 6.2), so the match goes with the vendored patch. |
+
+Raw probe output is kept in the task 1 commit message.
