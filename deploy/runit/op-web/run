@@ -29,11 +29,11 @@ set +a
 export OP_WEB_BIND_ADDR="${OP_WEB_BIND_ADDR:-10.0.0.2}"
 export PORT="${PORT:-8080}"
 export OP_WEB_STATIC_DIR=/usr/local/share/op-dbus/dashboard-release
-# Compliance SPA/API moved to the door Axum stack (op-grpc-bridge :8090).
-export OP_DBUS_GRPC_ADDR="${OP_DBUS_GRPC_ADDR:-https://10.0.0.2:8090}"
-# The door certificate is generated inside the door-owning container and
-# exported (public part only) to its shared host directory.
-export OP_DBUS_GRPC_CA_FILE="${OP_DBUS_GRPC_CA_FILE:-/run/opdbus/ct/3tchedChatbot/door.crt}"
+# op-web talks to the host bridge's own tonic-web door on loopback
+# (127.0.0.1:8090, certificate tonic-svc0), not to 10.0.0.2:8090, which is the
+# tunnel into the chatbot container's door (owner, 2026-11-26).
+export OP_DBUS_GRPC_ADDR="${OP_DBUS_GRPC_ADDR:-https://127.0.0.1:8090}"
+export OP_DBUS_GRPC_CA_FILE="${OP_DBUS_GRPC_CA_FILE:-/etc/op-dbus/tls/tonic-svc0.crt}"
 # Serve the existing private HTTP endpoint. The ready bridge above proves
 # its host-owned TLS door is bound; no decoy or tunnel daemon is a dependency.
 unset OP_WEB_TLS_BIND
