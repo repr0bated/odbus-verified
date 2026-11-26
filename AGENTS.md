@@ -428,7 +428,7 @@ For non-Cargo delegation, choose the appropriate agent role:
 
 ## Branch policy (owner, 2026-11-08)
 
-Only two branches may be used: `main` and `dev`. Do not create, commit to, or push any other branch.
+Only three branches may be used: `main`, `dev` and `hackathon/kiroween` (owner, 2026-11-26: Kiroween hackathon work only; every commit there carries the trailer `Hackathon: kiroween`; worktree `/srv/git/odbus-verified-wt/kiroween`). Do not create, commit to, or push any other branch. The GitHub rulesets `branch-policy-protect-main-dev` and `branch-policy-restrict-others` allow the same three.
 Before starting work, run `scripts/branch-policy.sh`. If it reports a violation, stop and report it
 instead of working around it. Archiving a branch to a tag is safe. Deleting a local off-policy branch
 in use by another worktree is allowed (owner, 2026-11-09): archive it as `archive/<branch>`, detach that

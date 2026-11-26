@@ -1,10 +1,11 @@
 #!/bin/sh
-# Branch policy: only main and dev may be used.
+# Branch policy: only main, dev and hackathon/kiroween may be used
+# (hackathon/kiroween: Kiroween hackathon work only, owner 2026-11-26).
 #   scripts/branch-policy.sh           check and report (exit 1 on violations)
 #   scripts/branch-policy.sh --apply   archive off-policy branches as tags and delete
 #                                      those with no worktree; worktrees are never removed
 set -eu
-ALLOWED="main dev"
+ALLOWED="main dev hackathon/kiroween"
 root=$(git rev-parse --show-toplevel)
 cd "$root"
 apply=0; [ "${1:-}" = "--apply" ] && apply=1
