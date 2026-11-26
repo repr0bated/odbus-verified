@@ -186,7 +186,7 @@ The UI door (`crates/op-grpc-bridge/src/container_ui_door.rs`) serves the UI
 assets, `ListPlugins`, `GetSchema`, `CallMethod` and `Subscribe` through the
 container's own FuseFS mount. It is off unless `/etc/op-dbus/env/OP_UI_LISTEN`
 in the guest differs from `OP_GRPC_BRIDGE_LISTEN`; it then requires
-`CHAT_UI_DIR`. Use a guest-local address (for example `10.0.0.2:8443`), the same
+`CHAT_UI_DIR`. Use a guest-local address (`127.0.0.1:8443`, the container's own loopback), the same
 one as `/agent/user/OP_UI_LISTEN`. Passing `OP_UI_LISTEN` to
 `30-provision-container.sh` writes both. The container is the
 identity and is already authenticated; the browser is never authenticated again.

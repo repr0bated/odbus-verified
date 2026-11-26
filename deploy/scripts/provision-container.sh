@@ -122,7 +122,7 @@ install -d -m 0700 "$SLED_DIR/ledger"
 incus config device add "$NAME" sled disk pool="$POOL" source="$SLED" path=/agent/user readonly=true >/dev/null
 incus config device add "$NAME" decoy-trust disk source="$TRUST" path=/etc/op-dbus/decoy-trust.json readonly=true shift=true >/dev/null
 if [ "$NAME" != "$CHATBOT_NAME" ]; then
-    python3 "$(dirname -- "$(readlink -f "$0")")/../provisioning/browser-port.py" "$SESSION" "${OP_UI_LISTEN:-10.0.0.2:8090}" "$SLED_DIR"
+    python3 "$(dirname -- "$(readlink -f "$0")")/../provisioning/browser-port.py" "$SESSION" "${OP_UI_LISTEN:-127.0.0.1:8443}" "$SLED_DIR"
 fi
 
 incus start "$NAME"

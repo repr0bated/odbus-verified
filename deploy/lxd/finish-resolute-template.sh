@@ -62,7 +62,7 @@ install -m 0755 "$REPO/deploy/provisioning/runit/op-tunnel-door/run" "$R/usr/loc
 install -m 0644 "$REPO/deploy/seed/rootfs/etc/systemd/system/op-tunnel-door.service" "$R/etc/systemd/system/op-tunnel-door.service"
 ln -sfn ../op-tunnel-door.service "$R/etc/systemd/system/multi-user.target.wants/op-tunnel-door.service"
 # The container's own door (owner 2026-11-25): the bridge serves the browser UI on
-# 10.0.0.2:8443 over this container's own 3tchedFS, which the host projects into
+# 127.0.0.1:8443 (the container's own loopback) over this container's own 3tchedFS, which the host projects into
 # /run with the sealed catalog beside it (deploy/runit/subsidiary-*-3tchedfs).
 L=$REPO/deploy/lxd/rootfs S=$REPO/deploy/seed/rootfs
 install -d -m 0755 "$R/etc/tmpfiles.d" "$R/etc/sysusers.d" "$R/usr/local/share/op-browser-ui"
@@ -77,7 +77,7 @@ install -m 0644 "$S/etc/sysusers.d/opdbus.conf" "$R/etc/sysusers.d/opdbus.conf"
 for unit in opdbus-lo door-tls-init op-grpc-bridge; do
     ln -sfn "../$unit.service" "$R/etc/systemd/system/multi-user.target.wants/$unit.service"
 done
-printf '%s\n' 10.0.0.2:8443 >"$R/etc/op-dbus/env/OP_UI_LISTEN"
+printf '%s\n' 127.0.0.1:8443 >"$R/etc/op-dbus/env/OP_UI_LISTEN"
 printf '%s\n' /usr/local/share/op-browser-ui >"$R/etc/op-dbus/env/CHAT_UI_DIR"
 chmod 0600 "$R/etc/op-dbus/env/OP_UI_LISTEN" "$R/etc/op-dbus/env/CHAT_UI_DIR"
 cp -R --no-preserve=ownership "$UI/." "$R/usr/local/share/op-browser-ui/"
