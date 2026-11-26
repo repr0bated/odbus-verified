@@ -8,7 +8,7 @@
 # /usr/local/libexec/op-dbus/bin and /usr/local/lib/op-dbus, and enables
 # the runit service ct-egress-bpf-<instance>. No Xray, no ct-egress user,
 # no nft table, no host Unix proxy socket.
-# Guest (when running): removes the retired socat/Xray egress — disables
+# Guest (Incus, when running): removes the retired socat/Xray egress — disables
 # opdbus-egress-proxy / opdbus-egress-dns / opdbus-egress-nextdns units,
 # deletes the apt proxy drop-in, /etc/profile.d/opdbus-egress.sh and the
 # per-setting http(s)-proxy files — and points DNS at the loader stub:
@@ -65,10 +65,12 @@ for svc in ct-egress-proxy "ct-egress-relay-$CT"; do
     fi
 done
 
-# --- guest cleanup (only when a runner can exec into it) ---------------
+# --- guest cleanup (Incus guests only) ----------------------------------
+# LXD guests are subsidiaries: every LXD step goes through the sealed lxd
+# plugin, so this host script never enters one with raw `lxc exec`. Their
+# root comes from a template without the retired carrier.
 runner=
 if [ -S /var/lib/incus/unix.socket ] && incus query "/1.0/instances/$CT" >/dev/null 2>&1; then runner=incus
-elif [ -S /var/lib/lxd/unix.socket ] && command -v lxc >/dev/null && lxc info "$CT" >/dev/null 2>&1; then runner=lxc
 fi
 if [ -n "$runner" ]; then
     running=$($runner exec "$CT" -- true 2>/dev/null && echo yes || echo no)
@@ -94,6 +96,6 @@ if [ -n "$runner" ]; then
         say "guest $CT not running; guest cleanup deferred to seed/provisioning state"
     fi
 else
-    say "no Incus/LXD runner for $CT; host service installed only"
+    say "no Incus instance $CT (LXD subsidiaries are not entered); host service installed only"
 fi
 say "installed ct-egress-bpf-$CT (host service enabled)"

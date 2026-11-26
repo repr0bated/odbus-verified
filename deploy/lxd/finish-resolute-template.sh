@@ -50,7 +50,13 @@ install -m 0644 /etc/op-dbus/decoy-trust.json "$R/etc/op-dbus/decoy-trust.json"
 # needs resolv.conf. No Xray/socat units, no apt proxy, no proxy env.
 # Same DNS shape as every seed: in-guest NextDNS (sealed identity)
 # first, the BPF stub as fallback; nextdns's own DoH TCP is carried by
-# the BPF egress like any other flow.
+# the BPF egress like any other flow. A prepared root may already carry
+# the retired Xray/socat carrier from an earlier finish; remove all of it.
+rm -f "$R"/etc/systemd/system/opdbus-egress-{proxy,dns,nextdns}.service \
+    "$R"/etc/systemd/system/multi-user.target.wants/opdbus-egress-{proxy,dns,nextdns}.service \
+    "$R/etc/systemd/system/nextdns.service.d/20-egress.conf" \
+    "$R/etc/apt/apt.conf.d/95opdbus-egress-proxy" "$R/etc/profile.d/opdbus-egress.sh" \
+    "$R/etc/op-dbus/env/nextdns-bootstrap"
 install -m 0644 "$REPO/deploy/seed/rootfs/etc/systemd/system/nextdns.service" "$R/etc/systemd/system/nextdns.service"
 install -m 0755 "$REPO/deploy/provisioning/runit/op-tunnel-door/run" "$R/usr/local/libexec/op-dbus/tunnel-door-run"
 install -m 0644 "$REPO/deploy/seed/rootfs/etc/systemd/system/op-tunnel-door.service" "$R/etc/systemd/system/op-tunnel-door.service"
