@@ -7,9 +7,10 @@
 # init pid. The loader attaches cgroup/connect4+sockops to the
 # container's cgroup, serves TCP 127.0.0.1:3129 and DNS 127.0.0.2:53
 # inside the container netns, and dials public destinations directly
-# from the host namespace (no Xray, no proxy, no socat). Exits when the
-# container stops (its netns/cgroup vanish), so runit rebinds on the
-# next boot.
+# from the host namespace (no Xray, no proxy, no socat). The loader
+# itself does not exit when the container restarts, so this script
+# watches the init pid and exits when it changes or disappears; runit
+# then rebinds the loader to the new init pid.
 exec 2>&1
 set -u
 CT=${PWD##*/ct-egress-bpf-}
@@ -35,4 +36,32 @@ echo "$CT: waiting for the container to run"
 while ! pid=$(container_pid); do sleep 30; done
 
 echo "$CT: attaching BPF egress to init pid $pid (upstream DNS $DNS)"
-exec "$BIN" "$pid" "$DNS"
+# The loader forks a guest-netns helper that outlives it, and an orphaned
+# helper keeps 127.0.0.1:3129 bound so the next loader cannot listen.
+# Clear orphans first: helpers re-parented to init whose target pid is
+# this container's init pid, or a pid that no longer exists.
+for p in $(pgrep -x -P 1 ct-egress-bpf); do
+    target=$(tr '\0' ' ' < "/proc/$p/cmdline" 2>/dev/null | awk '{print $2}')
+    case $target in ''|*[!0-9]*) continue ;; esac
+    if [ "$target" = "$pid" ] || [ ! -d "/proc/$target" ]; then
+        echo "$CT: stopping orphaned loader $p (target pid $target)"
+        kill "$p" 2>/dev/null
+    fi
+done
+sleep 1
+# setsid gives the loader its own process group, so stopping it also
+# stops its helper.
+setsid "$BIN" "$pid" "$DNS" &
+loader=$!
+stop_loader() { kill -TERM -- "-$loader" 2>/dev/null; wait "$loader" 2>/dev/null; }
+trap 'stop_loader; exit 0' TERM INT HUP
+while kill -0 "$loader" 2>/dev/null; do
+    sleep 30 & wait $!   # wait, not a bare sleep, so TERM from sv is handled at once
+    now=$(container_pid) || now=
+    if [ "$now" != "$pid" ]; then
+        echo "$CT: init pid $pid gone (now ${now:-none}); stopping loader to rebind"
+        stop_loader
+        exit 0
+    fi
+done
+stop_loader
