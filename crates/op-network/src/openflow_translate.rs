@@ -511,6 +511,26 @@ pub fn json_flow_to_delete(
     Ok(flow)
 }
 
+/// Translate a JSON-encoded `FlowEntry` into a `rovs_openflow::Flow`
+/// MODIFY_STRICT: same identity, replacement actions, scoped to the flow's
+/// cookie with a full mask. A flow without a cookie is refused, so a modify
+/// can never reach a flow it was not meant for.
+pub fn json_flow_to_modify(
+    flow_json: &str,
+    port_map: &HashMap<String, u32>,
+    port_macs: &HashMap<String, [u8; 6]>,
+) -> Result<Flow> {
+    let mut flow = json_flow_to_add(flow_json, port_map, port_macs)?;
+    let json: serde_json::Value =
+        serde_json::from_str(flow_json).context("invalid FlowEntry JSON")?;
+    if json.get("cookie").is_none_or(serde_json::Value::is_null) {
+        bail!("modify requires the flow's cookie");
+    }
+    flow.command = FlowCommand::ModifyStrict;
+    flow.cookie_mask = u64::MAX;
+    Ok(flow)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -572,6 +592,25 @@ mod tests {
             json_flow_to_add(&flow_json(serde_json::json!(42)), &ports(), &port_macs()).unwrap();
 
         assert_eq!(flow.table_id, 7);
+    }
+
+    #[test]
+    fn modify_is_strict_scoped_by_cookie_and_carries_the_actions() {
+        let flow =
+            json_flow_to_modify(&flow_json(serde_json::json!(42)), &ports(), &port_macs()).unwrap();
+
+        assert_eq!(flow.command, FlowCommand::ModifyStrict);
+        assert_eq!((flow.table_id, flow.priority), (7, 321));
+        assert_eq!((flow.cookie, flow.cookie_mask), (42, u64::MAX));
+        assert!(!flow.actions.is_empty(), "replacement actions are sent");
+    }
+
+    #[test]
+    fn modify_without_a_cookie_is_refused() {
+        assert!(
+            json_flow_to_modify(&flow_json_without_cookie(), &ports(), &port_macs()).is_err(),
+            "a modify that cannot be scoped to one cookie must not be built"
+        );
     }
 
     #[test]

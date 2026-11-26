@@ -123,6 +123,8 @@ tokio-test = "0.4"
 tempfile = { workspace = true }
 serde_json = { workspace = true }
 rustls = { version = "0.23", features = ["aws_lc_rs"] }
+# Fake OpenFlow 1.5 switch for the openflow_methods tests.
+op-network = { path = "../op-network", features = ["fake-switch"] }
 
 [[bin]]
 name = "op-grpc-bridge"

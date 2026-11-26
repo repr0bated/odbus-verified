@@ -58,6 +58,11 @@ wireguard-control = "=1.7.1"
 # simd-json — for the transact_simd compatibility shim in ovsdb.rs
 simd-json = { workspace = true }
 
+[features]
+# In-process fake OpenFlow switch (a real flow table behind a Unix socket) for
+# tests in this crate and in crates that depend on it.
+fake-switch = []
+
 [dev-dependencies]
 rcgen = "0.13"
 tempfile = { workspace = true }

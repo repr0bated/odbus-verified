@@ -7,10 +7,10 @@ Branch `hackathon/kiroween`. Every commit ends with the trailer `Hackathon: kiro
   - [x] 1.2 rovs 0.2.0 support for: OF1.5 bundles (`OFPBF_ATOMIC`), flow-description / flow-stats multipart, flow monitor, barrier, cookie + cookie_mask on strict modify/delete. Record gaps in `design.md`.
 - [x] 2. Transport: `op-network` `OpenFlowClient` connects over a Unix address at OF1.5; reconnect via `rovs_transport::Reconnect`; echo handling. Fake-switch tests for hello, echo, reconnect.
 - [x] 3. Cookies: derived cookie (prefix `0x33444348`, low 32 bits of SHA-256 over canonical bridge/table/priority/match); collision refusal; tests.
-- [ ] 4. Mutation path in the bridge (`runtime_network.rs`)
-  - [ ] 4.1 Per-bridge lock; read ▸ compare ▸ `FinalAdmission` ▸ write (bundle where supported) ▸ barrier ▸ read back ▸ verify.
-  - [ ] 4.2 `add_flow`, `modify_flow`, `delete_flow` by cookie; bounds (bridge ≤ 15 bytes, flow JSON ≤ 64 KiB).
-  - [ ] 4.3 Tests: CAS conflict writes nothing; unadmitted/unattributed mutation refused before any write; read-back mismatch reported.
+- [x] 4. Mutation path in the bridge (`runtime_network.rs`)
+  - [x] 4.1 Per-bridge lock; read ▸ compare ▸ `FinalAdmission` ▸ write (bundle where supported) ▸ barrier ▸ read back ▸ verify.
+  - [x] 4.2 `add_flow`, `modify_flow`, `delete_flow` by cookie; bounds (bridge ≤ 15 bytes, flow JSON ≤ 64 KiB).
+  - [x] 4.3 Tests: CAS conflict writes nothing; unadmitted/unattributed mutation refused before any write; read-back mismatch reported.
 - [ ] 5. Flow children
   - [ ] 5.1 Sealed `flow` child type in the `openflow` plugin schema from `FlowEntry` (schemars), `x-oscal-subid` on every field, entries in `oscal_subid_registry`.
   - [ ] 5.2 D-Bus children at `/org/opdbus/v1/plugins/openflow/bridges/<bridge>/flows/<cookie>`: child `<node>`s in `Introspect`, `GetManagedObjects`, `InterfacesAdded`/`InterfacesRemoved`, `PropertiesChanged`.

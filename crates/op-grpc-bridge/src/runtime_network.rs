@@ -170,6 +170,8 @@ pub(crate) struct NetworkRuntime {
     proxy: crate::proxy_methods::ProxyMethods,
     proxy_caller: Arc<Mutex<Option<VerifiedCaller>>>,
     permits: OnceCell<OpenFlowPermitAuthority>,
+    /// In-process owner of the bridges' OpenFlow connections (rovs, OF1.5).
+    switches: crate::openflow_methods::OpenFlowSwitches,
     operations: Arc<Mutex<()>>,
     monitors: Mutex<BTreeMap<String, MonitorEntry>>,
     pending_observers: Arc<StdMutex<HashMap<uuid::Uuid, oneshot::Sender<()>>>>,
@@ -183,6 +185,9 @@ impl NetworkRuntime {
             documents,
             proxy_caller: Arc::new(Mutex::new(None)),
             permits: OnceCell::new(),
+            switches: crate::openflow_methods::OpenFlowSwitches::new(std::path::Path::new(
+                crate::openflow_methods::OVS_RUN_DIR,
+            )),
             operations: Arc::new(Mutex::new(())),
             monitors: Mutex::new(BTreeMap::new()),
             pending_observers: Arc::new(StdMutex::new(HashMap::new())),
@@ -653,13 +658,14 @@ impl NetworkRuntime {
         admit: FinalAdmission,
     ) -> Result<BackendOutcome> {
         if matches!(method, "add_flow" | "delete_flow" | "modify_flow") {
-            let receipt = crate::openflow_methods::dispatch_openflow_flow_method_attributed(
-                self.permits().await?,
-                method,
-                args,
-                admit,
-            )
-            .await?;
+            let bridge = args
+                .get("bridge")
+                .and_then(Value::as_str)
+                .context("bridge is required")?;
+            let receipt = self
+                .switches
+                .compare_and_exchange(bridge, method, args, admit)
+                .await?;
             let patch = crate::openflow_methods::projection_patch(&receipt)?;
             return Ok(outcome(
                 receipt.output,
