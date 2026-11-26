@@ -33,7 +33,6 @@ trait OpenFlowController {
     async fn send_flow(&self, flow_json: &str) -> zbus::Result<String>;
     async fn delete_flow(&self, flow_json: &str) -> zbus::Result<String>;
     async fn dump_flows(&self) -> zbus::Result<Vec<String>>;
-    async fn ensure_fallback_normal(&self, bridge: &str) -> zbus::Result<String>;
     async fn set_fail_mode(&self, bridge: &str, mode: &str) -> zbus::Result<String>;
     async fn del_controller(&self, bridge: &str) -> zbus::Result<String>;
     async fn set_controller(&self, bridge: &str, endpoint: &str) -> zbus::Result<String>;
@@ -54,6 +53,14 @@ pub struct OpenFlowConfig {
     #[serde(default)]
     #[schemars(extend("x-opdbus-exact-json-schema" = true))]
     pub observed_flows: BTreeMap<String, BTreeMap<String, FlowObservation>>,
+
+    /// Live flow children, keyed first by bridge and then by flow id (cookie).
+    /// A projection of the switch's flow table (the switch is the source of
+    /// truth); it is never authored. D-Bus path of each child:
+    /// `/org/opdbus/v1/plugins/openflow/bridges/<bridge>/flows/<cookie>`.
+    #[serde(default)]
+    #[schemars(extend("x-opdbus-exact-json-schema" = true))]
+    pub flows: BTreeMap<String, BTreeMap<String, FlowChild>>,
 
     /// Controller endpoint (tcp:IP:PORT)
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -81,6 +88,75 @@ pub struct OpenFlowConfig {
 pub struct FlowObservation {
     pub flow: FlowEntry,
     pub installed: bool,
+}
+
+/// The sealed `flow` child type: one flow on a managed bridge, as read from
+/// the switch. Child D-Bus path (documentation only):
+/// `/org/opdbus/v1/plugins/openflow/bridges/<bridge>/flows/<cookie>`.
+/// Every field carries `x-oscal-subid` = `obs.network.openflow.flow.<field>@v1`;
+/// the sealed-catalog registry collects them from this schema.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, JsonSchema)]
+#[serde(deny_unknown_fields)]
+pub struct FlowChild {
+    /// Bridge the flow lives on (e.g. "ovsbr0")
+    #[schemars(extend("x-oscal-subid" = "obs.network.openflow.flow.bridge@v1"))]
+    pub bridge: String,
+
+    /// Flow table number (0-254)
+    #[schemars(extend("x-oscal-subid" = "obs.network.openflow.flow.table@v1"))]
+    pub table: u8,
+
+    /// Flow priority (0-65535)
+    #[schemars(extend("x-oscal-subid" = "obs.network.openflow.flow.priority@v1"))]
+    pub priority: u16,
+
+    /// Flow id: the plugin-assigned cookie as hex, `0x33444348` followed by
+    /// 8 hex digits.
+    #[schemars(
+        extend("x-oscal-subid" = "obs.network.openflow.flow.cookie@v1"),
+        regex(pattern = r"^0x33444348[0-9a-f]{8}$")
+    )]
+    pub cookie: String,
+
+    /// Match criteria (the plugin's `match_fields` map)
+    #[serde(rename = "match")]
+    #[schemars(
+        rename = "match",
+        extend("x-oscal-subid" = "obs.network.openflow.flow.match@v1"),
+        extend("x-opdbus-exact-json-schema" = true)
+    )]
+    pub match_fields: HashMap<String, String>,
+
+    /// Actions (the plugin's `FlowAction` list)
+    #[schemars(
+        extend("x-oscal-subid" = "obs.network.openflow.flow.actions@v1"),
+        extend("x-opdbus-exact-json-schema" = true)
+    )]
+    pub actions: Vec<FlowAction>,
+
+    /// OpenFlow flow flags (e.g. "send_flow_rem")
+    #[schemars(extend("x-oscal-subid" = "obs.network.openflow.flow.flags@v1"))]
+    pub flags: Vec<String>,
+
+    /// Idle timeout in seconds (0 = permanent)
+    #[schemars(extend("x-oscal-subid" = "obs.network.openflow.flow.idle_timeout@v1"))]
+    pub idle_timeout: u16,
+
+    /// Hard timeout in seconds (0 = permanent)
+    #[schemars(extend("x-oscal-subid" = "obs.network.openflow.flow.hard_timeout@v1"))]
+    pub hard_timeout: u16,
+
+    /// Packets matched, as reported by the switch
+    #[schemars(extend("x-oscal-subid" = "obs.network.openflow.flow.packet_count@v1"))]
+    pub packet_count: u64,
+
+    /// Bytes matched, as reported by the switch
+    #[schemars(extend("x-oscal-subid" = "obs.network.openflow.flow.byte_count@v1"))]
+    pub byte_count: u64,
+
+    /// Seconds the flow has existed
+    #[schemars(extend("x-oscal-subid" = "obs.network.openflow.flow.duration_sec@v1"))]
+    pub duration_sec: u32,
 }
 
 fn default_security_enabled() -> bool {
@@ -117,9 +193,9 @@ pub struct FlowEntry {
 
     /// Match criteria (OpenFlow match fields).
     ///
-    /// Reserved keys for future tag routing (OD-06); today's live path still
-    /// uses `EnsureFallbackNormal` / `FlowAction::Normal` until the controller
-    /// consumes them:
+    /// Reserved keys for future tag routing (OD-06); there is no NORMAL
+    /// fallback any more (owner, 2026-11-26), so every flow on a managed
+    /// bridge is explicit and these keys are not consumed yet:
     /// - `oscal_subid` — sealed capability / classification subid
     /// - `identity_tag` — sealed identity or service tag
     /// - `service_tag` — named service route (distinct from Xray name→socket)
@@ -940,10 +1016,7 @@ impl StatePlugin for OpenFlowPlugin {
     }
 
     fn schema(&self) -> Option<op_state_store::PluginSchema> {
-        Some(openflow_schema().subsidiary(|capability| matches!(
-            capability,
-            "openflow.read"
-        )))
+        Some(openflow_schema().subsidiary(|capability| matches!(capability, "openflow.read")))
     }
 
     fn is_available(&self) -> bool {
@@ -1399,19 +1472,6 @@ pub(crate) fn openflow_schema() -> PluginSchema {
     );
 
     schema.methods.insert(
-        "ensure_fallback_normal".to_string(),
-        super::plugin_scaffold_helpers::method_decl_from_schemars_with_output::<
-            EnsureFallbackNormalInput,
-            super::plugin_scaffold_helpers::AckOutput,
-        >(
-            "EnsureFallbackNormal",
-            op_state_store::SideEffect::Mutation,
-            false,
-            "openflow.write",
-            "mut.network.openflow.datapath.ensure-fallback-normal@v1",
-        ),
-    );
-    schema.methods.insert(
         "set_fail_mode".to_string(),
         super::plugin_scaffold_helpers::method_decl_from_schemars_with_output::<
             SetFailModeInput,
@@ -1489,19 +1549,12 @@ pub(crate) fn openflow_schema() -> PluginSchema {
         op_state_store::CapabilityDecl {
             id: "openflow.write".to_string(),
             description:
-                "Grants: add_flow, delete_flow, modify_flow, ensure_fallback_normal, set_fail_mode, del_controller, set_controller, attach_controller_safe."
+                "Grants: add_flow, delete_flow, modify_flow, set_fail_mode, del_controller, set_controller, attach_controller_safe."
                     .to_string(),
         },
     );
 
     schema
-}
-
-/// Input for EnsureFallbackNormal — cookied priority=0 actions=NORMAL.
-#[derive(Debug, Clone, Serialize, Deserialize, schemars::JsonSchema)]
-pub struct EnsureFallbackNormalInput {
-    /// Bridge name (e.g. ovsbr0)
-    pub bridge: String,
 }
 
 /// Input for SetFailMode.
@@ -1617,12 +1670,6 @@ pub async fn dispatch_openflow_method(
     args: &serde_json::Value,
 ) -> Result<serde_json::Value> {
     match method {
-        "ensure_fallback_normal" => {
-            let input: EnsureFallbackNormalInput = serde_json::from_value(args.clone())
-                .context("invalid EnsureFallbackNormal arguments")?;
-            op_network::ensure_fallback_normal(&input.bridge).await?;
-            Ok(serde_json::json!({ "success": true }))
-        }
         "set_fail_mode" => {
             let input: SetFailModeInput =
                 serde_json::from_value(args.clone()).context("invalid SetFailMode arguments")?;
@@ -1720,3 +1767,7 @@ mod od06_tag_match_prep_tests {
         assert!(matches!(back.actions.as_slice(), [FlowAction::Normal]));
     }
 }
+
+#[cfg(test)]
+#[path = "openflow_schema_tests.rs"]
+mod openflow_schema_tests;

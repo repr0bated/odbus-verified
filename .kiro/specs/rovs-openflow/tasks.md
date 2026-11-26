@@ -12,7 +12,7 @@ Branch `hackathon/kiroween`. Every commit ends with the trailer `Hackathon: kiro
   - [x] 4.2 `add_flow`, `modify_flow`, `delete_flow` by cookie; bounds (bridge ≤ 15 bytes, flow JSON ≤ 64 KiB).
   - [x] 4.3 Tests: CAS conflict writes nothing; unadmitted/unattributed mutation refused before any write; read-back mismatch reported.
 - [ ] 5. Flow children
-  - [ ] 5.1 Sealed `flow` child type in the `openflow` plugin schema from `FlowEntry` (schemars), `x-oscal-subid` on every field, entries in `oscal_subid_registry`.
+  - [x] 5.1 Sealed `flow` child type in the `openflow` plugin schema from `FlowEntry` (schemars), `x-oscal-subid` on every field, entries in `oscal_subid_registry`.
   - [ ] 5.2 D-Bus children at `/org/opdbus/v1/plugins/openflow/bridges/<bridge>/flows/<cookie>`: child `<node>`s in `Introspect`, `GetManagedObjects`, `InterfacesAdded`/`InterfacesRemoved`, `PropertiesChanged`.
   - [ ] 5.3 3tchedFS entries `plugins/openflow/bridges/<bridge>/flows/<cookie>/value.json`, projected from the switch; rebuilt on reconnect.
   - [ ] 5.4 Counters from flow monitor where OVS reports them, else on read.
@@ -21,7 +21,7 @@ Branch `hackathon/kiroween`. Every commit ends with the trailer `Hackathon: kiro
 - [ ] 6. Bridge methods
   - [ ] 6.1 `get_datapath_health` over rovs/OVSDB (fail mode, controllers, uplink flows present, foreign flows).
   - [ ] 6.2 `set_fail_mode`, `set_controller`, `del_controller` over OVSDB (`ovsdb_bridge` path); `attach_controller_safe` pre-seeds the uplink flows.
-  - [ ] 6.3 Remove `ensure_fallback_normal` from the sealed schema; retire its subid.
+  - [x] 6.3 Remove `ensure_fallback_normal` from the sealed schema; retire its subid.
   - [ ] 6.4 `ovsbr0` `protocols` includes `OpenFlow15` (OVSDB transact).
 - [ ] 7. Packet-in controller wiring: `rovs-ext::Controller` against `ptcp:6653:10.200.0.1`, off by default; test the connect path with a fake switch.
 - [ ] 8. Move the other permit users (`obfuscation_methods.rs`, `decoy_network.rs`) to the in-process admitted path; their tests unchanged in behaviour.
