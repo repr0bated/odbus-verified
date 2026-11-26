@@ -478,7 +478,7 @@ async fn validate_user_target(
 pub(crate) async fn dispatch_handler_method(
     method: &str,
     args: &Value,
-    admission: crate::openflow_permit::FinalAdmission,
+    admission: crate::admission::FinalAdmission,
 ) -> Result<Value> {
     dispatch_admitted_at(
         commander_client::DEFAULT_API_SOCKET,
@@ -497,7 +497,7 @@ async fn dispatch_admitted_at(
     timeout: Duration,
     method: &str,
     args: &Value,
-    admission: crate::openflow_permit::FinalAdmission,
+    admission: crate::admission::FinalAdmission,
 ) -> Result<Value> {
     let execute = async {
         let _guard = HANDLER_MUTATIONS.lock().await;

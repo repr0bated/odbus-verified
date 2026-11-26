@@ -6,6 +6,15 @@ use crate::identity_receiver::VerifiedSid1;
 use op_state_store::{MethodDecl, PluginSchema};
 use std::path::{Path, PathBuf};
 
+/// Final admission for one native effect (network owners: OpenFlow, decoy,
+/// proxy, Xray). The runtime builds it for the call; the owner runs it after
+/// reading and comparing live state and immediately before its single write.
+pub type FinalAdmission = std::sync::Arc<
+    dyn Fn() -> std::pin::Pin<Box<dyn std::future::Future<Output = anyhow::Result<()>> + Send>>
+        + Send
+        + Sync,
+>;
+
 /// Read the materializer's protected authority document, never a caller path.
 /// The held descriptor prevents a pathname swap after the ownership check.
 pub(crate) fn read_grant_document() -> anyhow::Result<serde_json::Value> {

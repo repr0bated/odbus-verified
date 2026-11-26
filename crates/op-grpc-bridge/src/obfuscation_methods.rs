@@ -1,6 +1,7 @@
 //! The obfuscation plugin owns only its explicit normalization rules. The
-//! existing OpenFlow D-Bus controller owns wire encoding, live comparison,
-//! barriers and readback. No legacy rule string is installed here.
+//! bridge's in-process OpenFlow owner (`OpenFlowSwitches`, rovs at OpenFlow
+//! 1.5) owns wire encoding, live comparison, barriers and readback. No legacy
+//! rule string is installed here.
 use anyhow::{Context, Result, ensure};
 use async_trait::async_trait;
 use op_plugins::state_plugins::{
@@ -30,40 +31,34 @@ pub(crate) trait FlowOwner: Send + Sync {
     ) -> Result<()>;
 }
 
+/// The in-process OpenFlow owner. `exchange` is one admitted compare-and-exchange
+/// (`add_flow`, `modify_flow` or `delete_flow`) over rovs at OpenFlow 1.5, and
+/// `matches` reads the switch the same way; there is no controller process and
+/// no D-Bus hop. The switch assigns the cookie (derived from the flow's
+/// identity), so the rule's own cookie tag is never sent and never compared.
 pub(crate) struct NativeFlowOwner {
-    pub(crate) authority: crate::openflow_permit::OpenFlowPermitAuthority,
-    pub(crate) admission: crate::openflow_permit::FinalAdmission,
+    pub(crate) switches: Arc<crate::openflow_methods::OpenFlowSwitches>,
+    pub(crate) admission: crate::admission::FinalAdmission,
 }
+
+/// The flow as the plugin owns it on the switch: the plugin derives the cookie
+/// from the flow's identity, so the obfuscation rule's own cookie tag is dropped.
+fn plugin_flow(flow: &FlowEntry) -> FlowEntry {
+    let mut flow = flow.clone();
+    flow.cookie = None;
+    flow
+}
+
 #[async_trait]
 impl FlowOwner for NativeFlowOwner {
     async fn matches(&self, bridge: &str, flow: &FlowEntry, absent: bool) -> Result<bool> {
-        let bus = tokio::time::timeout(
-            std::time::Duration::from_secs(10),
-            zbus::Connection::system(),
-        )
-        .await
-        .context("OpenFlow owner bus connection timed out")??;
-        let proxy = tokio::time::timeout(
-            std::time::Duration::from_secs(10),
-            zbus::Proxy::new(
-                &bus,
-                "org.opdbus.v1.plugins.openflow",
-                "/org/opdbus/v1/plugins/openflow",
-                "org.opdbus.v1.plugins.openflow",
-            ),
-        )
-        .await
-        .context("OpenFlow owner proxy connection timed out")??;
-        tokio::time::timeout(
-            std::time::Duration::from_secs(15),
-            proxy.call(
-                "VerifyFlow",
-                &(bridge, serde_json::to_string(flow)?, absent),
-            ),
-        )
-        .await
-        .context("OpenFlow native recovery read timed out")?
-        .map_err(Into::into)
+        let view = self.switches.observe(bridge).await?;
+        let flow = plugin_flow(flow);
+        if absent {
+            view.lacks(bridge, &flow)
+        } else {
+            view.holds(bridge, &flow)
+        }
     }
     async fn exchange(
         &self,
@@ -72,41 +67,39 @@ impl FlowOwner for NativeFlowOwner {
         expected: Option<&FlowEntry>,
         remove: bool,
     ) -> Result<()> {
-        let desired = serde_json::to_string(flow)?;
-        let expected = expected
-            .map(serde_json::to_string)
-            .transpose()?
-            .unwrap_or_default();
-        let permit = self
-            .authority
-            .issue(bridge, &desired, &expected, remove, self.admission.clone())
+        let flow = plugin_flow(flow);
+        let (method, args) = if remove {
+            let expected = expected.map(plugin_flow).unwrap_or_else(|| flow.clone());
+            (
+                "delete_flow",
+                serde_json::json!({"bridge": bridge, "expected": expected}),
+            )
+        } else if let Some(expected) = expected {
+            (
+                "modify_flow",
+                serde_json::json!({"bridge": bridge, "expected": plugin_flow(expected),
+                    "replacement": flow}),
+            )
+        } else {
+            (
+                "add_flow",
+                serde_json::json!({"bridge": bridge, "flow": flow}),
+            )
+        };
+        let receipt = self
+            .switches
+            .compare_and_exchange(bridge, method, &args, self.admission.clone())
             .await?;
-        let proxy = zbus::Proxy::new(
-            self.authority.connection(),
-            permit.controller.as_str(),
-            "/org/opdbus/v1/plugins/openflow",
-            "org.opdbus.v1.plugins.openflow",
-        )
-        .await?;
-        let result: String = tokio::time::timeout(
-            std::time::Duration::from_secs(45),
-            proxy.call(
-                "CompareExchangeFlowAttributed",
-                &(
-                    permit.id.as_str(),
-                    bridge,
-                    desired.as_str(),
-                    expected.as_str(),
-                    remove,
-                ),
-            ),
-        )
-        .await
-        .context("OpenFlow owner timeout; reconcile before retry")??;
-        let result: Value = serde_json::from_str(&result)?;
         ensure!(
-            result.get("verified") == Some(&Value::Bool(true))
-                && result.get("flow") == Some(&serde_json::to_value(flow)?),
+            receipt.output.get("verified") == Some(&Value::Bool(true)),
+            "OpenFlow owner did not verify the requested flow"
+        );
+        let confirmed = match &receipt.after {
+            Some(after) => !remove && plugin_flow(after) == flow,
+            None => remove,
+        };
+        ensure!(
+            confirmed,
             "OpenFlow owner did not verify the requested flow"
         );
         Ok(())
@@ -163,7 +156,7 @@ impl ObfuscationMethods {
         &self,
         method: &str,
         args: Value,
-        admission: crate::openflow_permit::FinalAdmission,
+        admission: crate::admission::FinalAdmission,
     ) -> Result<(Value, ObfuscationState)> {
         let _operation = self.operation.lock().await;
         let row = self.documents.read_durable(PLUGIN).await?;

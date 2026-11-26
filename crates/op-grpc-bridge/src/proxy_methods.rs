@@ -99,7 +99,7 @@ impl ProxyMethods {
         &self,
         method: &str,
         args: Value,
-        admission: crate::openflow_permit::FinalAdmission,
+        admission: crate::admission::FinalAdmission,
     ) -> Result<(Value, ProxyServerState)> {
         let mut listeners = self.listeners.lock().await;
         let previous = self.documents.read_durable(PLUGIN).await?;

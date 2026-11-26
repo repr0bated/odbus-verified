@@ -339,7 +339,7 @@ pub(crate) async fn dispatch(
     plugin: &str,
     method: &str,
     arguments: &Value,
-    admission: crate::openflow_permit::FinalAdmission,
+    admission: crate::admission::FinalAdmission,
 ) -> Result<NativeNetworkReceipt> {
     let pinned = crate::sealed_schema_reader::read_manifest_pinned_schema_document(
         ctx.runtime.catalog_dir(),

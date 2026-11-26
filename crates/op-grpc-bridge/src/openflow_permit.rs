@@ -3,8 +3,6 @@
 
 use anyhow::{Context, Result, ensure};
 use std::collections::HashMap;
-use std::future::Future;
-use std::pin::Pin;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
@@ -18,8 +16,7 @@ const PERMIT_LIMIT: usize = 128;
 const TRANSCRIPT_LIMIT: usize = 65_536;
 const PERMIT_LIFETIME: Duration = Duration::from_secs(45);
 
-pub type FinalAdmission =
-    Arc<dyn Fn() -> Pin<Box<dyn Future<Output = Result<()>> + Send>> + Send + Sync>;
+pub use crate::admission::FinalAdmission;
 
 #[derive(Clone, PartialEq, Eq)]
 struct Transcript {

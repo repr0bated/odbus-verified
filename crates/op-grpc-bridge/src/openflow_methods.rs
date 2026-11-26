@@ -8,21 +8,23 @@
 //! verify. There is no controller process, no D-Bus hop and no permit.
 //! A write is never retried: an unverified outcome is reported as unknown.
 
-use crate::openflow_permit::FinalAdmission;
+use crate::admission::FinalAdmission;
+use crate::core::{BackendProjection, BackendStateUpdate, StateScope};
 use anyhow::{Context, Result, anyhow, bail, ensure};
 use op_network::openflow::{OpenFlowClient, SwitchFlow, rovs_openflow};
-use op_network::openflow_cookie::FlowIdentity;
+use op_network::openflow_cookie::{FlowIdentity, is_plugin_cookie};
 use op_network::openflow_translate::{json_flow_to_add, json_flow_to_delete, json_flow_to_modify};
 use op_plugins::state_plugins::openflow::{
-    AddFlowInput, DeleteFlowInput, FlowAction, FlowEntry, FlowMutationKind, FlowMutationOutput,
-    ModifyFlowInput,
+    AddFlowInput, DeleteFlowInput, FlowAction, FlowChild, FlowEntry, FlowMutationKind,
+    FlowMutationOutput, ModifyFlowInput,
 };
 use rovs_openflow::{
-    Action, ActionList, Flow, FlowCommand, Instruction, InstructionList, Match, OutputPort, Version,
+    Action, ActionList, Flow, FlowCommand, Instruction, InstructionList, Match, OutputPort,
+    Version, nxm,
 };
 use serde_json::Value;
 use sha2::{Digest, Sha256};
-use std::collections::HashMap;
+use std::collections::{BTreeMap, HashMap};
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex as StdMutex};
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
@@ -44,10 +46,19 @@ pub struct OpenFlowMethodReceipt {
     /// Exact member confirmed live after the operation; absent for delete.
     pub after: Option<FlowEntry>,
     pub bridge: String,
+    /// The bridge's flow children rebuilt from the read-back after the write:
+    /// every plugin-cookie flow on the switch, keyed by hex cookie. Commit it
+    /// with [`flow_children_projection`].
+    pub children: BTreeMap<String, FlowChild>,
 }
 
 /// Merge only the native observation member. Authored bridge configuration and
 /// observations for other bridges remain owned by the canonical state tree.
+///
+/// The flow children are not in this patch: a merge can add or update a
+/// child but never remove one, so a flow deleted on the switch would stay.
+/// They are committed by [`flow_children_projection`], which replaces the
+/// whole `flows/<bridge>` subtree.
 pub(crate) fn projection_patch(receipt: &OpenFlowMethodReceipt) -> Result<Value> {
     let observed = receipt
         .after
@@ -64,6 +75,434 @@ pub(crate) fn projection_patch(receipt: &OpenFlowMethodReceipt) -> Result<Value>
             }
         }
     }))
+}
+
+/// The update that commits one bridge's flow children: `Replace` of the
+/// subtree `flows/<bridge>` of the plugin's committed state. A flow gone from
+/// the switch is gone from the state; other bridges' children and every other
+/// field stay as they are. The children come from a read of the switch
+/// (`receipt.children` after a write, [`SwitchView::children`] on a read), so
+/// nothing is kept between reads and a reconnect rebuilds them.
+pub(crate) fn flow_children_projection(
+    bridge: &str,
+    children: &BTreeMap<String, FlowChild>,
+    schema_hash: &str,
+) -> Result<BackendProjection> {
+    validate_bridge(bridge)?;
+    Ok(BackendProjection {
+        plugin_id: "openflow".to_owned(),
+        object_path: format!(
+            "{}/flows/{bridge}",
+            op_plugins::canonical::plugin_path("openflow")
+        ),
+        schema_hash: schema_hash.to_owned(),
+        scope: StateScope::Public,
+        state: BackendStateUpdate::Replace(serde_json::to_value(children)?),
+    })
+}
+
+/// The flow children of `bridge`, rebuilt from one read of its switch: every
+/// flow carrying the plugin's cookie prefix, keyed by its cookie in hex.
+/// Foreign flows are not children (requirement 2.8). Counters are those of
+/// this read; OVS has no flow monitor on `.mgmt`, so they refresh on each read.
+fn flow_children(
+    bridge: &str,
+    ports: &HashMap<String, (u32, [u8; 6])>,
+    flows: &[SwitchFlow],
+) -> Result<BTreeMap<String, FlowChild>> {
+    let port_map: HashMap<String, u32> = ports
+        .iter()
+        .map(|(name, (no, _))| (name.clone(), *no))
+        .collect();
+    let port_macs: HashMap<String, [u8; 6]> = ports
+        .iter()
+        .map(|(name, (_, mac))| (name.clone(), *mac))
+        .collect();
+    let mut sorted: Vec<(&String, u32)> = port_map.iter().map(|(n, no)| (n, *no)).collect();
+    sorted.sort_unstable();
+    let mut names: HashMap<u32, String> = HashMap::new();
+    for (name, no) in sorted {
+        names.entry(no).or_insert_with(|| name.clone());
+    }
+    let mut children = BTreeMap::new();
+    for flow in flows.iter().filter(|flow| is_plugin_cookie(flow.cookie)) {
+        let child = flow_child(bridge, flow, &names, &port_map, &port_macs)
+            .with_context(|| format!("flow {:#018x} on {bridge}", flow.cookie))?;
+        let cookie = child.cookie.clone();
+        ensure!(
+            children.insert(cookie.clone(), child).is_none(),
+            "flow {cookie} appears more than once on {bridge}; one child cannot name two flows"
+        );
+    }
+    Ok(children)
+}
+
+/// One switch flow in the plugin's own vocabulary. The child must name
+/// exactly the live flow: translated forward again it gives the same
+/// canonical revision, so it can be passed back as `expected` to
+/// `modify_flow` or `delete_flow`.
+fn flow_child(
+    bridge: &str,
+    flow: &SwitchFlow,
+    names: &HashMap<u32, String>,
+    port_map: &HashMap<String, u32>,
+    port_macs: &HashMap<String, [u8; 6]>,
+) -> Result<FlowChild> {
+    let match_fields = match_to_fields(&flow.match_fields, names)?;
+    let actions = instructions_to_actions(&flow.instructions, names)?;
+    let entry = FlowEntry {
+        table: flow.table_id,
+        priority: flow.priority,
+        match_fields: match_fields.clone(),
+        actions: actions.clone(),
+        cookie: Some(flow.cookie),
+        idle_timeout: flow.idle_timeout,
+        hard_timeout: flow.hard_timeout,
+    };
+    let forward = json_flow_to_add(&serde_json::to_string(&entry)?, port_map, port_macs)
+        .context("the plugin's spelling of the live flow does not translate back")?;
+    ensure!(
+        canon_flow(&forward)? == canon_switch(flow)?,
+        "the live flow uses fields or actions the plugin's FlowEntry cannot spell"
+    );
+    Ok(FlowChild {
+        bridge: bridge.to_owned(),
+        table: flow.table_id,
+        priority: flow.priority,
+        cookie: format!("{:#018x}", flow.cookie),
+        match_fields,
+        actions,
+        flags: flow_flag_names(flow.flags),
+        idle_timeout: flow.idle_timeout,
+        hard_timeout: flow.hard_timeout,
+        packet_count: flow.packet_count,
+        byte_count: flow.byte_count,
+        duration_sec: flow.duration_sec,
+    })
+}
+
+/// OpenFlow `ofp_flow_mod_flags`, spelled as OVS spells them.
+fn flow_flag_names(flags: u16) -> Vec<String> {
+    const NAMES: [(u16, &str); 5] = [
+        (1 << 0, "send_flow_rem"),
+        (1 << 1, "check_overlap"),
+        (1 << 2, "reset_counts"),
+        (1 << 3, "no_packet_counts"),
+        (1 << 4, "no_byte_counts"),
+    ];
+    let mut names: Vec<String> = NAMES
+        .iter()
+        .filter(|(bit, _)| flags & bit != 0)
+        .map(|(_, name)| (*name).to_owned())
+        .collect();
+    let known = NAMES.iter().fold(0u16, |all, (bit, _)| all | bit);
+    for bit in (0..16).map(|shift| 1u16 << shift) {
+        if flags & bit != 0 && known & bit == 0 {
+            names.push(format!("{bit:#06x}"));
+        }
+    }
+    names
+}
+
+/// A port number as the plugin writes it: `LOCAL`, the switch's port name,
+/// or the bare number when the switch reports no name for it.
+fn port_token(port: u32, names: &HashMap<u32, String>) -> String {
+    if port == 0xffff_fffe {
+        return "LOCAL".to_owned();
+    }
+    names
+        .get(&port)
+        .cloned()
+        .unwrap_or_else(|| port.to_string())
+}
+
+fn mac_text(mac: &[u8; 6]) -> String {
+    mac.iter()
+        .map(|byte| format!("{byte:02x}"))
+        .collect::<Vec<_>>()
+        .join(":")
+}
+
+fn cidr_text(addr: std::net::Ipv4Addr, prefix: Option<u8>) -> String {
+    match prefix {
+        None | Some(32) => addr.to_string(),
+        Some(prefix) => format!("{addr}/{prefix}"),
+    }
+}
+
+/// The reverse of `openflow_translate`'s match parsing: a rovs `Match` as the
+/// plugin's `match_fields`. A field the plugin cannot spell is an error, never
+/// dropped, so a child is never looser than the flow it names.
+fn match_to_fields(m: &Match, names: &HashMap<u32, String>) -> Result<HashMap<String, String>> {
+    let unspellable = [
+        ("in_phy_port", m.in_phy_port.is_some()),
+        (
+            "metadata",
+            m.metadata.is_some() || m.metadata_mask.is_some(),
+        ),
+        ("eth_src mask", m.eth_src_mask.is_some()),
+        ("eth_dst", m.eth_dst.is_some() || m.eth_dst_mask.is_some()),
+        ("vlan_pcp", m.vlan_pcp.is_some()),
+        ("ip_dscp", m.ip_dscp.is_some()),
+        ("ip_ecn", m.ip_ecn.is_some()),
+        (
+            "ipv6",
+            m.ipv6_src.is_some() || m.ipv6_dst.is_some() || m.ipv6_flabel.is_some(),
+        ),
+        (
+            "icmp type/code",
+            m.icmp_type.is_some() || m.icmp_code.is_some(),
+        ),
+        (
+            "icmpv6 type/code",
+            m.icmpv6_type.is_some() || m.icmpv6_code.is_some(),
+        ),
+        (
+            "arp fields",
+            m.arp_op.is_some()
+                || m.arp_spa.is_some()
+                || m.arp_tpa.is_some()
+                || m.arp_sha.is_some()
+                || m.arp_tha.is_some(),
+        ),
+        ("tunnel_id", m.tunnel_id.is_some()),
+        ("ct_zone", m.ct_zone.is_some()),
+        ("ct_mark", m.ct_mark.is_some() || m.ct_mark_mask.is_some()),
+    ];
+    if let Some((field, _)) = unspellable.iter().find(|(_, set)| *set) {
+        bail!("match field {field} has no match_fields spelling");
+    }
+    let mut fields = HashMap::new();
+    let mut put = |key: &str, value: String| {
+        fields.insert(key.to_owned(), value);
+    };
+    if let Some(port) = m.in_port {
+        put("in_port", port_token(port, names));
+    }
+    match (m.eth_type, m.ip_proto) {
+        (None, None) => {}
+        (Some(0x0800), None) => put("ip", String::new()),
+        (Some(0x0800), Some(6)) => put("tcp", String::new()),
+        (Some(0x0800), Some(17)) => put("udp", String::new()),
+        (Some(0x0800), Some(1)) => put("icmp", String::new()),
+        (Some(0x86dd), Some(58)) => put("icmp6", String::new()),
+        (Some(0x0806), None) => put("arp", String::new()),
+        (Some(eth_type), None) => put("dl_type", format!("{eth_type:#06x}")),
+        (eth_type, Some(proto)) => {
+            bail!("ip_proto {proto} with eth_type {eth_type:?} has no match_fields spelling")
+        }
+    }
+    if let Some(vid) = m.vlan_vid {
+        put("dl_vlan", vid.to_string());
+    }
+    if let Some(mac) = &m.eth_src {
+        put("dl_src", mac_text(mac));
+    }
+    if let Some(flags) = m.tcp_flags {
+        put("tcp_flags", format!("{flags:#x}"));
+    }
+    if let Some(port) = m.tcp_src.or(m.udp_src) {
+        put("tp_src", port.to_string());
+    }
+    if let Some(port) = m.tcp_dst.or(m.udp_dst) {
+        put("tp_dst", port.to_string());
+    }
+    if let Some(addr) = m.ipv4_src {
+        put("nw_src", cidr_text(addr, m.ipv4_src_mask));
+    }
+    if let Some(addr) = m.ipv4_dst {
+        put("nw_dst", cidr_text(addr, m.ipv4_dst_mask));
+    }
+    if m.ct_state.is_some() || m.ct_state_mask.is_some() {
+        let state = m.ct_state.unwrap_or_default();
+        ensure!(
+            m.ct_state_mask.unwrap_or(state) == state,
+            "ct_state with a mask other than its own bits has no match_fields spelling"
+        );
+        const CT: [(u32, &str); 8] = [
+            (0x01, "new"),
+            (0x02, "est"),
+            (0x04, "rel"),
+            (0x08, "rpl"),
+            (0x10, "inv"),
+            (0x20, "trk"),
+            (0x40, "snat"),
+            (0x80, "dnat"),
+        ];
+        let known = CT.iter().fold(0u32, |all, (bit, _)| all | bit);
+        ensure!(
+            state & !known == 0,
+            "ct_state bits {:#x} have no match_fields spelling",
+            state & !known
+        );
+        let tokens: String = CT
+            .iter()
+            .filter(|(bit, _)| state & bit != 0)
+            .map(|(_, name)| format!("+{name}"))
+            .collect();
+        put("ct_state", tokens);
+    }
+    Ok(fields)
+}
+
+/// The reverse of `openflow_translate`'s action building: the switch's
+/// instructions as the plugin's `FlowAction` list. No instructions (or an
+/// empty apply-actions) is a drop flow.
+fn instructions_to_actions(
+    list: &InstructionList,
+    names: &HashMap<u32, String>,
+) -> Result<Vec<FlowAction>> {
+    let mut actions = Vec::new();
+    for instruction in list.instructions() {
+        match instruction {
+            Instruction::ApplyActions(applied) => {
+                let applied = applied.actions();
+                let mut at = 0;
+                while at < applied.len() {
+                    if let Some(responder) = arp_responder(&applied[at..]) {
+                        actions.push(responder);
+                        at += ARP_RESPONDER_LEN;
+                        continue;
+                    }
+                    actions.push(action_to_flow(&applied[at], names)?);
+                    at += 1;
+                }
+            }
+            other => bail!("instruction {other:?} has no FlowAction spelling"),
+        }
+    }
+    if actions.is_empty() {
+        actions.push(FlowAction::Drop);
+    }
+    Ok(actions)
+}
+
+fn action_to_flow(action: &Action, names: &HashMap<u32, String>) -> Result<FlowAction> {
+    let set = |field: &str, value: String| FlowAction::SetField {
+        field: field.to_owned(),
+        value,
+    };
+    let output = |port: &str| FlowAction::Output {
+        port: port.to_owned(),
+    };
+    Ok(match action {
+        Action::Output(OutputPort::Port(port)) => FlowAction::Output {
+            port: port_token(*port, names),
+        },
+        Action::Output(OutputPort::Local) => output("LOCAL"),
+        Action::Output(OutputPort::Flood) => output("FLOOD"),
+        Action::Output(OutputPort::All) => output("ALL"),
+        Action::Output(OutputPort::InPort) => output("IN_PORT"),
+        Action::Output(OutputPort::Controller) => output("CONTROLLER"),
+        Action::Output(OutputPort::Normal) => FlowAction::Normal,
+        Action::Controller { max_len } => FlowAction::Controller {
+            max_len: Some(*max_len),
+        },
+        Action::SetEthSrc(mac) => set("eth_src", mac_text(mac)),
+        Action::SetEthDst(mac) => set("eth_dst", mac_text(mac)),
+        Action::SetVlanVid(vid) => set("vlan_vid", vid.to_string()),
+        Action::SetTtl(ttl) => set("nw_ttl", ttl.to_string()),
+        Action::SetTunnelId(id) => set("tunnel_id", id.to_string()),
+        Action::SetTpSrc(port) => set("tp_src", port.to_string()),
+        Action::SetTpDst(port) => set("tp_dst", port.to_string()),
+        Action::NxResubmit {
+            port: None,
+            table: Some(table),
+        } => FlowAction::Resubmit { table: *table },
+        Action::NxRegLoad {
+            dst_field,
+            dst_ofs: 0,
+            n_bits,
+            value,
+        } => match (*dst_field, *n_bits) {
+            (field, 32) if field == nxm::REG0 => FlowAction::LoadRegister {
+                register: 0,
+                value: *value,
+            },
+            (field, 32) if field == nxm::REG1 => FlowAction::LoadRegister {
+                register: 1,
+                value: *value,
+            },
+            (field, 32) if field == nxm::REG2 => FlowAction::LoadRegister {
+                register: 2,
+                value: *value,
+            },
+            (field, 16) if field == nxm::TCP_SRC || field == nxm::UDP_SRC => {
+                set("tp_src", value.to_string())
+            }
+            (field, 16) if field == nxm::TCP_DST || field == nxm::UDP_DST => {
+                set("tp_dst", value.to_string())
+            }
+            (field, bits) => {
+                bail!("load of {bits} bits into NXM field {field:#010x} has no FlowAction spelling")
+            }
+        },
+        // Drop encodes to nothing, so a decoded Drop is rovs' stand-in for
+        // an action it could not decode (e.g. a Nicira reg_load or move).
+        Action::Drop => bail!("the switch reported an action rovs-openflow cannot decode"),
+        other => bail!("action {other:?} has no FlowAction spelling"),
+    })
+}
+
+/// Number of switch actions `FlowAction::ArpResponder` translates into.
+const ARP_RESPONDER_LEN: usize = 8;
+
+/// Recognize the exact action chain `openflow_translate` builds for
+/// `ArpResponder { mac, ip }` at the start of `actions`.
+fn arp_responder(actions: &[Action]) -> Option<FlowAction> {
+    let moves = |action: &Action, src: u32, dst: u32, bits: u16| {
+        matches!(
+            action,
+            Action::NxMove { src_field, dst_field, n_bits, src_ofs: 0, dst_ofs: 0 }
+                if *src_field == src && *dst_field == dst && *n_bits == bits
+        )
+    };
+    let loads = |action: &Action, field: u32, bits: u16| match action {
+        Action::NxRegLoad {
+            dst_field,
+            dst_ofs: 0,
+            n_bits,
+            value,
+        } if *dst_field == field && *n_bits == bits => Some(*value),
+        _ => None,
+    };
+    let [
+        m1,
+        Action::SetEthSrc(mac),
+        op,
+        m2,
+        sha,
+        m3,
+        spa,
+        Action::Output(OutputPort::InPort),
+    ] = actions.get(..ARP_RESPONDER_LEN)?
+    else {
+        return None;
+    };
+    let sha = loads(sha, nxm::ARP_SHA, 48)?;
+    let spa = loads(spa, nxm::ARP_SPA, 32)?;
+    let mac_value = mac
+        .iter()
+        .fold(0u64, |acc, byte| (acc << 8) | u64::from(*byte));
+    let well_formed = moves(m1, nxm::ETH_SRC, nxm::ETH_DST, 48)
+        && loads(op, nxm::ARP_OP, 16) == Some(2)
+        && moves(m2, nxm::ARP_SHA, nxm::ARP_THA, 48)
+        && sha == mac_value
+        && moves(m3, nxm::ARP_SPA, nxm::ARP_TPA, 32)
+        && spa <= u64::from(u32::MAX);
+    well_formed.then(|| FlowAction::ArpResponder {
+        mac: mac_text(mac),
+        ip: std::net::Ipv4Addr::from(spa as u32).to_string(),
+    })
+}
+
+impl SwitchView {
+    /// This read's flow children of `bridge`, for [`flow_children_projection`].
+    /// A read after a reconnect rebuilds them from the switch.
+    pub(crate) fn children(&self, bridge: &str) -> Result<BTreeMap<String, FlowChild>> {
+        validate_bridge(bridge)?;
+        flow_children(bridge, &self.ports, &self.flows)
+    }
 }
 
 fn canonical_flow_identity(flow: &FlowEntry) -> String {
@@ -210,6 +649,12 @@ async fn exchange(
         )
     })?;
     verify(&plan, &after).map_err(Failure::Refused)?;
+    // The write is verified; the children are this read-back, never a copy.
+    let children = flow_children(&request.bridge, &ports, &after).map_err(|error| {
+        Failure::Refused(error.context(
+            "flow written and verified, but the bridge's flow children cannot be projected",
+        ))
+    })?;
     let output = serde_json::to_value(FlowMutationOutput {
         bridge: request.bridge.clone(),
         operation: request.operation.clone(),
@@ -227,6 +672,7 @@ async fn exchange(
         before: plan.before,
         after: plan.after,
         bridge: request.bridge.clone(),
+        children,
     })
 }
 
@@ -672,6 +1118,131 @@ fn validate_flow(flow: &FlowEntry) -> Result<()> {
         }
     }
     Ok(())
+}
+
+/// One read of a bridge's switch: its ports and its whole flow table, taken
+/// under the bridge's lock. Reading writes nothing.
+pub(crate) struct SwitchView {
+    ports: HashMap<String, (u32, [u8; 6])>,
+    pub(crate) flows: Vec<SwitchFlow>,
+}
+
+impl OpenFlowSwitches {
+    /// Read ports and flows of `bridge` over the same per-bridge connection
+    /// the writes use. A failed read drops the connection; nothing is retried.
+    pub(crate) async fn observe(&self, bridge: &str) -> Result<SwitchView> {
+        validate_bridge(bridge)?;
+        let slot = self.slot(bridge)?;
+        let path = self.dir.join(format!("{bridge}.mgmt"));
+        tokio::time::timeout(CALL_TIMEOUT, async move {
+            let mut guard = slot.lock().await;
+            let mut client = match guard.take() {
+                Some(client) => client,
+                None => match connect(&path).await {
+                    Ok(client) => client,
+                    Err(error) => return Err::<SwitchView, anyhow::Error>(error),
+                },
+            };
+            let view = read_switch(&mut client).await?;
+            *guard = Some(client);
+            Ok(view)
+        })
+        .await
+        .context("OpenFlow switch read timed out")?
+    }
+}
+
+async fn read_switch(client: &mut OpenFlowClient) -> Result<SwitchView> {
+    let ports = client.port_desc().await?;
+    let flows = client.dump_flows().await?;
+    Ok(SwitchView { ports, flows })
+}
+
+impl SwitchView {
+    pub(crate) fn has_port(&self, name: &str) -> bool {
+        self.ports.contains_key(name)
+    }
+
+    /// The plan for adding `flow`, resolved against this switch's ports: its
+    /// identity, derived cookie and canonical revision. A `flow` cookie, when
+    /// present, must be the derived one.
+    fn plan_for(&self, bridge: &str, flow: &FlowEntry) -> Result<Plan> {
+        validate_bridge(bridge)?;
+        let port_map: HashMap<String, u32> = self
+            .ports
+            .iter()
+            .map(|(name, (no, _))| (name.clone(), *no))
+            .collect();
+        let port_macs: HashMap<String, [u8; 6]> = self
+            .ports
+            .iter()
+            .map(|(name, (_, mac))| (name.clone(), *mac))
+            .collect();
+        let request = CasRequest {
+            bridge: bridge.to_owned(),
+            desired: flow.clone(),
+            expected: None,
+            delete: false,
+            operation: FlowMutationKind::Added,
+        };
+        plan(&request, &port_map, &port_macs)
+    }
+
+    /// True when exactly `flow` is live: one flow with its identity, the
+    /// derived cookie and the same instructions.
+    pub(crate) fn holds(&self, bridge: &str, flow: &FlowEntry) -> Result<bool> {
+        let plan = self.plan_for(bridge, flow)?;
+        let same: Vec<&SwitchFlow> = self
+            .flows
+            .iter()
+            .filter(|live| same_identity(live, &plan.identity))
+            .collect();
+        Ok(match (same.as_slice(), &plan.desired) {
+            ([one], Some(desired)) => one.cookie == plan.cookie && &canon_switch(one)? == desired,
+            _ => false,
+        })
+    }
+
+    /// True when no flow with `flow`'s identity (table, priority, match) is
+    /// live, whatever its cookie.
+    pub(crate) fn lacks(&self, bridge: &str, flow: &FlowEntry) -> Result<bool> {
+        let plan = self.plan_for(bridge, flow)?;
+        Ok(!self
+            .flows
+            .iter()
+            .any(|live| same_identity(live, &plan.identity)))
+    }
+
+    /// True when the switch's own `priority=0 actions=NORMAL` flow (table 0,
+    /// empty match, cookie 0) is still installed.
+    pub(crate) fn normal_present(&self) -> Result<bool> {
+        let shape = canon_flow(
+            &Flow::add()
+                .table(0)
+                .priority(0)
+                .cookie(0)
+                .match_fields(Match::new())
+                .actions(ActionList::new().normal()),
+        )?;
+        for flow in &self.flows {
+            if flow.table_id == 0
+                && flow.priority == 0
+                && flow.cookie == 0
+                && canon_switch(flow)? == shape
+            {
+                return Ok(true);
+            }
+        }
+        Ok(false)
+    }
+
+    /// Flows without the plugin's cookie prefix. They are reported, never
+    /// adopted (requirement 2.8).
+    pub(crate) fn foreign(&self) -> impl Iterator<Item = &SwitchFlow> {
+        self.flows
+            .iter()
+            .filter(|flow| !op_network::openflow_cookie::is_plugin_cookie(flow.cookie))
+    }
 }
 
 #[cfg(test)]
@@ -1354,6 +1925,7 @@ mod tests {
             before: None,
             after: Some(flow.clone()),
             bridge: "ovsbr0".into(),
+            children: BTreeMap::new(),
         })
         .unwrap();
         assert_eq!(patch.as_object().unwrap().len(), 1);
@@ -1367,6 +1939,7 @@ mod tests {
             before: Some(flow.clone()),
             after: None,
             bridge: "ovsbr0".into(),
+            children: BTreeMap::new(),
         })
         .unwrap();
         assert_eq!(

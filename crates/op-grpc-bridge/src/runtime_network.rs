@@ -1,8 +1,8 @@
 //! Admitted network methods backed by the retained native owners. No shell,
 //! local WireGuard fallback, separate identity authority, or adapter receipts.
 use crate::{
+    admission::FinalAdmission,
     core::{BackendProjection, BackendStateUpdate, StateScope},
-    openflow_permit::{FinalAdmission, OpenFlowPermitAuthority},
     runtime::{BackendContext, BackendOutcome, Runtime, RuntimeError, VerifiedCaller},
 };
 use anyhow::{Context, Result, ensure};
@@ -16,14 +16,13 @@ use op_plugins::state_plugins::{
 use serde::de::DeserializeOwned;
 use serde_json::{Value, json};
 use std::{
-    collections::{BTreeMap, HashMap},
+    collections::{BTreeMap, BTreeSet, HashMap},
     sync::{
         Arc, Mutex as StdMutex,
         atomic::{AtomicBool, Ordering},
     },
-    time::Duration,
 };
-use tokio::sync::{Mutex, OnceCell, OwnedMutexGuard, oneshot};
+use tokio::sync::{Mutex, OwnedMutexGuard, oneshot};
 use tokio::task::JoinHandle;
 
 pub(crate) fn supports(plugin: &str, method: &str) -> bool {
@@ -33,7 +32,6 @@ pub(crate) fn supports(plugin: &str, method: &str) -> bool {
             "add_flow"
                 | "delete_flow"
                 | "modify_flow"
-                | "ensure_fallback_normal"
                 | "set_fail_mode"
                 | "del_controller"
                 | "set_controller"
@@ -169,9 +167,8 @@ pub(crate) struct NetworkRuntime {
     documents: Arc<RuntimeDocuments>,
     proxy: crate::proxy_methods::ProxyMethods,
     proxy_caller: Arc<Mutex<Option<VerifiedCaller>>>,
-    permits: OnceCell<OpenFlowPermitAuthority>,
     /// In-process owner of the bridges' OpenFlow connections (rovs, OF1.5).
-    switches: crate::openflow_methods::OpenFlowSwitches,
+    switches: Arc<crate::openflow_methods::OpenFlowSwitches>,
     operations: Arc<Mutex<()>>,
     monitors: Mutex<BTreeMap<String, MonitorEntry>>,
     pending_observers: Arc<StdMutex<HashMap<uuid::Uuid, oneshot::Sender<()>>>>,
@@ -184,25 +181,13 @@ impl NetworkRuntime {
             proxy: crate::proxy_methods::ProxyMethods::new(documents.clone()),
             documents,
             proxy_caller: Arc::new(Mutex::new(None)),
-            permits: OnceCell::new(),
-            switches: crate::openflow_methods::OpenFlowSwitches::new(std::path::Path::new(
-                crate::openflow_methods::OVS_RUN_DIR,
+            switches: Arc::new(crate::openflow_methods::OpenFlowSwitches::new(
+                std::path::Path::new(crate::openflow_methods::OVS_RUN_DIR),
             )),
             operations: Arc::new(Mutex::new(())),
             monitors: Mutex::new(BTreeMap::new()),
             pending_observers: Arc::new(StdMutex::new(HashMap::new())),
         }
-    }
-
-    async fn permits(&self) -> Result<&OpenFlowPermitAuthority> {
-        self.permits
-            .get_or_try_init(|| async {
-                let bus = tokio::time::timeout(Duration::from_secs(10), zbus::Connection::system())
-                    .await
-                    .context("OpenFlow admission bus timed out")??;
-                OpenFlowPermitAuthority::new(bus).await
-            })
-            .await
     }
 
     pub(crate) async fn dispatch(
@@ -340,7 +325,7 @@ impl NetworkRuntime {
             }
             "openflow_obfuscation" => {
                 let owner = Arc::new(crate::obfuscation_methods::NativeFlowOwner {
-                    authority: self.permits().await?.clone(),
+                    switches: self.switches.clone(),
                     admission: admission.clone(),
                 });
                 let service = crate::obfuscation_methods::ObfuscationMethods::new(
@@ -682,12 +667,6 @@ impl NetworkRuntime {
         let mut patch = BackendStateUpdate::Unchanged;
         let result = match method {
             "get_datapath_health" => self.datapath_health(bridge).await?,
-            "ensure_fallback_normal" => {
-                let receipt = self.ensure_fallback(bridge, admit).await?;
-                patch =
-                    BackendStateUpdate::Merge(crate::openflow_methods::projection_patch(&receipt)?);
-                json!({"success":true})
-            }
             "set_fail_mode" => {
                 let input: op_plugins::state_plugins::openflow::SetFailModeInput = decode(args)?;
                 ensure!(
@@ -698,6 +677,7 @@ impl NetworkRuntime {
                     self.ovsdb.bridge_exists(bridge).await?,
                     "OVS bridge does not exist"
                 );
+                self.ensure_openflow15(bridge, admit.clone()).await?;
                 self.ovsdb
                     .admitted(admit)
                     .set_bridge_property(bridge, "fail_mode", &input.mode)
@@ -711,7 +691,7 @@ impl NetworkRuntime {
                 json!({"success":true})
             }
             "del_controller" => {
-                self.controllers(bridge, None, false, admit).await?;
+                self.controllers(bridge, None, None, admit).await?;
                 json!({"success":true})
             }
             "set_controller" | "attach_controller_safe" => {
@@ -725,22 +705,29 @@ impl NetworkRuntime {
                         && !endpoint.chars().any(char::is_control),
                     "OpenFlow controller endpoint must use ssl: with configured OVS client credentials"
                 );
-                let receipt = self.ensure_fallback(bridge, admit.clone()).await?;
-                patch =
-                    BackendStateUpdate::Merge(crate::openflow_methods::projection_patch(&receipt)?);
-                self.controllers(
-                    bridge,
-                    Some(endpoint),
-                    method == "attach_controller_safe",
-                    admit,
-                )
-                .await?;
+                let attach = method == "attach_controller_safe";
+                self.ensure_openflow15(bridge, admit.clone()).await?;
+                // The uplink flows go in first, so the host stays reachable
+                // with or without a controller (design D6). No NORMAL.
+                let seeded = self.seed_uplink(bridge, &admit).await?;
+                if seeded.as_object().is_some_and(|map| !map.is_empty()) {
+                    patch = BackendStateUpdate::Merge(seeded);
+                }
+                // The fail mode stays as it is unless this is the safe attach,
+                // which sets `secure`: OVS never falls back to learning-switch
+                // behaviour on its own.
+                self.controllers(bridge, Some(endpoint), attach.then_some("secure"), admit)
+                    .await?;
                 let health = self.datapath_health(bridge).await?;
                 ensure!(
-                    health["fallback_normal"] == true && health["disable_in_band"] == false,
+                    health["uplink_flows_present"] == true && health["disable_in_band"] == false,
                     "OpenFlow controller attachment failed native safety readback"
                 );
-                if method == "attach_controller_safe" {
+                if attach {
+                    ensure!(
+                        health["fail_mode"] == "secure",
+                        "OpenFlow controller attachment failed native fail mode readback"
+                    );
                     health
                 } else {
                     json!({"success":true})
@@ -758,56 +745,94 @@ impl NetworkRuntime {
         Ok(outcome)
     }
 
-    async fn verify_flow(&self, bridge: &str, flow: &FlowEntry, absent: bool) -> Result<bool> {
-        let authority = self.permits().await?;
-        let owner = crate::openflow_permit::owner(
-            authority.connection(),
-            crate::openflow_permit::CONTROLLER_SERVICE,
-        )
-        .await?;
-        let proxy = zbus::Proxy::new(
-            authority.connection(),
-            owner.as_str(),
-            "/org/opdbus/v1/plugins/openflow",
-            "org.opdbus.v1.plugins.openflow",
-        )
-        .await?;
-        Ok(tokio::time::timeout(
-            Duration::from_secs(15),
-            proxy.call(
-                "VerifyFlow",
-                &(bridge, serde_json::to_string(flow)?, absent),
-            ),
-        )
-        .await
-        .context("OpenFlow live verification timed out")??)
+    /// Add the two explicit uplink flows (design D6) that are not yet on the
+    /// switch, each through the admitted compare-and-exchange, and return the
+    /// state patch for the flows it wrote. A flow already present with its
+    /// derived cookie is left alone; a different flow in its place is refused
+    /// by the compare, nothing is overwritten.
+    async fn seed_uplink(&self, bridge: &str, admit: &FinalAdmission) -> Result<Value> {
+        let view = self.switches.observe(bridge).await?;
+        ensure!(
+            view.has_port(UPLINK_PORT),
+            "uplink port {UPLINK_PORT} is not on {bridge}"
+        );
+        let mut missing = Vec::new();
+        for flow in uplink_flows() {
+            if !view.holds(bridge, &flow)? {
+                missing.push(flow);
+            }
+        }
+        let mut patch = json!({});
+        for flow in missing {
+            let receipt = self
+                .switches
+                .compare_and_exchange(
+                    bridge,
+                    "add_flow",
+                    &json!({"bridge":bridge,"flow":flow}),
+                    admit.clone(),
+                )
+                .await?;
+            merge_patch(
+                &mut patch,
+                crate::openflow_methods::projection_patch(&receipt)?,
+            );
+        }
+        Ok(patch)
     }
 
-    async fn ensure_fallback(
-        &self,
-        bridge: &str,
-        admit: FinalAdmission,
-    ) -> Result<crate::openflow_methods::OpenFlowMethodReceipt> {
-        let flow = fallback_flow();
-        let existed = self.verify_flow(bridge, &flow, false).await?;
-        if !existed {
-            let owner = crate::obfuscation_methods::NativeFlowOwner {
-                authority: self.permits().await?.clone(),
-                admission: admit,
-            };
-            crate::obfuscation_methods::FlowOwner::exchange(&owner, bridge, &flow, None, false)
-                .await?;
-        }
+    /// `Bridge.protocols` includes `OpenFlow15` (requirement 1.2): one OVSDB
+    /// transact under the call's admission (wait on the row as read, then
+    /// update), then a read back. Existing members stay. An empty set means
+    /// OVS's own default versions, so it is written as OpenFlow10 through
+    /// OpenFlow15, which removes nothing that was allowed.
+    async fn ensure_openflow15(&self, bridge: &str, admit: FinalAdmission) -> Result<()> {
+        const WANTED: &str = "OpenFlow15";
+        let rows = self
+            .select("Bridge", json!([["name", "==", bridge]]), &["protocols"])
+            .await?;
         ensure!(
-            self.verify_flow(bridge, &flow, false).await?,
-            "NORMAL fallback not confirmed by native switch readback"
+            rows.len() == 1,
+            "OVS bridge must have exactly one native row"
         );
-        Ok(crate::openflow_methods::OpenFlowMethodReceipt {
-            output: json!({"success":true}),
-            before: existed.then(|| flow.clone()),
-            after: Some(flow),
-            bridge: bridge.into(),
-        })
+        let current = ovs_strings(&rows[0]["protocols"])?;
+        if current.iter().any(|protocol| protocol == WANTED) {
+            return Ok(());
+        }
+        let mut protocols: BTreeSet<String> = current.into_iter().collect();
+        if protocols.is_empty() {
+            protocols.extend(
+                [
+                    "OpenFlow10",
+                    "OpenFlow11",
+                    "OpenFlow12",
+                    "OpenFlow13",
+                    "OpenFlow14",
+                ]
+                .map(String::from),
+            );
+        }
+        protocols.insert(WANTED.to_owned());
+        let operations = vec![
+            json!({"op":"wait","table":"Bridge","where":[["name","==",bridge]],
+                "columns":["protocols"],"until":"==","timeout":0,
+                "rows":[{"protocols":rows[0]["protocols"]}]}),
+            json!({"op":"update","table":"Bridge","where":[["name","==",bridge]],
+                "row":{"protocols":["set", protocols.iter().collect::<Vec<_>>()]}}),
+        ];
+        self.ovsdb.admitted(admit).transact(operations).await?;
+        let observed = self
+            .select("Bridge", json!([["name", "==", bridge]]), &["protocols"])
+            .await?;
+        ensure!(
+            observed.len() == 1
+                && ovs_strings(&observed[0]["protocols"])?
+                    .into_iter()
+                    .collect::<BTreeSet<_>>()
+                    == protocols,
+            "OVS protocols readback differs"
+        );
+        Ok(())
     }
 
     async fn select(&self, table: &str, predicate: Value, columns: &[&str]) -> Result<Vec<Value>> {
@@ -844,7 +869,7 @@ impl NetworkRuntime {
         &self,
         bridge: &str,
         endpoint: Option<&str>,
-        standalone: bool,
+        fail_mode: Option<&str>,
         admit: FinalAdmission,
     ) -> Result<()> {
         let before = self.bridge_row(bridge).await?;
@@ -863,8 +888,8 @@ impl NetworkRuntime {
             json!(["set", []])
         };
         let mut row = json!({"controller":controllers});
-        if standalone {
-            row["fail_mode"] = json!("standalone");
+        if let Some(mode) = fail_mode {
+            row["fail_mode"] = json!(mode);
         }
         if endpoint.is_some() {
             let mut config = ovs_map(
@@ -901,10 +926,10 @@ impl NetworkRuntime {
         } else {
             ensure!(ids.is_empty(), "OVS controller removal did not read back");
         }
-        if standalone {
+        if let Some(mode) = fail_mode {
             ensure!(
-                ovs_strings(&observed["fail_mode"])? == vec!["standalone".to_string()],
-                "OVS standalone readback differs"
+                ovs_strings(&observed["fail_mode"])? == vec![mode.to_string()],
+                "OVS {mode} fail mode readback differs"
             );
         }
         Ok(())
@@ -937,13 +962,31 @@ impl NetworkRuntime {
         }
         let fail_mode = ovs_strings(&row["fail_mode"])?;
         let other = ovs_map(&row["other_config"])?;
-        let fallback = self.verify_flow(bridge, &fallback_flow(), false).await?;
+        // The switch's own side, read over rovs: the explicit uplink flows,
+        // the old NORMAL flow, and anything without the plugin's cookie.
+        let view = self.switches.observe(bridge).await?;
+        let mut uplink_flows_present = view.has_port(UPLINK_PORT);
+        if uplink_flows_present {
+            for flow in uplink_flows() {
+                uplink_flows_present &= view.holds(bridge, &flow)?;
+            }
+        }
+        let normal_flow_present = view.normal_present()?;
+        let foreign_flows: Vec<Value> = view
+            .foreign()
+            .map(|flow| {
+                json!({"table":flow.table_id,"priority":flow.priority,
+                    "cookie":format!("{:#x}", flow.cookie),"match":flow.match_fields.to_string()})
+            })
+            .collect();
         Ok(
             json!({"bridge":bridge,"fail_mode":fail_mode.first().map(String::as_str).unwrap_or("standalone"),
-            "controllers":targets,"fallback_normal":fallback,"fallback_priority":0,
-            "fallback_cookie":format!("{:#x}", op_network::datapath_safe::FALLBACK_COOKIE),
+            "controllers":targets,
             "connection_mode":if modes.is_empty() {"n/a".into()} else {modes.join(",")},
-            "disable_in_band":other.get("disable-in-band").is_some_and(|value| value == "true")}),
+            "disable_in_band":other.get("disable-in-band").is_some_and(|value| value == "true"),
+            "uplink_flows_present":uplink_flows_present,
+            "normal_flow_present":normal_flow_present,
+            "foreign_flows":foreign_flows}),
         )
     }
 
@@ -1265,15 +1308,42 @@ fn validate_bridge(bridge: &str) -> Result<()> {
     );
     Ok(())
 }
-fn fallback_flow() -> FlowEntry {
-    FlowEntry {
+/// The host's physical uplink on a managed bridge (design D6). The bridge's
+/// own port is `LOCAL`.
+const UPLINK_PORT: &str = "eth0";
+
+/// The two explicit uplink flows that replace `NORMAL`: the NIC to the
+/// bridge's own port and back, table 0, priority 10. The plugin derives each
+/// flow's cookie from its identity.
+fn uplink_flows() -> [FlowEntry; 2] {
+    let flow = |from: &str, to: &str| FlowEntry {
         table: 0,
-        priority: 0,
-        cookie: Some(op_network::datapath_safe::FALLBACK_COOKIE),
-        match_fields: HashMap::new(),
-        actions: vec![FlowAction::Normal],
+        priority: 10,
+        cookie: None,
+        match_fields: HashMap::from([("in_port".to_owned(), from.to_owned())]),
+        actions: vec![FlowAction::Output {
+            port: to.to_owned(),
+        }],
         idle_timeout: 0,
         hard_timeout: 0,
+    };
+    [flow(UPLINK_PORT, "LOCAL"), flow("LOCAL", UPLINK_PORT)]
+}
+
+/// Merge `from` into `into`, object by object; any other value replaces.
+fn merge_patch(into: &mut Value, from: Value) {
+    match (into, from) {
+        (Value::Object(into), Value::Object(from)) => {
+            for (key, value) in from {
+                match into.get_mut(&key) {
+                    Some(slot) => merge_patch(slot, value),
+                    None => {
+                        into.insert(key, value);
+                    }
+                }
+            }
+        }
+        (slot, from) => *slot = from,
     }
 }
 fn ovs_atoms(value: &Value) -> Result<Vec<Value>> {
