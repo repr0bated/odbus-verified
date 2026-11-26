@@ -22,6 +22,8 @@ use crate::runtime::{Runtime, RuntimeError};
 
 #[path = "runtime_lungs_identity.rs"]
 mod identity;
+#[path = "runtime_lungs_shared.rs"]
+mod shared;
 pub(crate) use identity::BrowserWaiterIdentity;
 use identity::{LungsIdentity, ProcessIdentity};
 
@@ -167,19 +169,22 @@ fn runtime_error(error: RuntimeError, operation: uuid::Uuid) -> zbus::fdo::Error
     }
 }
 
-/// Holds the socket inode and exclusive owner lock; never removes another
-/// server's path when a supervisor replaces this instance.
+/// Local listeners own their path. Imported listeners are owned by the chatbot.
+enum SocketCustody {
+    Local { dev: u64, ino: u64, _lock: File },
+    Chatbot { creator: tokio::io::unix::AsyncFd<std::os::fd::OwnedFd> },
+}
+
 struct SocketOwner {
     path: PathBuf,
-    dev: u64,
-    ino: u64,
-    _lock: File,
+    custody: SocketCustody,
 }
 
 impl Drop for SocketOwner {
     fn drop(&mut self) {
+        let SocketCustody::Local { dev, ino, .. } = &self.custody else { return; };
         if let Ok(metadata) = std::fs::symlink_metadata(&self.path) {
-            if metadata.file_type().is_socket() && metadata.dev() == self.dev && metadata.ino() == self.ino {
+            if metadata.file_type().is_socket() && metadata.dev() == *dev && metadata.ino() == *ino {
                 if let Err(error) = std::fs::remove_file(&self.path) {
                     tracing::warn!(%error, socket = %self.path.display(), "lungs socket cleanup failed");
                 }
@@ -284,7 +289,8 @@ async fn bind_socket(path: &Path) -> Result<(tokio::net::UnixListener, SocketOwn
     let listener = tokio::net::UnixListener::bind(path)
         .with_context(|| format!("bind lungs socket {}", path.display()))?;
     let metadata = std::fs::symlink_metadata(path)?;
-    let owner = SocketOwner { path: path.to_owned(), dev: metadata.dev(), ino: metadata.ino(), _lock: lock };
+    let owner = SocketOwner { path: path.to_owned(),
+        custody: SocketCustody::Local { dev: metadata.dev(), ino: metadata.ino(), _lock: lock } };
     // World access grants negotiation, not identity selection or method access.
     std::fs::set_permissions(path, std::fs::Permissions::from_mode(0o666))?;
     Ok((listener, owner))
@@ -305,7 +311,15 @@ pub(crate) async fn start(runtime: Arc<Runtime>) -> Result<LungsServer> {
     }).collect());
     // Validate paths before taking socket ownership; no partial listener is ready.
     for (path, _) in objects.iter() { zbus::zvariant::ObjectPath::try_from(path.as_str())?; }
-    let (listener, owner) = bind_socket(&path).await?;
+    let (listener, owner) = match std::env::var("OPDBUS_LUNGS_OWNER").as_deref() {
+        Ok("chatbot") => {
+            let imported = shared::acquire(&runtime, &path).await?;
+            (imported.listener, SocketOwner { path: path.clone(),
+                custody: SocketCustody::Chatbot { creator: imported.creator } })
+        }
+        Ok("local") | Err(std::env::VarError::NotPresent) => bind_socket(&path).await?,
+        _ => anyhow::bail!("OPDBUS_LUNGS_OWNER must be local or chatbot"),
+    };
     let socket = Arc::new(owner);
     let owned_socket = socket.clone();
     let calls = Arc::new(Semaphore::new(MAX_IN_FLIGHT_CALLS));
@@ -319,6 +333,15 @@ pub(crate) async fn start(runtime: Arc<Runtime>) -> Result<LungsServer> {
             tokio::select! {
                 biased;
                 _ = &mut stopped => break,
+                exited = async {
+                    match &_socket.custody {
+                        SocketCustody::Chatbot { creator } => creator.readable().await.map(|_| ()),
+                        SocketCustody::Local { .. } => std::future::pending().await,
+                    }
+                } => {
+                    exited.context("observe chatbot listener owner")?;
+                    anyhow::bail!("chatbot listener owner exited");
+                }
                 finished = connections.join_next(), if !connections.is_empty() => {
                     if let Some(Err(error)) = finished {
                         tracing::warn!(%error, "lungs connection worker ended");

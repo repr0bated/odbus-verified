@@ -81,6 +81,14 @@ set +a
 # bridge's other runtime sockets. The bridge authenticates host callers or
 # derives guest identity from kernel peer credentials and native Incus state.
 export OPDBUS_LUNGS_SOCKET=/run/opdbus/lungs/lungs.sock
+# The chatbot may own the listener while this runtime retains kernel admission.
+lungs_owner=/etc/op-dbus/env/OPDBUS_LUNGS_OWNER
+if [ -e "$lungs_owner" ] || [ -L "$lungs_owner" ]; then
+    [ -f "$lungs_owner" ] && [ ! -L "$lungs_owner" ] &&
+        [ "$(stat -c %u:%g:%a "$lungs_owner")" = 0:0:600 ] || exit 78
+    OPDBUS_LUNGS_OWNER=$(cat "$lungs_owner")
+    export OPDBUS_LUNGS_OWNER
+fi
 
 # The native router's provider-only generation protocol requires a real paired
 # subject. Consume the operator-provisioned token from a root-only file; never

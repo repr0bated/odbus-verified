@@ -1,0 +1,15 @@
+[Unit]
+Description=Chatbot-owned shared lungs listener
+After=systemd-tmpfiles-setup.service
+Before=3tchedfs.service threetchedfs.service
+RequiresMountsFor=/run/mounts/opdbus/lungs
+
+[Socket]
+ListenStream=/run/opdbus/lungs/lungs.sock
+SocketMode=0666
+DirectoryMode=0755
+Service=op-grpc-bridge.service
+RemoveOnStop=true
+
+[Install]
+WantedBy=sockets.target

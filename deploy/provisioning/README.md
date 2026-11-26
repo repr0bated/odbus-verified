@@ -134,6 +134,37 @@ Containers are `incus create --empty` placeholders swapped for a writable CoW sn
 the seed (`op-container from-seed` for `@seed`, `crates/op-container/src/seed.rs:56`;
 the same swap by hand for other seeds, in step 3).
 
+## Chatbot-owned shared lungs listener
+
+After deploying the bridge with shared-listener support, run
+`sudo deploy/provisioning/36-share-chatbot-lungs.sh --apply`.
+The procedure installs `opdbus-shared-lungs.socket` inside the configured
+systemd chatbot and restarts the chatbot and host bridge. It retains the
+previous device and listener settings for recovery.
+
+The chatbot creates `/run/opdbus/lungs/lungs.sock` through socket activation
+before either guest FUSE service starts. Its lungs directory device is writable.
+Other containers receive a read-only directory bind. LXD subsidiaries receive
+the directory through their existing recursive `/run` projection.
+
+The host bridge imports the chatbot init process's exact AF_UNIX listening
+descriptor using `pidfd_getfd`. It verifies the committed chatbot identity,
+native UUID, init PID and listener address before accepting. Connections keep
+their original kernel peer credentials. Every method still goes through the
+existing identity checks and tracked runtime dispatch. When the chatbot init
+process exits, the host stops this listener and waits for supervision to restart
+it. Each caller retains its own principal.
+
+`/etc/op-dbus/env/OPDBUS_LUNGS_OWNER` selects `chatbot` or `local` on the host.
+The chatbot autostarts so the listener is recreated after host reboot.
+The socket inode lives under `/run`; its service and Incus device definitions
+are the persistent configuration.
+
+The Golden activation startup allowance defaults to 90 seconds; the bridge's
+observed cold start takes about 45 seconds. `GOLDEN_RESTART_WAIT` overrides it.
+Before rolling back to a bridge without shared-listener support, restore the
+host-owned listener using the settings retained by the provisioning procedure.
+
 ## What the image carries (step 2, runit seed)
 
 Port of `deploy/seed/rootfs/` (systemd units) to runit (`runit/`):

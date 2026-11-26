@@ -92,7 +92,7 @@ pub(super) struct ProcessIdentity {
 impl ProcessIdentity {
     pub(super) fn current() -> Result<Self> { Self::read(std::process::id()) }
 
-    fn read(pid: u32) -> Result<Self> {
+    pub(super) fn read(pid: u32) -> Result<Self> {
         ensure!(pid > 0, "peer process is unavailable");
         let start_ticks = read_start_ticks(pid)?;
         let namespace = |name| -> Result<NamespaceIdentity> {
@@ -113,7 +113,7 @@ impl ProcessIdentity {
         self.user_namespace == other.user_namespace && self.pid_namespace == other.pid_namespace
     }
 
-    fn revalidate(&self) -> Result<()> {
+    pub(super) fn revalidate(&self) -> Result<()> {
         ensure!(Self::read(self.pid)? == *self, "peer process changed");
         Ok(())
     }
@@ -258,7 +258,7 @@ impl LungsIdentity {
         crate::identity_receiver::verify_bound_registry(bound).await
     }
 
-    async fn container_binding(&self, sled: &ContainerIdentitySled, browser: bool) -> Result<ContainerBinding> {
+    async fn container_binding(&self, sled: &ContainerIdentitySled) -> Result<ContainerBinding> {
         self.revalidate_peer()?;
         ensure!(sled.active && sled.is_anchored(), "identity is not active");
         ensure!(sled.expires_at.is_none_or(|expiry| expiry == 0 || expiry > chrono::Utc::now().timestamp()),
@@ -274,7 +274,7 @@ impl LungsIdentity {
             init.revalidate()?;
             Ok(init)
         };
-        let init = if browser && sled.org_relation.as_ref().is_some_and(|r|
+        let init = if sled.org_relation.as_ref().is_some_and(|r|
             r.kind == op_plugins::state_plugins::identity_sled::OrgRelationKind::Subsidiary)
         {
             crate::runtime_identity_owner::lxd_subsidiary::pin_browser_init(
@@ -344,24 +344,24 @@ impl LungsIdentity {
             self.revalidate_peer()?;
             return host_binding(&cmdline);
         }
-        let mut candidate = self.find_container_binding(browser).await?;
+        let mut candidate = self.find_container_binding().await?;
         if candidate.is_none() && !browser {
             // The sled volume is authoritative: adopt unindexed volumes once.
             let adopted = crate::runtime_identity_owner::adopt_identity_volumes(self.identity_store.clone()).await?;
             if adopted > 0 {
                 crate::runtime_identity::recover_startup(self.identity_store.clone(), self.catalog_dir.clone()).await?;
                 self.revalidate_peer()?;
-                candidate = self.find_container_binding(false).await?;
+                candidate = self.find_container_binding().await?;
             }
         }
         committed_binding(candidate)
     }
 
-    async fn find_container_binding(&self, browser: bool) -> Result<Option<ContainerBinding>> {
+    async fn find_container_binding(&self) -> Result<Option<ContainerBinding>> {
         let sessions = self.sessions().await?;
         let mut candidate = None;
         for sled in sessions.iter().filter(|sled| sled.active && sled.is_anchored()) {
-            if let Ok(binding) = self.container_binding(sled, browser).await {
+            if let Ok(binding) = self.container_binding(sled).await {
                 ensure!(candidate.is_none(), "peer has no unique identity container");
                 candidate = Some(binding);
             }
@@ -405,7 +405,7 @@ impl LungsIdentity {
                 let sled = self.sessions().await?.into_iter()
                     .find(|sled| sled.session_id == binding.session_id)
                     .context("identity container disappeared")?;
-                let current = self.container_binding(&sled, false).await?;
+                let current = self.container_binding(&sled).await?;
                 ensure!(*binding == current, "identity container binding changed");
             }
         }
