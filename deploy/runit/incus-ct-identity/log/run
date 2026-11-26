@@ -1,0 +1,10 @@
+#!/bin/sh
+# Shared log/run for /etc/sv/incus-ct-<name>/log (the service name is the
+# parent directory of this log directory).
+exec 2>&1
+svc=$(basename "$(dirname "$(pwd -P)")")
+logdir=/var/log/op-dbus/$svc
+install -d -m 755 -o svlog -g svlog "$logdir"
+printf '%s\n' 's4000000' 'n10' 't86400' >"$logdir/config"
+chown svlog:svlog "$logdir/config"
+exec chpst -u svlog svlogd -tt "$logdir"

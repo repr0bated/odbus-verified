@@ -1,0 +1,46 @@
+#!/bin/sh
+# runit longrun for one Incus identity container (installed as
+# /usr/local/libexec/op-dbus/incus-ct-run, called by /etc/sv/incus-ct-<name>/run).
+# runit owns the lifecycle, not Incus autostart: start the container once its
+# storage pool and run dirs exist, stay up until Incus reports it stopped
+# (lifecycle event, no polling), and stop it on `sv down`.
+set -eu
+PATH=/usr/sbin:/usr/bin:/sbin:/bin
+NAME=$1
+exec 2>&1
+say() { printf 'incus-ct-%s: %s\n' "$NAME" "$*"; }
+# Dependencies: the Incus daemon and the pool disk (cozo-ublk-500g). A failed
+# check exits; runit runs us again a second later.
+sv check incus >/dev/null 2>&1 || { say 'incus not ready'; exit 1; }
+sv check cozo-ublk-500g >/dev/null 2>&1 || { say 'storage pool disk not ready'; exit 1; }
+incus info >/dev/null 2>&1 || { say 'incus API not ready'; exit 1; }
+incus config set "$NAME" boot.autostart=false
+# Host run dirs the container's disks bind from (/run is tmpfs).
+sh /etc/runit/boot-run/S96-run-mounts.stage1.sh
+running() { [ "$(incus list -f csv -c s "^${NAME}\$")" = RUNNING ]; }
+# Watch for the stop before starting, so a stop in between is not missed.
+incus monitor --type=lifecycle --format=json |
+    jq --unbuffered -r --arg src "/1.0/instances/$NAME" \
+        'select(.metadata.source == $src and (.metadata.action | test("^instance-(stopped|shutdown|deleted)$"))) | .metadata.action' |
+    head -n1 &
+watch=$!
+stop() {
+    trap '' TERM INT HUP
+    say 'stopping (runit down)'
+    incus stop "$NAME" --timeout 30 || incus stop "$NAME" --force || :
+    kill "$watch" 2>/dev/null || :
+    exit 0
+}
+trap stop TERM INT HUP
+if ! running; then
+    say 'starting'
+    if ! incus start "$NAME"; then
+        incus info "$NAME" --show-log 2>&1 | tail -n 40 || :
+        kill "$watch" 2>/dev/null || :
+        exit 1
+    fi
+fi
+say 'running'
+wait "$watch" || :
+say 'container stopped under runit; exiting so runit restarts it'
+exit 1
