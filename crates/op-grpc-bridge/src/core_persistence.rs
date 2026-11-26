@@ -342,6 +342,13 @@ impl PersistentCore {
         const TUNNEL_V1_BLOB: &str = "a2fc5ffa89ae4a5cdc51fceabbc4920bffb10f2c56b6cec454405fee2ebd11fb";
         const TUNNEL_V1_CONTRACT: &str = "e49d181730c8604640234e4326143746e73d74b101ad809b175d438d66fff30c";
         const TUNNEL_V1_1_CONTRACT: &str = "8cf1658a3d9918f109a5c7a91544291e75e6ff9e42b39fb8384d5e38b3044a01";
+        // chat_router e5d00f2 adds the Shell surface to the default and example
+        // of `ui_surfaces` only; every field type is unchanged. A tree pinned
+        // before it remains valid verbatim; keep its ledger and state hash
+        // until a normal write replaces it.
+        const CHAT_ROUTER_PRE_SHELL_BLOB: &str = "7bceb47859738c903d9e148f536edd4e321f5a8b363f71e410b8253d2e355ce8";
+        const CHAT_ROUTER_PRE_SHELL_CONTRACT: &str = "74e9cdfe8d5cd6fbf7abfc4a9ce4805e98b053b0e9ea0e5a8b9631e663da9fa1";
+        const CHAT_ROUTER_SHELL_CONTRACT: &str = "1da9e67e80b81e0bafcd7fcfe2cb1cf8efdaec6cd7c8c031d3a059d676eb3d39";
         let selected = catalog
             .plugin(plugin_id)
             .context("plugin absent from admitted catalog")?;
@@ -350,7 +357,10 @@ impl PersistentCore {
             selected.schema_hash == expected || contract == expected
                 || (persisted_projection && plugin_id == "tunnel"
                     && contract == TUNNEL_V1_1_CONTRACT
-                    && matches!(expected, TUNNEL_V1_BLOB | TUNNEL_V1_CONTRACT)),
+                    && matches!(expected, TUNNEL_V1_BLOB | TUNNEL_V1_CONTRACT))
+                || (persisted_projection && plugin_id == "chat_router"
+                    && contract == CHAT_ROUTER_SHELL_CONTRACT
+                    && matches!(expected, CHAT_ROUTER_PRE_SHELL_BLOB | CHAT_ROUTER_PRE_SHELL_CONTRACT)),
             "state schema pin mismatch for {plugin_id}"
         );
         let current = Catalog::sealed_plugin(&self.catalog_dir, plugin_id)?;
