@@ -1,11 +1,12 @@
 #!/bin/sh
-# Only main and dev may receive new commits or be created/updated.
+# Only main, dev and hackathon/kiroween may receive new commits or be
+# created/updated (hackathon/kiroween: Kiroween hackathon work only, owner 2026-11-26).
 # Deleting an off-policy ref is allowed (cleanup); creating or updating one is refused.
 while read local_ref local_sha remote_ref remote_sha; do
   case "$local_sha" in *[!0]*) ;; *) continue ;; esac   # all-zero local sha = deletion
   case "$remote_ref" in
-    refs/heads/main|refs/heads/dev) ;;
-    *) echo "push refused: '$remote_ref' is not allowed (only main and dev)." >&2; exit 1 ;;
+    refs/heads/main|refs/heads/dev|refs/heads/hackathon/kiroween) ;;
+    *) echo "push refused: '$remote_ref' is not allowed (only main, dev and hackathon/kiroween)." >&2; exit 1 ;;
   esac
   # No secret may be pushed (owner rule 2026-11-22): scan exactly the pushed range.
   case "$remote_sha" in *[!0]*) base=$remote_sha ;; *) base=$(git merge-base origin/dev "$local_sha") ;; esac

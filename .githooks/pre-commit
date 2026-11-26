@@ -1,9 +1,10 @@
 #!/bin/sh
-# Only main and dev may receive commits.
+# Only main, dev and hackathon/kiroween may receive commits
+# (hackathon/kiroween: Kiroween hackathon work only, owner 2026-11-26).
 b=$(git symbolic-ref --short HEAD 2>/dev/null)
 case "$b" in
-  main|dev) ;;
-  *) echo "commit refused: branch '$b' is not allowed (only main and dev)." >&2; exit 1 ;;
+  main|dev|hackathon/kiroween) ;;
+  *) echo "commit refused: branch '$b' is not allowed (only main, dev and hackathon/kiroween)." >&2; exit 1 ;;
 esac
 # No secret may be committed (owner rule 2026-11-22).
 exec "$(git rev-parse --show-toplevel)/scripts/secret-guard.sh" --staged
