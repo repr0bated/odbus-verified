@@ -5,7 +5,7 @@ Branch `hackathon/kiroween`. Every commit ends with the trailer `Hackathon: kiro
 - [x] 1. Confirm the rovs surface (no code change)
   - [x] 1.1 `rovs_transport::Address` Unix variant accepted by `VConn::connect`; hello at `Version::Of15` against `ovsbr0.mgmt` (read-only probe).
   - [x] 1.2 rovs 0.2.0 support for: OF1.5 bundles (`OFPBF_ATOMIC`), flow-description / flow-stats multipart, flow monitor, barrier, cookie + cookie_mask on strict modify/delete. Record gaps in `design.md`.
-- [ ] 2. Transport: `op-network` `OpenFlowClient` connects over a Unix address at OF1.5; reconnect via `rovs_transport::Reconnect`; echo handling. Fake-switch tests for hello, echo, reconnect.
+- [x] 2. Transport: `op-network` `OpenFlowClient` connects over a Unix address at OF1.5; reconnect via `rovs_transport::Reconnect`; echo handling. Fake-switch tests for hello, echo, reconnect.
 - [ ] 3. Cookies: derived cookie (prefix `0x33444348`, low 32 bits of SHA-256 over canonical bridge/table/priority/match); collision refusal; tests.
 - [ ] 4. Mutation path in the bridge (`runtime_network.rs`)
   - [ ] 4.1 Per-bridge lock; read ▸ compare ▸ `FinalAdmission` ▸ write (bundle where supported) ▸ barrier ▸ read back ▸ verify.
