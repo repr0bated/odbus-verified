@@ -1232,6 +1232,18 @@ impl ChatRouterPlugin {
                         schema: "chat_router.providers".to_string(),
                         purpose: "vite, svelte-kit, json-render, ai-sdk, chat-sdk".to_string(),
                     },
+                    // The default page skeleton the subsidiary UI loads first. The
+                    // purpose is the layout: the canvas fills the window, the model
+                    // and mode picker is a drawer on the top edge, the chat is a
+                    // drawer on the bottom edge, and a nav row sits below the chat.
+                    // Slots marked "render": "chatbot" show only what the chatbot
+                    // renders; a canvas spec element keyed by a slot id goes there.
+                    UiSurface {
+                        path: "/".to_string(),
+                        name: "Shell".to_string(),
+                        schema: "json_render.canvas".to_string(),
+                        purpose: r#"{"skeleton":1,"slots":[{"id":"canvas","kind":"canvas","render":"chatbot"},{"id":"picker","kind":"drawer","edge":"top","open":false,"height":0.3,"holds":"model_mode"},{"id":"chat","kind":"drawer","edge":"bottom","open":false,"height":0.4,"holds":"chat"},{"id":"nav","kind":"row","edge":"bottom","below":"chat","render":"chatbot"}]}"#.to_string(),
+                    },
                 ],
                 structured_output: StructuredOutput {
                     sdk: "google.antigravity".to_string(),
