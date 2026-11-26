@@ -285,12 +285,9 @@ impl Namespace {
                 .namespace
                 .source_schema_hashes
                 .insert(plugin_id.clone(), object.source_schema_hash.clone());
-            // The threetched surface grafts its own `/plugins/threetched` tree from the
-            // captured binary (`attach_threetched`); projecting the sealed object here
-            // too would create the same path twice.
-            if surface == Surface::Binary && plugin_id == THREETCHED_PLUGIN_ID {
-                continue;
-            }
+            // The sealed `threetched` object (methods captured at reseal) is
+            // projected like every plugin; `attach_threetched` only adds the
+            // sealed capture's config schema and CLI help beside it.
             let plugin_name = encode_component(plugin_id);
             let plugin_dir = builder.add_dir(plugins, &plugin_name)?;
             builder.add_file(
@@ -891,6 +888,47 @@ impl NamespaceBuilder {
             .collect();
         let plugin_id = THREETCHED_PLUGIN_ID;
         let plugin_name = encode_component(plugin_id);
+        let sealed_dir = self
+            .namespace
+            .children
+            .get(&plugins_parent)
+            .and_then(|children| children.get(&OsString::from(plugin_name.as_str())))
+            .copied();
+        if let Some(plugin_dir) = sealed_dir {
+            // The sealed object already projects schema.json (with the
+            // captured methods), operations and call files. Add only the
+            // sealed capture's config schema and each command's CLI help.
+            self.add_file(
+                plugin_dir,
+                "config.schema.json",
+                FileSource::ThreetchedSchema,
+                None,
+            )?;
+            let methods_dir = *self
+                .namespace
+                .children
+                .get(&plugin_dir)
+                .and_then(|children| children.get(&OsString::from("operations")))
+                .context("sealed threetched object has no operations directory")?;
+            for command in commands {
+                let encoded = encode_component(&command);
+                let method_dir = *self
+                    .namespace
+                    .children
+                    .get(&methods_dir)
+                    .and_then(|children| children.get(&OsString::from(encoded.as_str())))
+                    .with_context(|| {
+                        format!("threetched command {command} is absent from the sealed object")
+                    })?;
+                self.add_file(
+                    method_dir,
+                    "help.json",
+                    FileSource::ThreetchedMetadata { command },
+                    None,
+                )?;
+            }
+            return Ok(());
+        }
         let plugin_dir = self.add_dir(plugins_parent, &plugin_name)?;
         self.add_file(
             plugin_dir,

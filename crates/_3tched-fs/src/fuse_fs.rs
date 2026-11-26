@@ -309,6 +309,28 @@ impl TypedFuse {
         self.namespace.graft_threetched(surface)?;
         Ok(())
     }
+    /// Rebuild the threetched surface from the capture sealed at reseal (the
+    /// pinned `threetched` object's `example.surface`), never by running the
+    /// binary. `from_snapshot` refuses a runtime binary that differs from the seal.
+    pub fn graft_sealed_threetched(&mut self, binary: &std::path::Path) -> anyhow::Result<()> {
+        use anyhow::Context as _;
+        let view_id = match &self.namespace.target {
+            ProjectionTarget::View(id) => id.clone(),
+            ProjectionTarget::Workspace(id) => self.store.read_workspace(id)?.base_view,
+        };
+        let view = self.store.read_view(&view_id)?;
+        let object = self.store.object_for_view(&view, "threetched")?;
+        let surface = object
+            .schema
+            .example
+            .as_ref()
+            .and_then(|example| example.get("surface"))
+            .context("sealed threetched object carries no captured surface")?;
+        let snapshot: crate::threetched_surface::SurfaceSnapshot =
+            serde_json::from_value(surface.clone())
+                .context("sealed threetched surface snapshot is invalid")?;
+        self.graft_threetched(ThreetchedSurface::from_snapshot(binary, &snapshot)?)
+    }
     pub fn with_catalog_dir(mut self, catalog: PathBuf) -> anyhow::Result<Self> {
         self.namespace.declare_catalog_dir(&catalog)?;
         // Catalog declaration does not require eager SHM discovery.

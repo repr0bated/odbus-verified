@@ -855,8 +855,9 @@ async fn main() -> Result<()> {
                         binary_path.display()
                     );
                 }
-                let captured = crate::threetched_surface::ThreetchedSurface::capture(&binary_path)?;
-                filesystem.graft_threetched(captured)?;
+                // The capture is taken at reseal and sealed; the mount only
+                // projects it and checks the runtime binary against it.
+                filesystem.graft_sealed_threetched(&binary_path)?;
             }
             if let Some(uid) = call_owner_uid {
                 filesystem = filesystem.with_call_owner_uid(uid)?;
