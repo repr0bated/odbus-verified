@@ -221,6 +221,15 @@ eth0      148.113.204.83/32   Physical NIC, enslaved into ovsbr0
           Gateway: 148.113.204.1
 ```
 
+### OpenFlow
+- OpenFlow address: `10.200.0.1` on `ovsbr0`, next to `10.0.0.2` and `100.96.0.5`. Controller port: 6653.
+- `10.200.0.1:6653` is the packet-in controller listener. OVS listens on `ptcp:6653:10.200.0.1` only when a packet-in controller is enabled. It is off by default. No flow needs it.
+- Flows are programmed by the bridge's `openflow` plugin through rovs at OpenFlow 1.5, on OVS's own socket `unix:/var/run/openvswitch/<bridge>.mgmt`.
+- Every flow is a child of the `openflow` plugin, created by `add_flow` with a derived cookie (prefix `0x33444348`).
+- Target state: no `NORMAL` flow and fail mode `secure`. Not deployed: the live switch still has its NORMAL flow until the owner runs the live steps.
+- op-of-controller is retired. Do not look for it or its `OF_CONTROLLER_*` settings.
+- Manage OpenFlow only through sealed plugins (zcall or 3tchedFS call files), never ovs-* commands.
+
 ### Interfaces
 ```
 INTERFACE      ADDRESS              TYPE              PURPOSE
@@ -241,8 +250,8 @@ ovsbr0     system     standalone   Switching fabric
 ### Address ownership
 `eth0` is the OVS uplink and carries no host address. `pub0` owns public addressing.
 `rtly-lungs` is point-to-point tonic `10.0.0.2` peer `192.168.255.2`. `192.168.255.2` is the SSH address, and that address is REALITY. MASQUE and SSH are the protocols, not the name. HTTPS is inside that tunnel. It is not an OVS port.
-`ovsbr0` has service aliases only. EMQX is `10.0.0.3/32`. The OpenFlow and host Qdrant alias numbers are unset.
-There is no `svc0` port, no per-service interface, and no `10.200.0.0/24` fabric.
+`ovsbr0` carries addresses `10.0.0.2`, `100.96.0.5` and the OpenFlow address `10.200.0.1`. EMQX is `10.0.0.3/32`. The host Qdrant alias number is unset.
+There is no `svc0` port and no per-service interface. `10.200.0.1` is a single address, not a fabric: no `10.200.0.0/24` network exists.
 Administrative SSH enters through decoy WireGuard at `10.0.0.1`. There is no WireGuard on the host.
 The shared container socket is `/run/3tched-lungs.socket`, backed by `/run/opdbus/lungs/lungs.sock`.
 
@@ -272,7 +281,8 @@ OVSDB            /usr/local/var/run/openvswitch/db.sock (primary)  JSON-RPC (rov
                  /var/run/openvswitch/db.sock (fallback)
 D-Bus System     /var/run/dbus/system_bus_socket                   D-Bus
 gRPC + MCP       0.0.0.0:8090 (op-grpc-bridge, TLS)                gRPC/HTTP2
-OpenFlow         tcp:10.88.88.1:6653                               OpenFlow 1.3
+OpenFlow (flows) unix:/var/run/openvswitch/<bridge>.mgmt           OpenFlow 1.5 (rovs)
+OpenFlow (ctrl)  ptcp:6653:10.200.0.1 (only when enabled)         packet-in, off by default
 ```
 
 ### runit Services
@@ -545,6 +555,28 @@ mod tests {
         assert!(fixed.contains("btrfs send/receive"));
         assert!(fixed.contains("local-release-activation.md"));
         assert!(!fixed.contains("Publish a build"));
+    }
+
+    #[test]
+    fn test_fixed_prompt_openflow_network_section() {
+        let fixed = get_fixed_prompt();
+        assert!(fixed.contains("10.200.0.1"));
+        assert!(fixed.contains("10.0.0.2"));
+        assert!(fixed.contains("100.96.0.5"));
+        assert!(fixed.contains("6653"));
+        assert!(fixed.contains("OpenFlow 1.5"));
+        assert!(fixed.contains("unix:/var/run/openvswitch/<bridge>.mgmt"));
+        assert!(fixed.contains("0x33444348"));
+        assert!(fixed.contains("add_flow"));
+        assert!(fixed.contains("op-of-controller is retired"));
+        assert!(fixed.contains("sealed plugins"));
+        assert!(fixed.contains("never ovs-* commands"));
+        assert!(fixed.contains("still has its NORMAL flow"));
+        assert!(fixed.contains("no `svc0` port"));
+        // Stale statements must be gone.
+        assert!(!fixed.contains("10.88.88.1"));
+        assert!(!fixed.contains("no `10.200.0.0/24` fabric"));
+        assert!(!fixed.contains("OpenFlow and host Qdrant alias numbers are unset"));
     }
 
     #[tokio::test]
