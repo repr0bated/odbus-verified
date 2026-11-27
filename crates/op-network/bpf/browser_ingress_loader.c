@@ -26,7 +26,7 @@ int main(int argc, char **argv)
     struct bpf_program *program;
     struct bpf_map *routes;
     struct bpf_link *link = NULL;
-    char map_path[PATH_MAX], link_path[PATH_MAX];
+    char map_path[PATH_MAX];
     int cgroup_fd = -1, error = 1;
 
     if (argc != 4) {
@@ -37,8 +37,7 @@ int main(int argc, char **argv)
         fprintf(stderr, "browser ingress requires a root-owned mode-0700 pin directory\n");
         return 1;
     }
-    if (snprintf(map_path, sizeof map_path, "%s/browser_routes", argv[3]) >= (int)sizeof map_path ||
-        snprintf(link_path, sizeof link_path, "%s/browser_ingress_link", argv[3]) >= (int)sizeof link_path) {
+    if (snprintf(map_path, sizeof map_path, "%s/browser_routes", argv[3]) >= (int)sizeof map_path) {
         fprintf(stderr, "pin path is too long\n");
         return 1;
     }
@@ -64,7 +63,6 @@ int main(int argc, char **argv)
         goto out;
     }
     unlink(map_path);
-    unlink(link_path);
     if (bpf_map__pin(routes, map_path)) {
         fprintf(stderr, "pin browser route map failed\n");
         goto out;
@@ -76,15 +74,11 @@ int main(int argc, char **argv)
         fprintf(stderr, "attach browser ingress program failed\n");
         goto out;
     }
-    if (bpf_link__pin(link, link_path)) {
-        unlink(map_path);
-        fprintf(stderr, "pin browser ingress link failed\n");
-        goto out;
-    }
     chmod(map_path, 0600);
-    chmod(link_path, 0600);
     printf("browser ingress attached; capacity=4096 port=8080\n");
-    error = 0;
+    fflush(stdout);
+    for (;;)
+        pause();
 out:
     if (link)
         bpf_link__destroy(link);

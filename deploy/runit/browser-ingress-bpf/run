@@ -1,0 +1,12 @@
+#!/bin/sh
+set -eu
+exec 2>&1
+object=/usr/local/libexec/op-dbus/bpf/browser_ingress.bpf.o
+loader=/usr/local/libexec/op-dbus/bin/browser-ingress-bpf
+cgroup=/sys/fs/cgroup
+pins=/sys/fs/bpf/opdbus/browser-ingress
+[ -r "$object" ]
+[ -x "$loader" ]
+[ -d "$cgroup" ]
+install -d -m 0700 "$pins"
+exec "$loader" "$object" "$cgroup" "$pins"

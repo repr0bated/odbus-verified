@@ -1,0 +1,3 @@
+#!/bin/sh
+set -eu
+[ -r /sys/fs/bpf/opdbus/browser-ingress/browser_routes ]

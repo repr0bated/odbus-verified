@@ -26,8 +26,10 @@ set -a
 [ -r /etc/op-dbus/environment ] && . /etc/op-dbus/environment
 set +a
 
-export OP_WEB_BIND_ADDR="${OP_WEB_BIND_ADDR:-10.0.0.2}"
-export PORT="${PORT:-8080}"
+# The shared browser entry owns :8080. Keep unrelated host web content on an
+# internal-only non-conflicting listener.
+export OP_WEB_BIND_ADDR="${OP_WEB_BIND_ADDR:-127.0.0.1}"
+export PORT="${PORT:-8081}"
 export OP_WEB_STATIC_DIR=/usr/local/share/op-dbus/dashboard-release
 # Compliance SPA/API moved to the door Axum stack (op-grpc-bridge :8090).
 export OP_DBUS_GRPC_ADDR="${OP_DBUS_GRPC_ADDR:-https://10.0.0.2:8090}"
