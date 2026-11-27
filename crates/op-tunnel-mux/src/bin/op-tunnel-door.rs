@@ -1,11 +1,11 @@
-//! `op-tunnel-door [--socket PATH] [--door ADDR] [--waiters N]`
+//! `op-tunnel-door [--socket PATH | --lungs-socket PATH] [--door ADDR] [--waiters N]`
 //!
-//! Runs inside the door-owning container. Holds `Accept` open on the shared
-//! door socket (default /run/opdbus/tunnel/tunnel.sock) and splices each
-//! delivered connection to the container's own door (default
-//! 10.0.0.2:8090, op-grpc-bridge on lo). TLS ends at that door. N waiters
-//! (default 4) keep accepts ready while earlier connections are spliced.
+//! `--lungs-socket` is the browser path: receive an owned TCP fd over the
+//! identity-bound lungs connection and splice it raw to `127.0.0.1:8443`.
+//! The legacy `--socket` framed path remains only for unrelated control-plane
+//! tunnel traffic.
 
+use std::path::Path;
 use std::time::Duration;
 
 use anyhow::{Context, Result};
@@ -90,17 +90,24 @@ async fn waiter(channel: Channel, door: String) -> Result<()> {
 async fn main() -> Result<()> {
     tracing_subscriber::fmt().with_writer(std::io::stderr).init();
     let mut socket = "/run/opdbus/tunnel/tunnel.sock".to_string();
-    let mut door = "10.0.0.2:8090".to_string();
+    let mut lungs_socket = None;
+    let mut door = None;
     let mut waiters = 4usize;
     let mut args = std::env::args().skip(1);
     while let Some(arg) = args.next() {
         match arg.as_str() {
             "--socket" => socket = args.next().context("--socket needs a path")?,
-            "--door" => door = args.next().context("--door needs an address")?,
+            "--lungs-socket" => lungs_socket = Some(args.next().context("--lungs-socket needs a path")?),
+            "--door" => door = Some(args.next().context("--door needs an address")?),
             "--waiters" => waiters = args.next().context("--waiters needs a number")?.parse()?,
             other => anyhow::bail!("unknown argument {other}"),
         }
     }
+    if let Some(lungs_socket) = lungs_socket {
+        let door = door.unwrap_or_else(|| "127.0.0.1:8443".into()).parse()?;
+        return op_tunnel_mux::browser_fd::run(Path::new(&lungs_socket), door, waiters).await;
+    }
+    let door = door.unwrap_or_else(|| "10.0.0.2:8090".into());
     loop {
         match channel(socket.clone()).await {
             Ok(channel) => {

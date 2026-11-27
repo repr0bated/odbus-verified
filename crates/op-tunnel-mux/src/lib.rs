@@ -39,6 +39,7 @@ pub use proto::{frame, Frame, Target};
 const CHUNK: usize = 16 * 1024;
 
 mod browser;
+pub mod browser_fd;
 pub use browser::{BrowserMux, BrowserStatus, ListenerMeta, Selector, WaiterIdentity, WaiterProof, serve_browser, serve_browser_listener};
 
 #[cfg(test)]
