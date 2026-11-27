@@ -103,6 +103,8 @@ pub mod router;
 pub(crate) mod runtime;
 #[path = "runtime_bootstrap.rs"]
 pub(crate) mod runtime_bootstrap;
+#[path = "runtime_browser_ingress.rs"]
+pub(crate) mod runtime_browser_ingress;
 #[path = "runtime_chat.rs"]
 pub(crate) mod runtime_chat;
 #[path = "runtime_cognitive.rs"]
