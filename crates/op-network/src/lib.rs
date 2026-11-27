@@ -11,6 +11,7 @@
 #![deny(rustdoc::broken_intra_doc_links)]
 
 pub mod btrfs;
+pub mod browser_route;
 pub mod controller;
 pub mod datapath_safe;
 pub mod dbus_tls;

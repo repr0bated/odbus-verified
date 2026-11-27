@@ -48,6 +48,7 @@ rovs-ext = "=0.2.0"
 
 # Bytes for wire-protocol encoding in controller.rs
 bytes = "1"
+blake3 = { workspace = true }
 
 # D-Bus proxy for the OVSDB JSON-RPC passthrough interface
 zbus = { workspace = true, features = ["p2p"] }
