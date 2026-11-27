@@ -388,6 +388,30 @@ impl LungsIdentity {
         }).await.context("lungs identity bootstrap timed out")
     }
 
+    pub(super) async fn browser_session_id(&self) -> Result<String> {
+        self.wait_bound().await?;
+        let pinned = self.binding.get().context("lungs identity is not bound")?;
+        let Binding::Container(binding) = &pinned.target else {
+            anyhow::bail!("host lungs connection cannot receive a browser socket");
+        };
+        self.revalidate_native_binding().await?;
+        let session_id = pinned
+            .identity
+            .read()
+            .map_err(|_| anyhow::anyhow!("bound identity poisoned"))?
+            .claims()
+            .session_id
+            .clone();
+        ensure!(session_id == binding.session_id, "lungs browser identity changed");
+        Ok(session_id)
+    }
+
+    pub(super) async fn revalidate_browser_session(&self, expected: &str) -> Result<()> {
+        let session_id = self.browser_session_id().await?;
+        ensure!(session_id == expected, "browser waiter identity changed");
+        Ok(())
+    }
+
     pub(super) async fn caller(self: &Arc<Self>) -> Result<VerifiedCaller> {
         let pinned = self.binding.get().context("lungs identity is not bound")?;
         let identity = pinned.identity.read().map_err(|_| anyhow::anyhow!("bound identity poisoned"))?.clone();

@@ -20,6 +20,8 @@ use tokio::task::{JoinHandle, JoinSet};
 
 use crate::runtime::{Runtime, RuntimeError};
 
+#[path = "runtime_lungs_browser.rs"]
+mod browser;
 #[path = "runtime_lungs_identity.rs"]
 mod identity;
 #[path = "runtime_lungs_shared.rs"]
@@ -35,6 +37,7 @@ const MAX_IN_FLIGHT_CALLS: usize = 64;
 
 struct LungsBootstrap {
     identity: Arc<LungsIdentity>,
+    browser: Arc<browser::BrowserBroker>,
 }
 
 #[zbus::interface(name = "org.opdbus.v1.LungsV1")]
@@ -47,6 +50,11 @@ impl LungsBootstrap {
     async fn bind_current_container(&self) -> zbus::fdo::Result<bool> {
         self.identity.bind_current_container().await.map_err(binding_denial)?;
         Ok(true)
+    }
+
+    async fn accept_browser(&self) -> zbus::fdo::Result<zbus::zvariant::OwnedFd> {
+        let fd = self.browser.accept(self.identity.clone()).await.map_err(binding_denial)?;
+        Ok(fd.into())
     }
 }
 
@@ -193,6 +201,20 @@ impl Drop for SocketOwner {
     }
 }
 
+#[derive(Clone)]
+pub(crate) struct BrowserHandoff {
+    broker: Arc<browser::BrowserBroker>,
+}
+
+impl BrowserHandoff {
+    pub(crate) async fn offer(&self, session_id: &str, stream: tokio::net::TcpStream) -> Result<()> {
+        stream.set_nodelay(true)?;
+        let stream = stream.into_std()?;
+        let fd: std::os::fd::OwnedFd = stream.into();
+        self.broker.offer(session_id, fd).await
+    }
+}
+
 /// Main owns this guard for the listener's entire lifetime. Creation returns
 /// only after bind, socket permissions and kernel authentication prerequisites
 /// succeed. Shutdown stops admissions; already dispatched runtime calls finish
@@ -200,12 +222,17 @@ impl Drop for SocketOwner {
 pub(crate) struct LungsServer {
     socket: Arc<SocketOwner>,
     calls: Arc<Semaphore>,
+    browser: Arc<browser::BrowserBroker>,
     stop: Option<oneshot::Sender<()>>,
     task: Option<JoinHandle<Result<()>>>,
 }
 
 impl LungsServer {
     pub(crate) fn socket_path(&self) -> &Path { &self.socket.path }
+
+    pub(crate) fn browser_handoff(&self) -> BrowserHandoff {
+        BrowserHandoff { broker: self.browser.clone() }
+    }
 
     pub(crate) fn is_finished(&self) -> bool {
         self.task.as_ref().is_none_or(JoinHandle::is_finished)
@@ -323,7 +350,9 @@ pub(crate) async fn start(runtime: Arc<Runtime>) -> Result<LungsServer> {
     let socket = Arc::new(owner);
     let owned_socket = socket.clone();
     let calls = Arc::new(Semaphore::new(MAX_IN_FLIGHT_CALLS));
+    let browser = Arc::new(browser::BrowserBroker::default());
     let active_calls = calls.clone();
+    let active_browser = browser.clone();
     let (stop, mut stopped) = oneshot::channel();
     let task = tokio::spawn(async move {
         let _socket = owned_socket;
@@ -360,9 +389,10 @@ pub(crate) async fn start(runtime: Arc<Runtime>) -> Result<LungsServer> {
                     let runtime = runtime.clone();
                     let objects = objects.clone();
                     let calls = active_calls.clone();
+                    let browser = active_browser.clone();
                     connections.spawn(async move {
                         let _permit = permit;
-                        if let Err(error) = serve_connection(stream, runtime, identity, objects, calls).await {
+                        if let Err(error) = serve_connection(stream, runtime, identity, objects, calls, browser).await {
                             tracing::warn!(%error, "lungs connection ended");
                         }
                     });
@@ -374,7 +404,7 @@ pub(crate) async fn start(runtime: Arc<Runtime>) -> Result<LungsServer> {
         while connections.join_next().await.is_some() {}
         Ok(())
     });
-    Ok(LungsServer { socket, calls, stop: Some(stop), task: Some(task) })
+    Ok(LungsServer { socket, calls, browser, stop: Some(stop), task: Some(task) })
 }
 
 async fn serve_connection(
@@ -383,11 +413,12 @@ async fn serve_connection(
     identity: Arc<LungsIdentity>,
     objects: Arc<Vec<(String, String)>>,
     calls: Arc<Semaphore>,
+    browser: Arc<browser::BrowserBroker>,
 ) -> Result<()> {
     let mut builder = zbus::connection::Builder::unix_stream(stream)
         .server(zbus::Guid::generate())?.p2p()
         .auth_mechanism(zbus::connection::AuthMechanism::Anonymous)
-        .serve_at(LUNGS_OBJECT_PATH, LungsBootstrap { identity: identity.clone() })?;
+        .serve_at(LUNGS_OBJECT_PATH, LungsBootstrap { identity: identity.clone(), browser })?;
     for (path, plugin_id) in objects.iter() {
         builder = builder.serve_at(path.clone(), LungsPlugin {
             plugin_id: plugin_id.clone(), runtime: runtime.clone(), identity: identity.clone(), calls: calls.clone(),
