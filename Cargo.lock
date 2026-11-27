@@ -6639,6 +6639,7 @@ version = "1.0.0"
 dependencies = [
  "anyhow",
  "async-trait",
+ "blake3",
  "byteorder",
  "bytes",
  "futures",
@@ -6933,6 +6934,7 @@ dependencies = [
  "tower 0.4.13",
  "tracing",
  "tracing-subscriber",
+ "zbus",
 ]
 
 [[package]]
