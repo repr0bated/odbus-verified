@@ -356,8 +356,18 @@ impl ChatRuntime {
         if method == "GetTools" {
             return Ok(unchanged(ctx, json!({"tools": visible_tools(ctx).await?})));
         }
-        let client = native_client(ctx, "dashboard").await?;
         let secrets = config_secrets(ctx.schema)?;
+        if method == "SetSelection" && let Some(alias) = subsidiary_agent_alias(ctx).await? {
+            let input: chat_router::SetSelectionInput = decode(args)?;
+            let client = native_client(ctx, &alias).await?;
+            let selected = client.set_subsidiary_selection(&input.provider_id, &input.model_id, &secrets)
+                .await.map_err(RuntimeError::unknown)?;
+            return Ok(unchanged(ctx, json!({
+                "selected_provider": selected.provider,
+                "selected_model": selected.model,
+            })));
+        }
+        let client = native_client(ctx, "dashboard").await?;
         match crate::chat_router_config_dispatch::dispatch_config_read(
             &client, method, args, &secrets,
         )
@@ -636,12 +646,8 @@ impl ChatRuntime {
         let mode: op_plugins::state_plugins::project::ChatMode =
             serde_json::from_value(context["mode"].clone())
                 .context("committed chat mode is invalid")?;
-        let alias = match mode {
-            op_plugins::state_plugins::project::ChatMode::ControlPlane => "control_plane",
-            op_plugins::state_plugins::project::ChatMode::Accountability => "accountability",
-            _ => "dashboard",
-        };
-        let client = native_client(ctx, alias).await?;
+        let alias = chat_agent_alias(ctx, mode).await?;
+        let client = native_client(ctx, &alias).await?;
         let admission = generation_admission(ctx).await?;
         let _guard = ChatRouterRuntimeClient::selection_guard().await;
         ctx.caller.authority.revalidate().await?;
@@ -954,6 +960,36 @@ fn config_secrets(schema: &op_state_store::PluginSchema) -> Result<PinnedConfigS
     };
     PinnedConfigSecretPolicy::new(Arc::new(serde_json::to_value(document.as_ref())?))
 }
+async fn subsidiary_agent_alias(ctx: &BackendContext<'_>) -> Result<Option<String>> {
+    let Some(scope) = crate::runtime::subsidiary::resolve(ctx).await? else {
+        return Ok(None);
+    };
+    let id = uuid::Uuid::parse_str(scope.native_uuid()).context("invalid subsidiary native UUID")?;
+    Ok(Some(format!("subsidiary_{}", id.simple())))
+}
+
+pub(super) async fn chat_agent_alias(
+    ctx: &BackendContext<'_>,
+    mode: op_plugins::state_plugins::project::ChatMode,
+) -> Result<String> {
+    use op_plugins::state_plugins::project::ChatMode;
+    match mode {
+        ChatMode::ControlPlane => Ok("control_plane".into()),
+        ChatMode::Accountability => Ok("accountability".into()),
+        _ => {
+            if let Some(alias) = subsidiary_agent_alias(ctx).await? {
+                let schema = sealed_schema(ctx, "chat_router")?;
+                let client = native_client(ctx, "dashboard").await?;
+                let config = client.read_masked_config(&config_secrets(&schema)?).await?;
+                if config.get("agents").and_then(|agents| agents.get(&alias)).is_some() {
+                    return Ok(alias);
+                }
+            }
+            Ok("dashboard".into())
+        }
+    }
+}
+
 pub(super) async fn native_client(
     ctx: &BackendContext<'_>,
     alias: &str,

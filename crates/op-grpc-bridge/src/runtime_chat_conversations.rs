@@ -497,11 +497,7 @@ impl ConversationBackend {
         let context = crate::runtime_workspace::project::current_chat_context(ctx).await?;
         ctx.runtime.authorize_nested(ctx.caller, "chat_router", "GetState").await?;
         let _selection = crate::chat_router_runtime::ChatRouterRuntimeClient::selection_guard().await;
-        let native_agent_alias = match context.mode {
-            op_plugins::state_plugins::project::ChatMode::ControlPlane => "control_plane",
-            op_plugins::state_plugins::project::ChatMode::Accountability => "accountability",
-            _ => "dashboard",
-        }.to_owned();
+        let native_agent_alias = super::chat_agent_alias(ctx, context.mode).await?;
         let client = super::native_client(ctx, &native_agent_alias).await?;
         let router_schema = super::sealed_schema(ctx, "chat_router")?;
         let observation = client.observe_config_and_state(&super::config_secrets(&router_schema)?).await?;

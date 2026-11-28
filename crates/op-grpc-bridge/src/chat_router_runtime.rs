@@ -1791,6 +1791,41 @@ impl ChatRouterRuntimeClient {
         })
     }
 
+    /// Change only a subsidiary agent's reference to an existing enabled profile.
+    /// The shared profile's model and credential are never written.
+    pub(crate) async fn set_subsidiary_selection(
+        &self,
+        reference: &str,
+        model: &str,
+        secrets: &dyn ConfigSecretPolicy,
+    ) -> anyhow::Result<RuntimeSelection> {
+        anyhow::ensure!(is_subsidiary_agent(&self.agent_alias), "subsidiary agent is not provisioned");
+        let profiles = self.native_providers_inventory(secrets).await?;
+        anyhow::ensure!(
+            profiles.iter().any(|profile| profile.selectable && profile.reference == reference
+                && profile.model == model && model != "<unset>"),
+            "selection must name an existing selectable profile and its configured model"
+        );
+        let provider_path = self.agent_provider_path()?;
+        let model_path = provider_model_path(reference)?;
+        let (current, _) = self.runtime_defaults().await?;
+        if current != reference {
+            let patch = json!([
+                { "op": "test", "path": config_pointer(&provider_path), "value": current },
+                { "op": "test", "path": config_pointer(&model_path), "value": model },
+                { "op": "replace", "path": config_pointer(&provider_path), "value": reference }
+            ]);
+            let _: Value = self.send_config_json(
+                self.http()?.patch(format!("{}/api/config", self.endpoint)).json(&patch),
+                "update subsidiary agent provider",
+            ).await?;
+        }
+        let observed = self.current_exact_selection().await?;
+        anyhow::ensure!(observed.provider == reference && observed.model == model,
+            "subsidiary selection readback diverged");
+        Ok(observed)
+    }
+
     pub(crate) async fn set_selection(
         &self,
         provider_id: &str,
@@ -2430,6 +2465,12 @@ fn is_door_selectable_route(provider: &ConfiguredProvider) -> bool {
     is_door_selectable_reference(&provider.reference)
 }
 
+fn is_subsidiary_agent(alias: &str) -> bool {
+    alias.strip_prefix("subsidiary_").is_some_and(|id|
+        id.len() == 32 && uuid::Uuid::parse_str(id).is_ok()
+    )
+}
+
 fn agent_owned_profiles(config: &Value) -> anyhow::Result<std::collections::BTreeSet<String>> {
     let agents = config
         .get("agents")
@@ -2437,7 +2478,7 @@ fn agent_owned_profiles(config: &Value) -> anyhow::Result<std::collections::BTre
         .context("native provider inventory agent section is absent")?;
     Ok(agents
         .iter()
-        .filter(|(alias, _)| alias.as_str() != DEFAULT_AGENT_ALIAS)
+        .filter(|(alias, _)| alias.as_str() != DEFAULT_AGENT_ALIAS && !is_subsidiary_agent(alias))
         .filter_map(|(_, agent)| agent.get("model_provider").and_then(Value::as_str))
         .map(str::to_owned)
         .collect())

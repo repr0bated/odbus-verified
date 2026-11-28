@@ -1769,6 +1769,7 @@ impl StatePlugin for ChatRouterPlugin {
                 | "cap.software.threetched.route.resolve@v1"
                 | "cap.software.threetched.router.read@v1"
                 | "cap.software.threetched.routes.read@v1"
+                | "cap.software.threetched.selection.set@v1"
                 | "cap.software.threetched.state.read@v1"
                 | "cap.software.threetched.structured-output.read@v1"
                 | "cap.software.threetched.tools.read@v1"
