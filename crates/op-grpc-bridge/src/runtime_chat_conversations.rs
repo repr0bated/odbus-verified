@@ -76,7 +76,6 @@ pub(super) struct ConversationBackend {
     turns: TurnRegistry,
     owners: Mutex<HashMap<String, (VerifiedCaller, chrono::DateTime<chrono::Utc>)>>,
     operation: tokio::sync::Mutex<()>,
-    response_committed: tokio::sync::Notify,
     continuations: Mutex<HashMap<String, PendingContinuation>>,
     committed: Mutex<HashMap<String, (VerifiedCaller, ChatTurn)>>,
 }
@@ -88,7 +87,6 @@ impl ConversationBackend {
             turns: TurnRegistry::default(),
             owners: Mutex::new(HashMap::new()),
             operation: tokio::sync::Mutex::new(()),
-            response_committed: tokio::sync::Notify::new(),
             committed: Mutex::new(HashMap::new()),
             continuations: Mutex::new(HashMap::new()),
         }
@@ -216,31 +214,10 @@ impl ConversationBackend {
             "get_turn_response" => {
                 let input: GetTurnResponseInput = decode(args)?;
                 validate_uuid("turn_id", &input.turn_id)?;
-                let principal = &ctx.caller.principal_id;
-                let deadline = tokio::time::Instant::now() + std::time::Duration::from_secs(20);
-                let row = loop {
-                    let notified = self.response_committed.notified();
-                    tokio::pin!(notified);
-                    notified.as_mut().enable();
-                    let pending_here = input.wait_for_commit && self.owners.lock()
-                        .map_err(|_| anyhow::anyhow!("pending chat owner lock poisoned"))?
-                        .get(&input.turn_id)
-                        .is_some_and(|(owner, expires)| {
-                            owner.principal_id == *principal &&
-                                owner.session_id == ctx.caller.session_id &&
-                                *expires > chrono::Utc::now()
-                        });
-                    let store = self.store.clone();
-                    let owner = principal.clone();
-                    let turn_id = input.turn_id.clone();
-                    let row = blocking(move || Ok(store.get_chat_turn(&owner, &turn_id)?)).await?;
-                    if row.is_some() || !pending_here {
-                        break row;
-                    }
-                    if tokio::time::timeout_at(deadline, notified).await.is_err() {
-                        break None;
-                    }
-                };
+                let principal = ctx.caller.principal_id.clone();
+                let store = self.store.clone();
+                let row =
+                    blocking(move || Ok(store.get_chat_turn(&principal, &input.turn_id)?)).await?;
                 let turn = row
                     .map(|row| decode_turn(row, &ctx.caller.principal_id))
                     .transpose()?;
@@ -354,7 +331,6 @@ impl ConversationBackend {
                     }
                 };
                 claim.answered();
-                self.response_committed.notify_waiters();
                 {
                     let mut committed = self.committed.lock()
                         .map_err(|_| anyhow::anyhow!("response commit lock poisoned"))?;
