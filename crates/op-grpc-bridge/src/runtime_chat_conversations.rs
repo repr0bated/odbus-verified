@@ -848,16 +848,34 @@ impl ConversationBackend {
             tracing::warn!(operation_id = %ctx.operation_id, "requesting container's native route changed before generation");
         }
         ensure!(unchanged_route, "selected native route changed while queued; generation refused without replay");
-        let output = client.complete_under_guard(ChatInput {
+        let output = match client.complete_under_guard(ChatInput {
             messages: input.messages,
             provider: continuation.request.provider,
             model: continuation.request.model,
             conversation_id: Some(continuation.request.conversation_id),
             ..ChatInput::default()
-        }, admission).await.map_err(|error| {
-            tracing::warn!(operation_id = %ctx.operation_id, "native completion did not return a confirmed reply");
-            RuntimeError::unknown(error)
-        })?;
+        }, admission).await {
+            Ok(output) => output,
+            Err(error) => {
+                use crate::chat_router_generation::NativeGenerationError;
+                if continuation.steps == 0 && matches!(
+                    error.downcast_ref::<NativeGenerationError>(),
+                    Some(NativeGenerationError::IdentityAcknowledgmentMissing)
+                ) {
+                    // This handshake failed before the first prompt could be sent.
+                    // Retain the saved human message and withdraw only its pending reply.
+                    self.turns.cancel(&input.turn_id);
+                    self.continuations.lock()
+                        .map_err(|_| anyhow::anyhow!("pending continuation lock poisoned"))?
+                        .remove(&input.turn_id);
+                    self.owners.lock()
+                        .map_err(|_| anyhow::anyhow!("pending owner lock poisoned"))?
+                        .remove(&input.turn_id);
+                    tracing::warn!(operation_id = %ctx.operation_id, "released reply after pre-prompt identity acknowledgment failure");
+                }
+                return Err(RuntimeError::unknown(error));
+            }
+        };
         // A failed/ambiguous call leaves generating=true. It must never silently
         // become a fresh model attempt when the wake is delivered twice.
         let mut pending = self.continuations.lock()

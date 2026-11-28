@@ -138,6 +138,8 @@ impl std::fmt::Display for NativeErrorCode {
 pub(crate) enum NativeGenerationError {
     #[error("invalid native generation request: {0}")]
     InvalidRequest(&'static str),
+    #[error("native gateway did not authenticate the identity before prompt delivery")]
+    IdentityAcknowledgmentMissing,
     #[error("native generation transport failed")]
     Transport,
     #[error("native generation timed out")]
@@ -295,7 +297,7 @@ async fn run_native(
     // selection the bridge admitted before prompt release.
     if !identity_ack_is_authenticated(request.sealed_identity.is_some(), &connected) {
         let _ = close_socket(&mut socket).await;
-        return Err(NativeGenerationError::Terminal(NativeErrorCode::Protocol));
+        return Err(NativeGenerationError::IdentityAcknowledgmentMissing);
     }
     if let Err(error) = verify_selection(
         &request,

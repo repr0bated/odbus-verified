@@ -391,7 +391,7 @@ impl ChatRouterRuntimeClient {
         while task.recv_event().await.is_some() {}
         let terminal = task.wait().await.map_err(|error| {
             tracing::warn!(reason = %error, "native stateless generation did not complete");
-            anyhow!(error.to_string())
+            anyhow::Error::new(error)
         })?;
         let done = match terminal {
             crate::chat_router_generation::NativeGenerationTerminal::Done(done) => done,
