@@ -1,0 +1,12 @@
+[Unit]
+Description=Dedicated FUSE chat responder queue
+RequiresMountsFor=/run/mounts/opdbus/lungs
+After=opdbus-shared-lungs.socket
+
+[Socket]
+ListenDatagram=/run/mounts/opdbus/lungs/chat-responder.sock
+SocketMode=0600
+RemoveOnStop=yes
+
+[Install]
+WantedBy=sockets.target

@@ -1,0 +1,10 @@
+[Unit]
+Description=Process assigned chat turns through the container's FUSE mount
+RequiresMountsFor=/run/mounts/3tchedFS
+
+[Service]
+ExecStart=/usr/local/libexec/op-dbus/chat-responder-wake
+StandardInput=socket
+StandardOutput=journal
+StandardError=journal
+NoNewPrivileges=yes
