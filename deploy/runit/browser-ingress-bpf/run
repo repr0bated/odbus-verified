@@ -8,5 +8,7 @@ pins=/sys/fs/bpf/opdbus/browser-ingress
 [ -r "$object" ]
 [ -x "$loader" ]
 [ -d "$cgroup" ]
-install -d -m 0700 "$pins"
+# Pinned maps need bpffs; this host does not mount it at boot.
+mountpoint -q /sys/fs/bpf || mount -t bpf bpf /sys/fs/bpf
+install -d -m 0700 /sys/fs/bpf/opdbus "$pins"
 exec "$loader" "$object" "$cgroup" "$pins"

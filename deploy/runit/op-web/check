@@ -7,7 +7,7 @@ set -eu
 set -a
 [ -r /etc/op-dbus/environment ] && . /etc/op-dbus/environment
 set +a
-PORT="${PORT:-8080}"
+PORT="${PORT:-8081}"
 
 sv check op-grpc-bridge >/dev/null 2>&1 || exit 1
 
@@ -16,7 +16,7 @@ sv check op-grpc-bridge >/dev/null 2>&1 || exit 1
 set -f
 IFS=', 	
 '
-for address in ${OP_WEB_BIND_ADDR:-10.0.0.2}; do
+for address in ${OP_WEB_BIND_ADDR:-127.0.0.1}; do
     case "$address" in
         *:*) address="[$address]" ;;
     esac

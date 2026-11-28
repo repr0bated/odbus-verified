@@ -52,19 +52,21 @@ int main(int argc, char **argv)
         fprintf(stderr, "open browser ingress object failed\n");
         goto out;
     }
-    if (bpf_object__load(object)) {
-        fprintf(stderr, "load browser ingress object failed\n");
-        goto out;
-    }
     routes = bpf_object__find_map_by_name(object, "browser_routes");
     program = bpf_object__find_program_by_name(object, "browser_ingress");
     if (!routes || !program) {
         fprintf(stderr, "browser ingress object is incomplete\n");
         goto out;
     }
+    /* Pin where the bridge opens it. Load pins here (LIBBPF_PIN_BY_NAME);
+     * a previous run's map is replaced, never reused. */
     unlink(map_path);
-    if (bpf_map__pin(routes, map_path)) {
-        fprintf(stderr, "pin browser route map failed\n");
+    if (bpf_map__set_pin_path(routes, map_path)) {
+        fprintf(stderr, "set browser route map pin path failed\n");
+        goto out;
+    }
+    if (bpf_object__load(object)) {
+        fprintf(stderr, "load browser ingress object failed\n");
         goto out;
     }
     link = bpf_program__attach_cgroup(program, cgroup_fd);

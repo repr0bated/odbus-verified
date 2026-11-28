@@ -1,0 +1,5 @@
+#!/bin/sh
+set -e
+LOG=/var/log/runit/browser-ingress-bpf
+test -d "$LOG" || mkdir -p "$LOG"
+exec chpst svlogd -tt "$LOG"
