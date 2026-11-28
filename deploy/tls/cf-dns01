@@ -1,0 +1,40 @@
+#!/bin/sh
+# lego `exec` DNS-01 hook for the 3tched.com zone on Cloudflare.
+# lego calls: cf-dns01 present|cleanup <fqdn> <value>
+# The token comes only from CLOUDFLARE_DNS_API_TOKEN in the environment and is
+# handed to curl through a 0600 header file, never on a command line.
+set -eu
+
+action=$1
+fqdn=${2%.}
+value=$3
+zone_name=${CF_DNS01_ZONE:-3tched.com}
+api=https://api.cloudflare.com/client/v4
+
+: "${CLOUDFLARE_DNS_API_TOKEN:?CLOUDFLARE_DNS_API_TOKEN is not set}"
+umask 077
+header=$(mktemp)
+trap 'rm -f "$header"' EXIT
+printf 'Authorization: Bearer %s\n' "$CLOUDFLARE_DNS_API_TOKEN" > "$header"
+
+cf() { curl -fsS -H @"$header" -H 'Content-Type: application/json' "$@"; }
+
+zone=$(cf "$api/zones?name=$zone_name" | jq -r '.result[0].id // empty')
+[ -n "$zone" ] || { echo "zone $zone_name not visible to the token" >&2; exit 1; }
+
+case $action in
+    present)
+        body=$(jq -nc --arg n "$fqdn" --arg c "$value" '{type:"TXT",name:$n,content:$c,ttl:60}')
+        cf -X POST --data "$body" "$api/zones/$zone/dns_records" >/dev/null
+        ;;
+    cleanup)
+        cf "$api/zones/$zone/dns_records?type=TXT&name=$fqdn" \
+            | jq -r --arg c "$value" '.result[] | select(.content == $c or .content == ("\"" + $c + "\"")) | .id' \
+            | while read -r id; do
+                cf -X DELETE "$api/zones/$zone/dns_records/$id" >/dev/null
+            done
+        ;;
+    *)
+        exit 0
+        ;;
+esac
