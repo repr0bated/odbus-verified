@@ -1,7 +1,13 @@
-//! Receive browser TCP descriptors from the identity's lungs and splice them locally.
+//! Receive browser TCP sockets pushed by the host over the identity's lungs
+//! connection and splice each one, untouched, to the local TLS door.
+//!
+//! The door exports `org.opdbus.v1.BrowserV1` on its lungs connection and
+//! registers it once. The host calls `ReceiveBrowser(h)` for every browser
+//! connection that names this identity. Nothing here waits for a socket.
 
 use std::net::{IpAddr, Ipv4Addr, SocketAddr};
 use std::os::fd::OwnedFd;
+use std::os::unix::fs::PermissionsExt;
 use std::path::Path;
 use std::sync::Arc;
 
@@ -14,33 +20,43 @@ use zbus::Proxy;
 const LUNGS_OBJECT_PATH: &str = "/org/opdbus/v1/lungs";
 const LUNGS_INTERFACE: &str = "org.opdbus.v1.LungsV1";
 const LUNGS_BUS_NAME: &str = "org.opdbus.v1";
-const MAX_WAITERS: usize = 16;
+const RECEIVER_PATH: &str = "/org/opdbus/v1/browser";
 const MAX_ACTIVE: usize = 64;
+/// Where the identity finds its own UI URI.
+pub const UI_URI_FILE: &str = "/run/opdbus/browser/ui-uri";
 
-async fn connection(socket: &Path) -> Result<zbus::Connection> {
-    let stream = tokio::net::UnixStream::connect(socket).await.context("connect identity lungs")?;
-    zbus::connection::Builder::unix_stream(stream)
-        .p2p()
-        .auth_mechanism(zbus::connection::AuthMechanism::Anonymous)
-        .build()
-        .await
-        .context("negotiate identity lungs")
+struct Receiver {
+    door: SocketAddr,
+    active: Arc<Semaphore>,
 }
 
-async fn bind_current(connection: &zbus::Connection) -> Result<()> {
-    let proxy = Proxy::new(connection, LUNGS_BUS_NAME, LUNGS_OBJECT_PATH, LUNGS_INTERFACE).await?;
-    let bound: bool = proxy.call("BindCurrentContainer", &()).await?;
-    ensure!(bound, "lungs refused the current container binding");
-    Ok(())
+#[zbus::interface(name = "org.opdbus.v1.BrowserV1")]
+impl Receiver {
+    /// Take one browser socket. `false` closes it on the host side.
+    async fn receive_browser(&self, fd: zbus::zvariant::OwnedFd) -> bool {
+        let Ok(permit) = self.active.clone().try_acquire_owned() else { return false; };
+        let browser = match adopt(fd.into()) {
+            Ok(browser) => browser,
+            Err(error) => {
+                tracing::warn!(%error, "pushed browser socket refused");
+                return false;
+            }
+        };
+        let door = self.door;
+        tokio::spawn(async move {
+            let _permit = permit;
+            if let Err(error) = splice(browser, door).await {
+                tracing::debug!(%error, "browser splice closed");
+            }
+        });
+        true
+    }
 }
 
-async fn accept_browser(connection: &zbus::Connection) -> Result<TcpStream> {
-    let proxy = Proxy::new(connection, LUNGS_BUS_NAME, LUNGS_OBJECT_PATH, LUNGS_INTERFACE).await?;
-    let fd: zbus::zvariant::OwnedFd = proxy.call("AcceptBrowser", &()).await?;
-    let fd: OwnedFd = fd.into();
+fn adopt(fd: OwnedFd) -> Result<TcpStream> {
     let stream = std::net::TcpStream::from(fd);
     stream.set_nonblocking(true)?;
-    TcpStream::from_std(stream).context("adopt handed browser socket")
+    TcpStream::from_std(stream).context("adopt pushed browser socket")
 }
 
 async fn splice(browser: TcpStream, door: SocketAddr) -> Result<()> {
@@ -63,37 +79,39 @@ async fn splice(browser: TcpStream, door: SocketAddr) -> Result<()> {
     Ok(())
 }
 
-async fn waiter(
-    connection: zbus::Connection,
-    door: SocketAddr,
-    active: Arc<Semaphore>,
-) -> Result<()> {
-    loop {
-        let permit = active.clone().acquire_owned().await.context("browser splice owner stopped")?;
-        let browser = accept_browser(&connection).await?;
-        tokio::spawn(async move {
-            let _permit = permit;
-            if let Err(error) = splice(browser, door).await {
-                tracing::warn!(%error, "browser splice closed");
-            }
-        });
-    }
+fn write_ui_uri(uri: &str) -> Result<()> {
+    let path = Path::new(UI_URI_FILE);
+    let parent = path.parent().context("UI URI file has no parent")?;
+    std::fs::create_dir_all(parent)?;
+    let staged = path.with_extension("tmp");
+    std::fs::write(&staged, format!("{uri}\n"))?;
+    std::fs::set_permissions(&staged, std::fs::Permissions::from_mode(0o644))?;
+    std::fs::rename(&staged, path)?;
+    Ok(())
 }
 
-pub async fn run(socket: &Path, door: SocketAddr, waiters: usize) -> Result<()> {
+/// Serve pushed browser sockets for this identity until its lungs connection ends.
+pub async fn run(socket: &Path, door: SocketAddr) -> Result<()> {
     ensure!(door.ip() == IpAddr::V4(Ipv4Addr::LOCALHOST) && door.port() == 8443,
-        "browser fd mode requires the local TLS door at 127.0.0.1:8443");
-    ensure!((1..=MAX_WAITERS).contains(&waiters), "browser waiter count is out of bounds");
-    let connection = connection(socket).await?;
-    bind_current(&connection).await?;
-    let active = Arc::new(Semaphore::new(MAX_ACTIVE));
-    let mut tasks = tokio::task::JoinSet::new();
-    for _ in 0..waiters {
-        tasks.spawn(waiter(connection.clone(), door, active.clone()));
+        "browser mode requires the local TLS door at 127.0.0.1:8443");
+    let stream = tokio::net::UnixStream::connect(socket).await.context("connect identity lungs")?;
+    let connection = zbus::connection::Builder::unix_stream(stream)
+        .p2p()
+        .auth_mechanism(zbus::connection::AuthMechanism::Anonymous)
+        .serve_at(RECEIVER_PATH, Receiver { door, active: Arc::new(Semaphore::new(MAX_ACTIVE)) })?
+        .build()
+        .await
+        .context("negotiate identity lungs")?;
+    let lungs = Proxy::new(&connection, LUNGS_BUS_NAME, LUNGS_OBJECT_PATH, LUNGS_INTERFACE).await?;
+    let bound: bool = lungs.call("BindCurrentContainer", &()).await?;
+    ensure!(bound, "lungs refused the current container binding");
+    let registered: bool = lungs.call("RegisterBrowserReceiver", &()).await?;
+    ensure!(registered, "lungs refused the browser receiver");
+    match lungs.call::<_, _, String>("BrowserUri", &()).await {
+        Ok(uri) => write_ui_uri(&uri)?,
+        Err(error) => tracing::warn!(%error, "UI URI unavailable"),
     }
-    match tasks.join_next().await {
-        Some(Ok(Err(error))) => Err(error).context("browser waiter ended"),
-        Some(Err(error)) => Err(error).context("browser waiter task failed"),
-        Some(Ok(Ok(()))) | None => anyhow::bail!("browser waiters stopped"),
-    }
+    tracing::info!("browser receiver registered");
+    connection.closed().await;
+    anyhow::bail!("identity lungs connection closed")
 }

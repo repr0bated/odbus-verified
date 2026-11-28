@@ -1,9 +1,9 @@
 //! `op-tunnel-door [--socket PATH | --lungs-socket PATH] [--door ADDR] [--waiters N]`
 //!
-//! `--lungs-socket` is the browser path: receive an owned TCP fd over the
-//! identity-bound lungs connection and splice it raw to `127.0.0.1:8443`.
-//! The legacy `--socket` framed path remains only for unrelated control-plane
-//! tunnel traffic.
+//! `--lungs-socket` is the browser path: the host pushes each browser TCP
+//! socket over the identity's lungs connection and this door splices it raw
+//! to `127.0.0.1:8443`. `--waiters` applies only to the legacy `--socket`
+//! framed path, kept for unrelated control-plane tunnel traffic.
 
 use std::path::Path;
 use std::time::Duration;
@@ -105,7 +105,7 @@ async fn main() -> Result<()> {
     }
     if let Some(lungs_socket) = lungs_socket {
         let door = door.unwrap_or_else(|| "127.0.0.1:8443".into()).parse()?;
-        return op_tunnel_mux::browser_fd::run(Path::new(&lungs_socket), door, waiters).await;
+        return op_tunnel_mux::browser_fd::run(Path::new(&lungs_socket), door).await;
     }
     let door = door.unwrap_or_else(|| "10.0.0.2:8090".into());
     loop {

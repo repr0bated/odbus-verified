@@ -65,6 +65,21 @@ impl LungsBootstrap {
             .map_err(|error| zbus::fdo::Error::LimitsExceeded(error.to_string()))?;
         Ok(true)
     }
+
+    /// The identity's own UI URI, `https://<label>.<domain>:8080/`, derived
+    /// from its committed `session_id` and the host label key.
+    async fn browser_uri(&self) -> zbus::fdo::Result<String> {
+        let session_id = self.identity.browser_session_id().await.map_err(binding_denial)?;
+        let key_path = std::env::var_os("OP_BROWSER_LABEL_KEY").map(PathBuf::from)
+            .unwrap_or_else(|| PathBuf::from(op_network::browser_label::DEFAULT_LABEL_KEY));
+        let domain = std::env::var("OP_BROWSER_UI_DOMAIN").ok()
+            .filter(|value| !value.trim().is_empty())
+            .unwrap_or_else(|| op_network::browser_label::DEFAULT_UI_DOMAIN.to_owned());
+        let uri = op_network::browser_label::LabelKey::from_root_file(&key_path)
+            .and_then(|key| key.ui_uri(&session_id, domain.trim()))
+            .map_err(|_| zbus::fdo::Error::Failed("UI URI is unavailable".into()))?;
+        Ok(uri)
+    }
 }
 
 fn binding_denial(error: anyhow::Error) -> zbus::fdo::Error {
