@@ -147,8 +147,18 @@ pub async fn run_from_env() -> anyhow::Result<()> {
         .unwrap_or_else(|| "/etc/op-dbus/tls/tonic-svc0.key".into());
     let service = BridgeService::production(runtime.clone(), oracle.clone());
     let identity = PemIdentity::from_root_owned_files(cert, key)?;
+    // The browser UI door may present its own certificate (the wildcard for
+    // the identity UI domain); without one it uses the identity door's.
+    let ui_identity = match (
+        std::env::var_os("OP_UI_TLS_CERT_FILE").map(PathBuf::from),
+        std::env::var_os("OP_UI_TLS_KEY_FILE").map(PathBuf::from),
+    ) {
+        (Some(cert), Some(key)) => PemIdentity::from_root_owned_files(cert, key)?,
+        (None, None) => identity.clone(),
+        _ => anyhow::bail!("OP_UI_TLS_CERT_FILE and OP_UI_TLS_KEY_FILE must be set together"),
+    };
     let ui_door =
-        crate::container_ui_door::UiDoor::bind(addr, runtime.core().clone(), &identity).await?;
+        crate::container_ui_door::UiDoor::bind(addr, runtime.core().clone(), &ui_identity).await?;
     let door = crate::server::bind_production(addr, service, identity).await?;
     let mut terminate = tokio::signal::unix::signal(tokio::signal::unix::SignalKind::terminate())?;
     let mut lungs = crate::runtime_lungs::start(runtime.clone()).await?;
