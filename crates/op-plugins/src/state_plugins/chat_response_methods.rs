@@ -183,6 +183,9 @@ pub struct ResponseCommitOutput {
 #[serde(deny_unknown_fields)]
 pub struct GetTurnResponseInput {
     pub turn_id: String,
+    /// Wait briefly for a pending response owned by this caller to commit.
+    #[serde(default)]
+    pub wait_for_commit: bool,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
