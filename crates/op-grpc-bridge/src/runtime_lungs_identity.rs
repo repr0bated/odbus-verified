@@ -406,12 +406,6 @@ impl LungsIdentity {
         Ok(session_id)
     }
 
-    pub(super) async fn revalidate_browser_session(&self, expected: &str) -> Result<()> {
-        let session_id = self.browser_session_id().await?;
-        ensure!(session_id == expected, "browser waiter identity changed");
-        Ok(())
-    }
-
     pub(super) async fn caller(self: &Arc<Self>) -> Result<VerifiedCaller> {
         let pinned = self.binding.get().context("lungs identity is not bound")?;
         let identity = pinned.identity.read().map_err(|_| anyhow::anyhow!("bound identity poisoned"))?.clone();

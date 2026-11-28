@@ -1,139 +1,147 @@
-//! Bounded, at-most-once browser fd custody on identity-bound lungs connections.
+//! Push browser sockets to the identity's own lungs connection.
+//!
+//! The container's lungs client exports `org.opdbus.v1.BrowserV1` and says so
+//! once with `RegisterBrowserReceiver`. The host pushes each accepted socket
+//! with `ReceiveBrowser(h)` on that connection. Nothing waits or polls: the
+//! entry exists while the connection is open and goes when it closes.
 
-use std::collections::{HashMap, VecDeque};
+use std::collections::HashMap;
 use std::os::fd::OwnedFd;
-use std::sync::{Arc, Mutex, Weak};
-use std::sync::atomic::{AtomicU64, Ordering};
+use std::sync::Mutex;
+use std::time::Duration;
 
 use anyhow::{Context, Result, ensure};
-use tokio::sync::oneshot;
 
-use super::identity::LungsIdentity;
+const RECEIVER_PATH: &str = "/org/opdbus/v1/browser";
+const RECEIVER_INTERFACE: &str = "org.opdbus.v1.BrowserV1";
+const MAX_RECEIVERS: usize = 64;
+const PUSH_TIMEOUT: Duration = Duration::from_secs(5);
 
-const MAX_BROWSER_WAITERS: usize = 64;
-
-struct Waiter {
-    id: u64,
-    identity: Weak<LungsIdentity>,
-    sender: oneshot::Sender<OwnedFd>,
+struct Receiver {
+    connection_id: u64,
+    connection: zbus::Connection,
 }
 
+/// The index of identities whose container can receive a browser socket now,
+/// keyed by `session_id`. Written only by the identity's own registration and
+/// by its connection closing.
 #[derive(Default)]
-struct Waiters {
-    by_session: HashMap<String, VecDeque<Waiter>>,
-    total: usize,
+pub(crate) struct BrowserReceivers {
+    by_session: Mutex<HashMap<String, Receiver>>,
 }
 
-pub(crate) struct BrowserBroker {
-    waiters: Mutex<Waiters>,
-    next_id: AtomicU64,
-}
-
-impl Default for BrowserBroker {
-    fn default() -> Self {
-        Self { waiters: Mutex::new(Waiters::default()), next_id: AtomicU64::new(1) }
-    }
-}
-
-struct WaiterGuard {
-    broker: Arc<BrowserBroker>,
-    session_id: String,
-    id: u64,
-}
-
-impl Drop for WaiterGuard {
-    fn drop(&mut self) {
-        self.broker.remove(&self.session_id, self.id);
-    }
-}
-
-impl BrowserBroker {
-    pub(crate) async fn accept(self: &Arc<Self>, identity: Arc<LungsIdentity>) -> Result<OwnedFd> {
-        let session_id = identity.browser_session_id().await?;
-        let (sender, receiver) = oneshot::channel();
-        let id = self.next_id.fetch_add(1, Ordering::Relaxed);
-        ensure!(id != 0, "browser waiter identifier exhausted");
-        {
-            let mut waiters = self.waiters.lock().map_err(|_| anyhow::anyhow!("browser waiter state poisoned"))?;
-            Self::remove_closed(&mut waiters);
-            ensure!(waiters.total < MAX_BROWSER_WAITERS, "browser waiter bound reached");
-            waiters.by_session.entry(session_id.clone()).or_default().push_back(Waiter {
-                id,
-                identity: Arc::downgrade(&identity),
-                sender,
-            });
-            waiters.total += 1;
-        }
-        let _guard = WaiterGuard { broker: self.clone(), session_id, id };
-        receiver.await.context("browser waiter ended")
+impl BrowserReceivers {
+    pub(crate) fn register(&self, session_id: String, connection_id: u64, connection: zbus::Connection) -> Result<()> {
+        let mut receivers = self.by_session.lock().map_err(|_| anyhow::anyhow!("browser receivers poisoned"))?;
+        ensure!(
+            receivers.len() < MAX_RECEIVERS || receivers.contains_key(&session_id),
+            "browser receiver bound reached"
+        );
+        // A newer connection of the same identity replaces the older one.
+        receivers.insert(session_id, Receiver { connection_id, connection });
+        Ok(())
     }
 
-    pub(crate) async fn offer(&self, session_id: &str, mut fd: OwnedFd) -> Result<()> {
-        loop {
-            let waiter = {
-                let mut waiters = self.waiters.lock().map_err(|_| anyhow::anyhow!("browser waiter state poisoned"))?;
-                Self::remove_closed(&mut waiters);
-                let waiter = waiters.by_session.get_mut(session_id).and_then(VecDeque::pop_front);
-                if waiter.is_some() {
-                    waiters.total = waiters.total.saturating_sub(1);
-                }
-                if waiters.by_session.get(session_id).is_some_and(VecDeque::is_empty) {
-                    waiters.by_session.remove(session_id);
-                }
-                waiter
-            };
-            let waiter = waiter.context("identity has no ready browser waiter")?;
-            let Some(identity) = waiter.identity.upgrade() else { continue };
-            if identity.revalidate_browser_session(session_id).await.is_err() {
-                continue;
-            }
-            match waiter.sender.send(fd) {
-                Ok(()) => return Ok(()),
-                Err(returned) => fd = returned,
-            }
+    pub(crate) fn forget_connection(&self, connection_id: u64) {
+        if let Ok(mut receivers) = self.by_session.lock() {
+            receivers.retain(|_, receiver| receiver.connection_id != connection_id);
         }
     }
 
-    /// The committed session of the one identity container that is waiting for
-    /// a browser socket. Zero or several waiting identities give `None`: the
-    /// accepted socket then has no owner and is closed, never guessed.
-    pub(crate) fn sole_waiting_session(&self) -> Option<String> {
-        let mut waiters = self.waiters.lock().ok()?;
-        Self::remove_closed(&mut waiters);
-        let mut sessions = waiters.by_session.keys();
-        let session = sessions.next()?.clone();
-        sessions.next().is_none().then_some(session)
-    }
-
-    fn remove(&self, session_id: &str, id: u64) {
-        let Ok(mut waiters) = self.waiters.lock() else { return; };
-        let mut removed = false;
-        if let Some(queue) = waiters.by_session.get_mut(session_id)
-            && let Some(index) = queue.iter().position(|waiter| waiter.id == id)
-        {
-            queue.remove(index);
-            removed = true;
-        }
-        if removed {
-            waiters.total = waiters.total.saturating_sub(1);
-        }
-        if waiters.by_session.get(session_id).is_some_and(VecDeque::is_empty) {
-            waiters.by_session.remove(session_id);
-        }
-    }
-
-    fn remove_closed(waiters: &mut Waiters) {
-        let before = waiters.total;
-        waiters.by_session.retain(|_, queue| {
-            queue.retain(|waiter| !waiter.sender.is_closed() && waiter.identity.strong_count() > 0);
-            !queue.is_empty()
-        });
-        waiters.total = waiters.by_session.values().map(VecDeque::len).sum();
-        debug_assert!(waiters.total <= before);
+    /// Push one accepted socket to the identity. No receiver, a failed call,
+    /// or a refusal closes the socket; it never goes anywhere else.
+    pub(crate) async fn push(&self, session_id: &str, fd: OwnedFd) -> Result<()> {
+        let connection = self.by_session.lock()
+            .map_err(|_| anyhow::anyhow!("browser receivers poisoned"))?
+            .get(session_id)
+            .map(|receiver| receiver.connection.clone())
+            .context("identity has no browser receiver")?;
+        let fd = zbus::zvariant::OwnedFd::from(fd);
+        let reply = tokio::time::timeout(
+            PUSH_TIMEOUT,
+            connection.call_method(None::<&str>, RECEIVER_PATH, Some(RECEIVER_INTERFACE), "ReceiveBrowser", &(fd,)),
+        )
+        .await
+        .context("browser push timed out")?
+        .context("browser push failed")?;
+        let accepted: bool = reply.body().deserialize().context("browser push reply is malformed")?;
+        ensure!(accepted, "identity refused the browser socket");
+        Ok(())
     }
 
     #[cfg(test)]
-    pub(crate) fn waiter_count(&self) -> usize {
-        self.waiters.lock().map(|waiters| waiters.total).unwrap_or(0)
+    pub(crate) fn receiver_count(&self) -> usize {
+        self.by_session.lock().map(|receivers| receivers.len()).unwrap_or(0)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use std::io::{Read, Write};
+
+    use super::*;
+
+    struct Sink(tokio::sync::mpsc::Sender<OwnedFd>);
+
+    #[zbus::interface(name = "org.opdbus.v1.BrowserV1")]
+    impl Sink {
+        async fn receive_browser(&self, fd: zbus::zvariant::OwnedFd) -> bool {
+            self.0.send(fd.into()).await.is_ok()
+        }
+    }
+
+    async fn pair() -> (zbus::Connection, zbus::Connection, tokio::sync::mpsc::Receiver<OwnedFd>) {
+        let (host, container) = tokio::net::UnixStream::pair().unwrap();
+        let (sender, received) = tokio::sync::mpsc::channel(4);
+        let host = zbus::connection::Builder::unix_stream(host)
+            .server(zbus::Guid::generate()).unwrap().p2p()
+            .auth_mechanism(zbus::connection::AuthMechanism::Anonymous)
+            .build();
+        let container = zbus::connection::Builder::unix_stream(container).p2p()
+            .auth_mechanism(zbus::connection::AuthMechanism::Anonymous)
+            .serve_at(RECEIVER_PATH, Sink(sender)).unwrap()
+            .build();
+        let (host, container) = tokio::try_join!(host, container).unwrap();
+        (host, container, received)
+    }
+
+    fn socket() -> (std::os::unix::net::UnixStream, OwnedFd) {
+        let (kept, pushed) = std::os::unix::net::UnixStream::pair().unwrap();
+        (kept, pushed.into())
+    }
+
+    #[tokio::test]
+    async fn each_push_reaches_only_its_own_identity() {
+        let receivers = BrowserReceivers::default();
+        let (host_a, _container_a, mut received_a) = pair().await;
+        let (host_b, _container_b, mut received_b) = pair().await;
+        receivers.register("session-a".into(), 1, host_a).unwrap();
+        receivers.register("session-b".into(), 2, host_b).unwrap();
+
+        let (mut kept, pushed) = socket();
+        receivers.push("session-a", pushed).await.unwrap();
+        let delivered = received_a.recv().await.unwrap();
+        assert!(received_b.try_recv().is_err());
+
+        let mut delivered = std::os::unix::net::UnixStream::from(delivered);
+        kept.write_all(b"hello").unwrap();
+        let mut bytes = [0u8; 5];
+        delivered.read_exact(&mut bytes).unwrap();
+        assert_eq!(&bytes, b"hello");
+    }
+
+    #[tokio::test]
+    async fn no_receiver_or_a_closed_one_delivers_nothing() {
+        let receivers = BrowserReceivers::default();
+        let (_, pushed) = socket();
+        assert!(receivers.push("unknown", pushed).await.is_err());
+
+        let (host, _container, _received) = pair().await;
+        receivers.register("session-a".into(), 7, host).unwrap();
+        assert_eq!(receivers.receiver_count(), 1);
+        receivers.forget_connection(7);
+        assert_eq!(receivers.receiver_count(), 0);
+        let (_, pushed) = socket();
+        assert!(receivers.push("session-a", pushed).await.is_err());
     }
 }

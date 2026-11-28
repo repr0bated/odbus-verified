@@ -37,7 +37,8 @@ const MAX_IN_FLIGHT_CALLS: usize = 64;
 
 struct LungsBootstrap {
     identity: Arc<LungsIdentity>,
-    browser: Arc<browser::BrowserBroker>,
+    browser: Arc<browser::BrowserReceivers>,
+    connection_id: u64,
 }
 
 #[zbus::interface(name = "org.opdbus.v1.LungsV1")]
@@ -52,9 +53,17 @@ impl LungsBootstrap {
         Ok(true)
     }
 
-    async fn accept_browser(&self) -> zbus::fdo::Result<zbus::zvariant::OwnedFd> {
-        let fd = self.browser.accept(self.identity.clone()).await.map_err(binding_denial)?;
-        Ok(fd.into())
+    /// The container's lungs client exports `org.opdbus.v1.BrowserV1` on this
+    /// connection. Returns at once; the host pushes sockets to it from now
+    /// until the connection closes.
+    async fn register_browser_receiver(
+        &self,
+        #[zbus(connection)] connection: &zbus::Connection,
+    ) -> zbus::fdo::Result<bool> {
+        let session_id = self.identity.browser_session_id().await.map_err(binding_denial)?;
+        self.browser.register(session_id, self.connection_id, connection.clone())
+            .map_err(|error| zbus::fdo::Error::LimitsExceeded(error.to_string()))?;
+        Ok(true)
     }
 }
 
@@ -203,21 +212,16 @@ impl Drop for SocketOwner {
 
 #[derive(Clone)]
 pub(crate) struct BrowserHandoff {
-    broker: Arc<browser::BrowserBroker>,
+    receivers: Arc<browser::BrowserReceivers>,
 }
 
 impl BrowserHandoff {
-    pub(crate) async fn offer(&self, session_id: &str, stream: tokio::net::TcpStream) -> Result<()> {
+    /// Push the accepted socket to the identity named by `session_id`.
+    pub(crate) async fn push(&self, session_id: &str, stream: tokio::net::TcpStream) -> Result<()> {
         stream.set_nodelay(true)?;
         let stream = stream.into_std()?;
         let fd: std::os::fd::OwnedFd = stream.into();
-        self.broker.offer(session_id, fd).await
-    }
-
-    /// The committed session of the single identity container waiting for a
-    /// browser socket, or `None` when zero or several are waiting.
-    pub(crate) fn sole_waiting_session(&self) -> Option<String> {
-        self.broker.sole_waiting_session()
+        self.receivers.push(session_id, fd).await
     }
 }
 
@@ -228,7 +232,7 @@ impl BrowserHandoff {
 pub(crate) struct LungsServer {
     socket: Arc<SocketOwner>,
     calls: Arc<Semaphore>,
-    browser: Arc<browser::BrowserBroker>,
+    browser: Arc<browser::BrowserReceivers>,
     stop: Option<oneshot::Sender<()>>,
     task: Option<JoinHandle<Result<()>>>,
 }
@@ -237,7 +241,7 @@ impl LungsServer {
     pub(crate) fn socket_path(&self) -> &Path { &self.socket.path }
 
     pub(crate) fn browser_handoff(&self) -> BrowserHandoff {
-        BrowserHandoff { broker: self.browser.clone() }
+        BrowserHandoff { receivers: self.browser.clone() }
     }
 
     pub(crate) fn is_finished(&self) -> bool {
@@ -356,7 +360,7 @@ pub(crate) async fn start(runtime: Arc<Runtime>) -> Result<LungsServer> {
     let socket = Arc::new(owner);
     let owned_socket = socket.clone();
     let calls = Arc::new(Semaphore::new(MAX_IN_FLIGHT_CALLS));
-    let browser = Arc::new(browser::BrowserBroker::default());
+    let browser = Arc::new(browser::BrowserReceivers::default());
     let active_calls = calls.clone();
     let active_browser = browser.clone();
     let (stop, mut stopped) = oneshot::channel();
@@ -419,12 +423,16 @@ async fn serve_connection(
     identity: Arc<LungsIdentity>,
     objects: Arc<Vec<(String, String)>>,
     calls: Arc<Semaphore>,
-    browser: Arc<browser::BrowserBroker>,
+    browser: Arc<browser::BrowserReceivers>,
 ) -> Result<()> {
+    static NEXT_CONNECTION: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(1);
+    let connection_id = NEXT_CONNECTION.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
     let mut builder = zbus::connection::Builder::unix_stream(stream)
         .server(zbus::Guid::generate())?.p2p()
         .auth_mechanism(zbus::connection::AuthMechanism::Anonymous)
-        .serve_at(LUNGS_OBJECT_PATH, LungsBootstrap { identity: identity.clone(), browser })?;
+        .serve_at(LUNGS_OBJECT_PATH, LungsBootstrap {
+            identity: identity.clone(), browser: browser.clone(), connection_id,
+        })?;
     for (path, plugin_id) in objects.iter() {
         builder = builder.serve_at(path.clone(), LungsPlugin {
             plugin_id: plugin_id.clone(), runtime: runtime.clone(), identity: identity.clone(), calls: calls.clone(),
@@ -432,9 +440,13 @@ async fn serve_connection(
     }
     let connection = tokio::time::timeout(NEGOTIATION_TIMEOUT, builder.build())
         .await.context("lungs D-Bus negotiation timed out")??;
-    identity.wait_bound().await?;
-    connection.closed().await;
-    Ok(())
+    let served = async {
+        identity.wait_bound().await?;
+        connection.closed().await;
+        Ok(())
+    }.await;
+    browser.forget_connection(connection_id);
+    served
 }
 
 #[cfg(test)]
