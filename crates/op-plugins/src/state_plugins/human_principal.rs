@@ -95,7 +95,10 @@ impl StatePlugin for HumanPrincipalPlugin {
     fn schema(&self) -> Option<PluginSchema> {
         let mut schema = super::plugin_scaffold_helpers::human_principal_plugin_schema();
         super::common::oscal::ensure_category_metadata_fields(&mut schema);
-        Some(schema)
+        Some(schema.subsidiary(|capability| matches!(
+            capability,
+            "human_principal.read"
+        )))
     }
 
     async fn calculate_diff(&self, _current: &Value, _desired: &Value) -> Result<StateDiff> {

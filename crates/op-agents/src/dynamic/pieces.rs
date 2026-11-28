@@ -1,6 +1,6 @@
 //! The shared pool of agent pieces.
 
-use std::collections::BTreeSet;
+use std::{collections::BTreeSet, sync::Arc};
 
 use serde::{Deserialize, Serialize};
 
@@ -34,6 +34,8 @@ pub enum PieceSource {
     Memory { namespace: String, key: String },
     /// Registered programmatically.
     Runtime,
+    /// Extracted literal expertise, never executable legacy behavior.
+    Historical { agent_id: String, path: String, source_digest: String },
 }
 
 /// One reusable fragment.
@@ -47,7 +49,7 @@ pub struct AgentPiece {
     /// Free tags used for scoring besides domains.
     pub tags: Vec<String>,
     pub title: String,
-    pub body: String,
+    pub body: Arc<str>,
     pub source: PieceSource,
 }
 
@@ -80,9 +82,24 @@ impl PieceLibrary {
     pub fn seeded_from_catalog() -> Self {
         let mut library = Self::new();
         let registry = &crate::unified::GLOBAL_REGISTRY;
+        let mut seen = BTreeSet::new();
         for id in registry.list_ids() {
             if let Some(agent) = registry.get(id) {
+                if !seen.insert(agent.id().to_owned()) { continue; }
                 library.add_from_agent(agent.as_ref());
+            }
+        }
+        for seed in crate::historical_sources::HISTORICAL_SOURCES {
+            for &(line, body, content_digest) in seed.knowledge.iter().chain(seed.examples.iter()) {
+                let kind = if seed.examples.iter().any(|entry| entry.0 == line && entry.2 == content_digest) { PieceKind::Example } else { PieceKind::Knowledge };
+                library.upsert(AgentPiece {
+                    id: format!("historical:{}:{content_digest}", seed.id), kind,
+                    domains: tokenize(seed.id), tags: Vec::new(),
+                    title: format!("{} source expertise ({}:{line})", seed.id, seed.path),
+                    body: library.intern_body(body), source: PieceSource::Historical {
+                        agent_id: seed.id.into(), path: format!("{}:{line}", seed.path), source_digest: seed.source_digest.into(),
+                    },
+                });
             }
         }
         library
@@ -98,6 +115,11 @@ impl PieceLibrary {
 
     pub fn is_empty(&self) -> bool {
         self.pieces.is_empty()
+    }
+
+    fn intern_body(&self, body: &str) -> Arc<str> {
+        self.pieces.iter().find(|piece| piece.body.as_ref() == body)
+            .map_or_else(|| Arc::from(body), |piece| piece.body.clone())
     }
 
     /// Insert or replace by id.
@@ -127,7 +149,7 @@ impl PieceLibrary {
                 domains: domains.clone(),
                 tags: vec![agent.name().to_ascii_lowercase()],
                 title: format!("{} behaviour", agent.name()),
-                body: behavior.to_string(),
+                body: self.intern_body(behavior),
                 source: source.clone(),
             });
         }
@@ -139,7 +161,7 @@ impl PieceLibrary {
                     domains: domains.clone(),
                     tags: tokenize(&title).into_iter().collect(),
                     title,
-                    body,
+                    body: self.intern_body(&body),
                     source: source.clone(),
                 });
             }
@@ -151,7 +173,7 @@ impl PieceLibrary {
                 domains: domains.clone(),
                 tags: tokenize(question).into_iter().collect(),
                 title: question.to_string(),
-                body: answer.to_string(),
+                body: self.intern_body(answer),
                 source: source.clone(),
             });
         }
@@ -164,7 +186,7 @@ impl PieceLibrary {
                         domains: domains.clone(),
                         tags: tokenize(&title).into_iter().collect(),
                         title,
-                        body,
+                        body: self.intern_body(&body),
                         source: source.clone(),
                     });
                 }
@@ -206,7 +228,7 @@ impl PieceLibrary {
                 domains: domains.clone(),
                 tags: vec![name.to_ascii_lowercase()],
                 title: format!("{name} behaviour"),
-                body: behavior.trim().to_string(),
+                body: self.intern_body(behavior.trim()),
                 source: source.clone(),
             });
         }
@@ -227,7 +249,7 @@ impl PieceLibrary {
                 domains: domains.clone(),
                 tags: tokenize(&title).into_iter().collect(),
                 title,
-                body: block.to_string(),
+                body: self.intern_body(block),
                 source: source.clone(),
             });
         }
@@ -247,7 +269,7 @@ impl PieceLibrary {
                     .unwrap_or("example")
                     .trim()
                     .to_string(),
-                body: example.to_string(),
+                body: self.intern_body(example),
                 source: source.clone(),
             });
         }
@@ -262,7 +284,7 @@ impl PieceLibrary {
                 domains: domains.clone(),
                 tags: tokenize(item).into_iter().collect(),
                 title: item.to_string(),
-                body: item.to_string(),
+                body: self.intern_body(item),
                 source: source.clone(),
             });
         }
@@ -290,7 +312,7 @@ impl PieceLibrary {
                 domains: tokenize(key).into_iter().collect(),
                 tags: Vec::new(),
                 title: key.replace(['_', '-'], " "),
-                body: body.clone(),
+                body: self.intern_body(body),
                 source,
             },
             serde_json::Value::Object(map) => {
@@ -326,7 +348,7 @@ impl PieceLibrary {
                         .and_then(serde_json::Value::as_str)
                         .unwrap_or(key)
                         .to_string(),
-                    body: body.to_string(),
+                    body: self.intern_body(body),
                     source,
                 }
             }

@@ -1,0 +1,21 @@
+# gitleaks config for scripts/secret-guard.sh (owner rule 2026-11-22).
+# Default rules, plus an allowlist for values that are public by design:
+# WireGuard/identity PUBLIC keys pinned in scripts, test sentinels, hashes.
+[extend]
+useDefault = true
+
+[allowlist]
+regexTarget = "line"
+description = "public keys, test sentinels and receipts"
+regexes = [
+  '''PRIVATE_SECRET_SENTINEL''',
+  '''DO_NOT_EXPOSE''',
+  '''(?i)public[ _-]?key''',
+  '''OP_BROWSER_CONTROL_PLANE_PEER_KEY=''',
+  '''credential_hash''',
+  '''uapi_hash''',
+]
+paths = [
+  '''^reports/Gemini Notebook - ''',
+  '''^reports/credit-refund-evidence-20261020/transcripts-and-audit/''',
+]

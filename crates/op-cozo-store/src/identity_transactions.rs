@@ -2,14 +2,29 @@
 //! This is private persistence metadata, not plugin discovery/schema authority.
 //! Legacy writes are rejected after a session acquires a revision/tombstone.
 use super::*;
-mod physical_root;
 mod clean_provision;
+mod native_attachment;
+mod native_upgrade;
+pub use native_upgrade::NativeRootUpgradeJournal;
+mod native_policy;
+pub use native_policy::{IDENTITY_STORAGE_SYSCALL_DENY, native_root_policy_transition_matches};
+mod lxd_subsidiary;
+pub use lxd_subsidiary::LxdSubsidiary;
+mod container_exec;
+pub use container_exec::{ContainerExecRequest, ContainerExecJournal};
+#[path = "identity_transactions/container_rename.rs"]
+mod container_rename;
 mod native_creation;
-#[path = "identity_transactions/container_rename.rs"] mod container_rename;
-pub use container_rename::{ContainerRenameJournal, ContainerRenameRequest, CONTROL_PLANE_NATIVE_NAME, container_rename_native_matches};
-pub use native_creation::{NativeCreationRequest, NativeCreationRecord, is_numbered_native_name};
-pub use clean_provision::{CleanProvisionReceipt, IdentityCleanProvision, clean_provision_instance_binding_matches};
+mod physical_root;
+pub use clean_provision::{
+    CleanProvisionReceipt, IdentityCleanProvision, clean_provision_instance_binding_matches,
+};
+pub use container_rename::{
+    CONTROL_PLANE_NATIVE_NAME, ContainerRenameJournal, ContainerRenameRequest,
+    container_rename_native_matches,
+};
 use cozo::{MultiTransaction, TransactionPayload};
+pub use native_creation::{NativeCreationRecord, NativeCreationRequest, is_numbered_native_name};
 use nix::{fcntl::OFlag, sys::stat::Mode};
 pub use physical_root::{
     IdentityPhysicalRootMigration, PhysicalRootMigrationReceipt,
@@ -42,6 +57,17 @@ pub struct IdentityCompareExchange {
 
 pub enum IdentityIntent {
     CleanProvision(Box<IdentityCleanProvision>),
+    /// Native-pool attachment is NOT a clean replacement. Human credentials,
+    /// genesis and history are immutable; subsidiary creation is separately
+    /// owner-bound to an exact durable native creation request.
+    AttachNativeContainer(Box<IdentityCleanProvision>),
+    RetireOwnNativeContainer {
+        expected: Box<IdentityRevision>,
+    },
+    UpgradeNativeRoot {
+        journal: Box<NativeRootUpgradeJournal>,
+        record: IdentitySledRecord,
+    },
     CompareExchange(Box<IdentityCompareExchange>),
     MigratePhysicalRoot(Box<IdentityPhysicalRootMigration>),
     RenameContainer {
@@ -311,11 +337,15 @@ pub(super) struct PersistentIdentityBoundary {
     data: File,
     custom_options: bool,
     private: bool,
+    /// Known-good `options` file contents for this store profile.
+    expected_options: &'static [u8],
 }
 
 // Cozo's JSON constructor options do not configure RocksDB. Its root/options
 // file does, but replaces cozorocks defaults rather than merging with them.
-// Preserve the pinned cozorocks0.1.7 defaults; change only file preallocation.
+// Preserve the pinned cozorocks0.1.7 defaults; change only file preallocation
+// for identity stores. The ublk CBLK store additionally disables SST
+// compression so raw `CBLK` magic remains findable in `.sst` / WAL bytes.
 const SPARSE_ROCKSDB_OPTIONS: &[u8] = b"\
 [Version]\n\
 options_file_version=1.1\n\
@@ -329,7 +359,37 @@ compression=kLZ4Compression\n\
 level_compaction_dynamic_level_bytes=true\n\
 compaction_pri=kMinOverlappingRatio\n";
 
-fn create_sparse_options(root: &File) -> std::result::Result<(), CozoError> {
+/// RocksDB options-file profile for the ublk CBLK block store.
+///
+/// Cozo 0.7.6 ignores compression in its JSON constructor options; cozorocks
+/// loads this root `options` file with `LoadOptionsFromFile` and it replaces
+/// cozorocks' built-in LZ4/ZSTD defaults entirely. Compression is OFF at every
+/// RocksDB layer: SST (`compression`, `bottommost_compression`, and every entry
+/// of `compression_per_level`), blob files (`blob_compression_type`), and the
+/// WAL (`wal_compression`). The only compression is zstd inside each CBLK
+/// envelope (see `cblk.rs`), so on-disk bytes are exactly CBLK envelopes and
+/// raw `CBLK` magic stays findable for offline recovery. Blob GC reclaims
+/// superseded chunk versions from blob files.
+pub(super) const CBLK_ROCKSDB_OPTIONS: &[u8] = b"\
+[Version]\n\
+options_file_version=1.1\n\
+[DBOptions]\n\
+allow_fallocate=false\n\
+max_background_jobs=6\n\
+bytes_per_sync=1048576\n\
+wal_compression=kNoCompression\n\
+[CFOptions \"default\"]\n\
+compression=kNoCompression\n\
+bottommost_compression=kNoCompression\n\
+compression_per_level=kNoCompression:kNoCompression:kNoCompression:kNoCompression:kNoCompression:kNoCompression:kNoCompression\n\
+enable_blob_files=true\n\
+min_blob_size=4096\n\
+blob_compression_type=kNoCompression\n\
+enable_blob_garbage_collection=true\n\
+level_compaction_dynamic_level_bytes=true\n\
+compaction_pri=kMinOverlappingRatio\n";
+
+fn create_options_file(root: &File, contents: &[u8]) -> std::result::Result<(), CozoError> {
     let raw = match nix::fcntl::openat(
         Some(root.as_raw_fd()),
         "options",
@@ -342,13 +402,13 @@ fn create_sparse_options(root: &File) -> std::result::Result<(), CozoError> {
     };
     // SAFETY: openat returned a newly owned descriptor.
     let mut options = unsafe { File::from_raw_fd(raw) };
-    options.write_all(SPARSE_ROCKSDB_OPTIONS).map_err(native)?;
+    options.write_all(contents).map_err(native)?;
     options.sync_all().map_err(native)?;
     root.sync_all().map_err(native)?;
     Ok(())
 }
 
-fn has_custom_options(root: &File) -> std::result::Result<bool, CozoError> {
+fn options_mismatch_expected(root: &File, expected: &[u8]) -> std::result::Result<bool, CozoError> {
     let raw = match nix::fcntl::openat(
         Some(root.as_raw_fd()),
         "options",
@@ -366,25 +426,34 @@ fn has_custom_options(root: &File) -> std::result::Result<bool, CozoError> {
         || metadata.uid() != nix::unistd::geteuid().as_raw()
         || metadata.mode() & 0o022 != 0
         || metadata.nlink() != 1
-        || metadata.len() != SPARSE_ROCKSDB_OPTIONS.len() as u64
+        || metadata.len() != expected.len() as u64
     {
         return Ok(true);
     }
-    let mut contents = [0; SPARSE_ROCKSDB_OPTIONS.len()];
+    let mut contents = vec![0u8; expected.len()];
     options.read_exact(&mut contents).map_err(native)?;
-    Ok(contents != SPARSE_ROCKSDB_OPTIONS)
+    Ok(contents.as_slice() != expected)
 }
 
 impl PersistentIdentityBoundary {
     pub(super) fn open(path: &Path) -> std::result::Result<Self, CozoError> {
-        Self::open_with_privacy(path, false)
+        Self::open_with_profile(path, false, SPARSE_ROCKSDB_OPTIONS)
     }
 
     pub(super) fn open_private(path: &Path) -> std::result::Result<Self, CozoError> {
-        Self::open_with_privacy(path, true)
+        Self::open_with_profile(path, true, SPARSE_ROCKSDB_OPTIONS)
     }
 
-    fn open_with_privacy(path: &Path, private: bool) -> std::result::Result<Self, CozoError> {
+    /// Private Cozo root for the ublk CBLK block store (`kNoCompression` SST).
+    pub(super) fn open_private_ublk(path: &Path) -> std::result::Result<Self, CozoError> {
+        Self::open_with_profile(path, true, CBLK_ROCKSDB_OPTIONS)
+    }
+
+    fn open_with_profile(
+        path: &Path,
+        private: bool,
+        expected_options: &'static [u8],
+    ) -> std::result::Result<Self, CozoError> {
         let path = if path.is_absolute() {
             path.to_path_buf()
         } else {
@@ -398,9 +467,11 @@ impl PersistentIdentityBoundary {
         if private {
             restrict_directory(&data)?;
         }
-        create_sparse_options(&root)?;
-        let custom_options = has_custom_options(&root)?;
+        create_options_file(&root, expected_options)?;
+        let custom_options = options_mismatch_expected(&root, expected_options)?;
         if private && custom_options {
+            // Keep the historical identity wording so existing refusal tests match;
+            // ublk uses the same private gate for its known-good options profile.
             return Err(err(
                 "private identity store refuses custom Cozo options with unverified data/WAL locations",
             ));
@@ -411,6 +482,7 @@ impl PersistentIdentityBoundary {
             data,
             custom_options,
             private,
+            expected_options,
         })
     }
 
@@ -425,7 +497,7 @@ impl PersistentIdentityBoundary {
                 "private identity database directory permissions changed",
             ));
         }
-        if has_custom_options(&self.root)? != self.custom_options {
+        if options_mismatch_expected(&self.root, self.expected_options)? != self.custom_options {
             return Err(err("Cozo options layout changed while database was open"));
         }
         Ok(())
@@ -768,6 +840,7 @@ impl CozoGraphShuttle {
             entry.operation_id = meta.operation_id;
             if let Some(record) = &mut entry.record {
                 record.principal_kind = meta.principal_kind;
+                record.org_relation_json = read_org_relation(&tx, &sid)?;
             }
         }
         for entry in result.values() {
@@ -812,9 +885,12 @@ impl CozoGraphShuttle {
         })
     }
 
-    /// Stream a coherent, contiguous append ledger with bounded row allocation.
-    /// One native barrier and indexed point reads avoid sorting the remaining
-    /// history for each event. The visitor must not reenter this Cozo owner.
+    /// Stream a coherent, contiguous append ledger with one owned row at a time.
+    /// One native barrier and the retained owner guard fix the canonical prefix.
+    /// Each engine read transaction closes before the visitor is invoked.
+    /// The visitor must not reenter owner methods/mutators: the native guard is
+    /// still held. Only direct `db()` queries for separate derived indexes may
+    /// run there; this is not permission to mutate the canonical session ledger.
     pub fn visit_session_events_durable(
         &self,
         session_id: &str,
@@ -823,13 +899,17 @@ impl CozoGraphShuttle {
         if session_id.is_empty() {
             return Err(err("invalid durable session event identity"));
         }
-        let _guard = self.identity_transaction.lock()
+        let _guard = self
+            .identity_transaction
+            .lock()
             .map_err(|_| err("identity transaction owner is poisoned"))?;
         self.sync_identity_store()?;
         let tx = self.db.multi_transaction(false);
-        let bounds = query(&tx,
+        let bounds = query(
+            &tx,
             "?[min(seq),max(seq)] := *session_events[session_id,seq,kind,subid,content,created_at], session_id = $sid",
-            sid_params(session_id))?;
+            sid_params(session_id),
+        )?;
         let last = match bounds.rows.as_slice() {
             [] => None,
             [row] if row.as_slice() == [DataValue::Null, DataValue::Null] => None,
@@ -843,21 +923,28 @@ impl CozoGraphShuttle {
             }
             _ => return Err(err("corrupt append ledger bounds result")),
         };
+        commit_checked(&tx)?;
+        drop(tx);
         if let Some(last) = last {
             for seq in 0..=last {
-                let mut params = sid_params(session_id);
-                params.insert("seq".into(), dv_int(seq));
-                let rows = query(&tx,
-                    "?[session_id,seq,kind,subid,content,created_at] := \
-                     *session_events[session_id,seq,kind,subid,content,created_at], \
-                     session_id = $sid, seq = $seq", params)?;
-                let [row] = rows.rows.as_slice() else {
-                    return Err(err("append ledger has a missing or duplicate sequence"));
+                let event = {
+                    let tx = self.db.multi_transaction(false);
+                    let mut params = sid_params(session_id);
+                    params.insert("seq".into(), dv_int(seq));
+                    let rows = query(&tx,
+                        "?[session_id,seq,kind,subid,content,created_at] := \
+                         *session_events[session_id,seq,kind,subid,content,created_at], \
+                         session_id = $sid, seq = $seq", params)?;
+                    let [row] = rows.rows.as_slice() else {
+                        return Err(err("append ledger has a missing or duplicate sequence"));
+                    };
+                    let event = decode_event(row)?;
+                    commit_checked(&tx)?;
+                    event
                 };
-                visit(decode_event(row)?)?;
+                visit(event)?;
             }
         }
-        commit_checked(&tx)?;
         Ok(())
     }
 
@@ -1266,6 +1353,7 @@ impl CozoGraphShuttle {
         let tx = self.db.multi_transaction(true);
         let (previous, metadata) = read_one(&tx, session_id)?;
         container_rename::check_fence(&tx, &previous, &intent)?;
+        native_upgrade::check_fence(&tx, &previous, &intent)?;
         if let IdentityIntent::CompareExchange(exchange) = &intent {
             clean_provision::validate_cas(&tx, &previous, exchange.record.as_ref())?;
         }
@@ -1337,19 +1425,99 @@ impl CozoGraphShuttle {
             }
         }
         let (record, genesis, kind, value, replayed) = match intent {
-            IdentityIntent::RenameContainer { journal, native_after_json } => {
+            IdentityIntent::RenameContainer {
+                journal,
+                native_after_json,
+            } => {
                 let value = i64::try_from(journal.expected_revision).map_err(native)?;
-                let record = container_rename::complete(&tx, &previous, operation_id, &journal, &native_after_json)?;
-                (Some(record), previous.genesis.clone(), "container-rename", value, false)
+                let record = container_rename::complete(
+                    &tx,
+                    &previous,
+                    operation_id,
+                    &journal,
+                    &native_after_json,
+                )?;
+                (
+                    Some(record),
+                    previous.genesis.clone(),
+                    "container-rename",
+                    value,
+                    false,
+                )
             }
-            IdentityIntent::CleanProvision(provision) => {
-                clean_provision::validate(&tx, session_id, operation_id, &previous, &metadata, &provision)?;
+            IdentityIntent::UpgradeNativeRoot { journal, record } => {
+                native_upgrade::validate_commit(&tx, session_id, operation_id, &previous, &journal, &record)?;
+                let replayed = previous.operation_id == operation_id;
+                if !replayed {
+                    native_upgrade::complete(&tx, &journal, &record)?;
+                }
+                let genesis = journal.expected.genesis.clone();
+                (Some(record), genesis, "native-root-upgrade",
+                    i64::try_from(journal.expected.revision).map_err(native)?, replayed)
+            }
+            IdentityIntent::AttachNativeContainer(provision) => {
+                native_attachment::validate(&tx, session_id, operation_id, &previous, &metadata, &provision)?;
                 let replayed = previous.operation_id == operation_id;
                 if !replayed {
                     clean_provision::append(&tx, session_id, operation_id, &provision)?;
                 }
-                (Some(provision.record), Some(provision.genesis), "clean-provision",
-                    i64::try_from(provision.expected.revision).map_err(native)?, replayed)
+                (
+                    Some(provision.record),
+                    Some(provision.genesis),
+                    "native-attachment",
+                    i64::try_from(provision.expected.revision).map_err(native)?,
+                    replayed,
+                )
+            }
+            IdentityIntent::RetireOwnNativeContainer { expected } => {
+                let operation = format!("retire-native-{session_id}-{}", expected.revision);
+                let value = i64::try_from(expected.revision).map_err(native)?;
+                let mut record = expected.record.clone().ok_or_else(|| err("native retirement identity absent"))?;
+                if operation_id != operation
+                    || expected.session_id != session_id
+                    || expected.genesis.is_none()
+                    || record.principal_kind.as_deref() != Some("human")
+                    || record.sealed_id.is_empty()
+                    || !record.btrfs_device_json.is_empty()
+                    || record.instance_json.is_empty()
+                    || physical.is_some()
+                {
+                    return Err(err("invalid human native retirement"));
+                }
+                record.instance_json.clear();
+                record.active = false;
+                let replayed = previous.operation_id == operation_id;
+                if replayed {
+                    if metadata.kind != "native-retirement" || metadata.value != value
+                        || previous.record.as_ref() != Some(&record) || previous.genesis != expected.genesis
+                    {
+                        return Err(err("native retirement replay changed"));
+                    }
+                } else if previous != *expected {
+                    return Err(err("native retirement compare/exchange conflict"));
+                }
+                (Some(record), expected.genesis, "native-retirement", value, replayed)
+            }
+            IdentityIntent::CleanProvision(provision) => {
+                clean_provision::validate(
+                    &tx,
+                    session_id,
+                    operation_id,
+                    &previous,
+                    &metadata,
+                    &provision,
+                )?;
+                let replayed = previous.operation_id == operation_id;
+                if !replayed {
+                    clean_provision::append(&tx, session_id, operation_id, &provision)?;
+                }
+                (
+                    Some(provision.record),
+                    Some(provision.genesis),
+                    "clean-provision",
+                    i64::try_from(provision.expected.revision).map_err(native)?,
+                    replayed,
+                )
             }
             IdentityIntent::MigratePhysicalRoot(migration) => {
                 physical_root::validate_intent(
@@ -1565,6 +1733,7 @@ fn read_one(
         .unwrap_or_default();
     if let Some(record) = &mut record {
         record.principal_kind = meta.principal_kind.clone();
+        record.org_relation_json = read_org_relation(tx, sid)?;
     }
     validate_pair(sid, record.as_ref(), genesis.as_ref())?;
     Ok((
@@ -1577,6 +1746,47 @@ fn read_one(
         },
         meta,
     ))
+}
+fn read_org_relation(
+    tx: &MultiTransaction,
+    sid: &str,
+) -> std::result::Result<String, CozoError> {
+    let rows = query(
+        tx,
+        "?[document] := *identity_org_relations{session_id, document}, session_id = $sid",
+        sid_params(sid),
+    )?;
+    rows.rows
+        .first()
+        .map(|row| string(row, 0))
+        .transpose()
+        .map(Option::unwrap_or_default)
+}
+fn put_org_relation(
+    tx: &MultiTransaction,
+    sid: &str,
+    document: &str,
+) -> std::result::Result<(), CozoError> {
+    if document.is_empty() {
+        query(
+            tx,
+            "?[session_id] <- [[$sid]] :rm identity_org_relations {session_id}",
+            sid_params(sid),
+        )?;
+        return Ok(());
+    }
+    let value: Value = serde_json::from_str(document)?;
+    if document.len() > 4096 || !value.is_object() {
+        return Err(err("identity org relation must be a bounded JSON object"));
+    }
+    let mut params = sid_params(sid);
+    params.insert("document".into(), DataValue::Str(document.into()));
+    query(
+        tx,
+        "?[session_id, document] <- [[$sid, $document]] :put identity_org_relations {session_id => document}",
+        params,
+    )?;
+    Ok(())
 }
 fn string(row: &[DataValue], at: usize) -> std::result::Result<String, CozoError> {
     match row.get(at) {
@@ -1612,6 +1822,7 @@ fn decode_record(row: &[DataValue]) -> std::result::Result<IdentitySledRecord, C
         vector_id: string(row, 8)?,
         sealed_id: string(row, 9)?,
         principal_kind: None,
+        org_relation_json: String::new(),
         btrfs_device_json: string(row, 10)?,
         instance_json: string(row, 11)?,
         session_started_at: integer(row, 12)?,
@@ -1650,7 +1861,15 @@ fn decode_revision(row: &[DataValue]) -> std::result::Result<RevisionMetadata, C
             .all(|b| b.is_ascii_alphanumeric() || matches!(b, b'-' | b'_'))
         || !matches!(
             kind.as_str(),
-            "cas" | "advance" | "transport-refresh" | "physical-migrate" | "clean-provision" | "container-rename"
+            "cas"
+                | "advance"
+                | "transport-refresh"
+                | "physical-migrate"
+                | "clean-provision"
+                | "native-attachment"
+                | "native-retirement"
+                | "native-root-upgrade"
+                | "container-rename"
         )
         || value < 0
         || !matches!(principal_kind.as_str(), "" | "human" | "service")
@@ -1878,6 +2097,7 @@ fn put_pair(
             sid_params(sid),
         )?;
     }
+    put_org_relation(tx, sid, row.map_or("", |row| row.org_relation_json.as_str()))?;
     #[cfg(test)]
     tests::fault("after_row")?;
     if let Some(g) = genesis {

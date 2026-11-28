@@ -11,7 +11,7 @@
 use std::task::{Context, Poll};
 use std::time::Duration;
 
-use tonic::body::BoxBody;
+use tonic::body::Body as BoxBody; // tonic 0.14 renamed BoxBody -> Body
 use tonic::codegen::Service;
 use tonic::codegen::http::{HeaderName, Request, Response};
 use tonic::server::NamedService;
@@ -103,14 +103,14 @@ mod tests {
                 .get::<crate::interceptor::ReceiverRpcPath>()
                 .expect("receiver path");
             assert!(path.is_canonical_method());
-            Ok::<_, std::convert::Infallible>(Response::new(tonic::body::empty_body()))
+            Ok::<_, std::convert::Infallible>(Response::new(tonic::body::Body::empty()))
         });
         let mut request = Request::builder()
             .method("POST")
             .uri("/operation.v1.PluginService/CallMethod")
             .version(http::Version::HTTP_2)
             .header("content-type", "application/grpc")
-            .body(tonic::body::empty_body())
+            .body(tonic::body::Body::empty())
             .unwrap();
         request
             .extensions_mut()

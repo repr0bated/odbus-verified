@@ -502,8 +502,8 @@ fn is_valid_duration(duration: &str) -> bool {
     let mut has_time_component = false;
     let mut seen_units = 0u8;
 
-    let date_units = [b'Y', b'M', b'W', b'D'];
-    let time_units = [b'H', b'M', b'S'];
+    let date_units = *b"YMWD";
+    let time_units = *b"HMS";
 
     fn unit_index(units: &[u8], unit: u8) -> Option<usize> {
         units.iter().position(|&u| u == unit)

@@ -26,12 +26,12 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         .filter(|p| std::path::Path::new(p).exists())
         .collect();
 
-    tonic_build::configure()
+    tonic_prost_build::configure()
         .build_server(true)
         .build_client(true)
         .file_descriptor_set_path(out.join("op_chat_descriptor.bin"))
         .out_dir("src/orchestration/proto")
-        .compile(&existing, &["proto"])?;
+        .compile_protos(&existing, &["proto"])?;
 
     for proto_path in &existing {
         println!("cargo:rerun-if-changed={}", proto_path);

@@ -193,7 +193,11 @@ impl StatePlugin for WorkflowsPlugin {
         "2.0.0"
     }
     fn schema(&self) -> Option<PluginSchema> {
-        Some(workflows_schema())
+        Some(workflows_schema().subsidiary(|capability| matches!(
+            capability,
+            "workflows.read"
+                | "workflows.write"
+        )))
     }
     async fn calculate_diff(&self, _current: &Value, _desired: &Value) -> Result<StateDiff> {
         Ok(StateDiff {

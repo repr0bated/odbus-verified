@@ -97,7 +97,10 @@ impl StatePlugin for Fail2banPlugin {
     }
 
     fn schema(&self) -> Option<PluginSchema> {
-        Some(fail2ban_schema())
+        Some(fail2ban_schema().subsidiary(|capability| matches!(
+            capability,
+            "fail2ban.read"
+        )))
     }
 
     async fn calculate_diff(&self, _current: &Value, _desired: &Value) -> Result<StateDiff> {

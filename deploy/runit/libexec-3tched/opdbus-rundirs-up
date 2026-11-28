@@ -3,7 +3,7 @@
 set -eu
 umask 022
 
-install -d -m 0755 /run/opdbus
+install -d -m 0755 /run/opdbus /run/opdbus/tunnel-browser
 # Shared container UDS parent (bind-mounted into assistant/qdrant as /run/ghostbridge)
 install -d -m 0755 /run/ghostbridge
 # Per-container rendezvous dirs. Every container here is NIC-less and

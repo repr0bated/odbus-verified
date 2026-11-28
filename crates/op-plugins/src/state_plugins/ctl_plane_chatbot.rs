@@ -9,13 +9,13 @@
 //! Vectorization spec). This plugin covers REQ-2 (episode record fields)
 //! and REQ-3 (plugin schema registration).
 
+use crate::state_plugins::chat_router::{ChatInput, ChatMessage, ChatOutput};
 use anyhow::Result;
 use async_trait::async_trait;
 use op_state::{
     ApplyResult, Checkpoint, DiffMetadata, PluginCapabilities, StateAction, StateDiff, StatePlugin,
 };
 use op_state_store::PluginSchema;
-use crate::state_plugins::chat_router::{ChatInput, ChatMessage, ChatOutput};
 use serde::{Deserialize, Serialize};
 use simd_json::OwnedValue as Value;
 use simd_json::prelude::*;
@@ -539,7 +539,7 @@ pub struct CtlPlaneChatbotState {
     pub knowledge_truncated: bool,
     #[serde(default = "default_chat_llm_plugin")]
     #[schemars(
-        description = "Reserved legacy field without an active config owner. Native Chat routing is selected through the tched_router contract.",
+        description = "Reserved legacy field without an active config owner. Native Chat routing is selected through the chat_router contract.",
         example = &"large_language_model",
         extend("readOnly" = true),
         extend("x-oscal-subid" = "mut.software.plugin.ctl-plane-chatbot.llm-plugin@v1")
@@ -547,7 +547,7 @@ pub struct CtlPlaneChatbotState {
     pub llm_plugin: String,
     #[serde(default)]
     #[schemars(
-        description = "Reserved legacy field; no chatbot-specific model override is implemented. Native Chat uses tched_router selection.",
+        description = "Reserved legacy field; no chatbot-specific model override is implemented. Native Chat uses chat_router selection.",
         extend("readOnly" = true),
         extend("x-oscal-subid" = "mut.software.plugin.ctl-plane-chatbot.chat-model@v1")
     )]
@@ -695,7 +695,10 @@ impl StatePlugin for CtlPlaneChatbotPlugin {
     fn schema(&self) -> Option<PluginSchema> {
         let mut schema = ctl_plane_chatbot_schema();
         super::common::oscal::ensure_category_metadata_fields(&mut schema);
-        Some(schema)
+        Some(schema.subsidiary(|capability| matches!(
+            capability,
+            "chatbot.read"
+        )))
     }
 
     fn is_available(&self) -> bool {

@@ -1,0 +1,3 @@
+#!/bin/sh
+install -d -o _runit-log -g adm -m 0750 /var/log/runit/lxd
+exec chpst -u _runit-log svlogd -tt /var/log/runit/lxd

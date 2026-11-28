@@ -101,7 +101,10 @@ impl StatePlugin for PrivacyRoutesPlugin {
     }
 
     fn schema(&self) -> Option<op_state_store::PluginSchema> {
-        Some(privacy_routes_schema())
+        Some(privacy_routes_schema().subsidiary(|capability| matches!(
+            capability,
+            "privacy_routes.read"
+        )))
     }
 
     async fn calculate_diff(&self, current: &Value, desired: &Value) -> Result<StateDiff> {

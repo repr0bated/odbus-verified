@@ -11,7 +11,7 @@ use std::{
 };
 
 #[path = "identity_clean_provision/storage.rs"]
-mod storage;
+pub(super) mod storage;
 
 const PLAN_DIR: &str = "/var/lib/op-dbus/identity-provision-plans";
 const PARTITIONED_POOL: &str = "/var/lib/incus/storage-pools/3tched-pool";
@@ -105,13 +105,19 @@ fn canonical_key(key: &str) -> Result<()> {
 
 impl CleanPlan {
     fn native_name(&self) -> Result<&str> {
-        self.instance["name"].as_str().context("clean native name missing")
+        self.instance["name"]
+            .as_str()
+            .context("clean native name missing")
     }
     fn validate(&self) -> Result<()> {
         let native_name = self.native_name()?;
-        ensure!(native_name == CONTROL_PLANE_CHATBOT_CONTAINER || native_name == RESERVED_CHATBOT_CONTAINER
-            || native_name == "3tchedCtlChatbot" || op_cozo_store::is_numbered_native_name(native_name),
-            "invalid clean native name");
+        ensure!(
+            native_name == CONTROL_PLANE_CHATBOT_CONTAINER
+                || native_name == RESERVED_CHATBOT_CONTAINER
+                || native_name == "3tchedCtlChatbot"
+                || op_cozo_store::is_numbered_native_name(native_name),
+            "invalid clean native name"
+        );
         canonical_key(&self.wireguard_pubkey)?;
         ensure!(
             matches!(self.version, 2 | 3 | 4)
@@ -122,28 +128,52 @@ impl CleanPlan {
             "clean adoption is only for the configured chatbot key"
         );
         if self.version == 4 {
-            let layout = self.partitioned_overlay.as_ref().context("partitioned overlay pins absent")?;
+            let layout = self
+                .partitioned_overlay
+                .as_ref()
+                .context("partitioned overlay pins absent")?;
             let root = &layout.root_partition;
             let upgrade = &layout.upgrade_partition;
-            ensure!(self.binding.device_path == format!("{PARTITIONED_POOL}/{native_name}.img")
-                && self.binding.mount_point == format!("{PARTITIONED_POOL}/.mounts/{native_name}/root")
-                && root.start_sector == 2048 && root.sectors >= 2_097_152
-                && root.start_sector.checked_add(root.sectors) == Some(upgrade.start_sector)
-                && upgrade.sectors >= 2_097_152
-                && upgrade.start_sector.checked_add(upgrade.sectors)
-                    == self.leaf_size.checked_div(512).and_then(|sectors| sectors.checked_sub(2048))
-                && self.leaf_size % 512 == 0,
-                "partition geometry or external mount paths differ");
+            ensure!(
+                self.binding.device_path == format!("{PARTITIONED_POOL}/{native_name}.img")
+                    && self.binding.mount_point
+                        == format!("{PARTITIONED_POOL}/.mounts/{native_name}/root")
+                    && root.start_sector == 2048
+                    && root.sectors >= 2_097_152
+                    && root.start_sector.checked_add(root.sectors) == Some(upgrade.start_sector)
+                    && upgrade.sectors >= 2_097_152
+                    && upgrade.start_sector.checked_add(upgrade.sectors)
+                        == self
+                            .leaf_size
+                            .checked_div(512)
+                            .and_then(|sectors| sectors.checked_sub(2048))
+                    && self.leaf_size % 512 == 0,
+                "partition geometry or external mount paths differ"
+            );
             let mut uuids = HashSet::new();
-            for value in [&layout.disk_guid, &root.partuuid, &upgrade.partuuid, &layout.upgrade_fsid,
-                &layout.host_upgrade_fsid, &self.seed_fsid, &self.binding.btrfs_uuid] {
-                ensure!(uuid::Uuid::parse_str(value)?.to_string() == *value && uuids.insert(value),
-                    "partition or filesystem identities are invalid or reused");
+            for value in [
+                &layout.disk_guid,
+                &root.partuuid,
+                &upgrade.partuuid,
+                &layout.upgrade_fsid,
+                &layout.host_upgrade_fsid,
+                &self.seed_fsid,
+                &self.binding.btrfs_uuid,
+            ] {
+                ensure!(
+                    uuid::Uuid::parse_str(value)?.to_string() == *value && uuids.insert(value),
+                    "partition or filesystem identities are invalid or reused"
+                );
             }
-            ensure!(layout.host_upgrade_fsid == "7de8757c-6b8e-43d0-82fc-47e9da564775",
-                "host upgrade identity differs");
+            ensure!(
+                layout.host_upgrade_fsid == "7de8757c-6b8e-43d0-82fc-47e9da564775",
+                "host upgrade identity differs"
+            );
         } else {
-            ensure!(self.partitioned_overlay.is_none(), "legacy plan includes partitioned layout");
+            ensure!(
+                self.partitioned_overlay.is_none(),
+                "legacy plan includes partitioned layout"
+            );
         }
         ensure!(
             self.binding.cozo_id == self.session_id
@@ -195,7 +225,8 @@ impl CleanPlan {
                         "/var/lib/incus/storage-pools/{}/containers/{}/rootfs",
                         self.pool_name, native_name
                     )
-                && (self.version != 4 || self.pool_source == "/var/lib/incus-storage/identity-roots")
+                && (self.version != 4
+                    || self.pool_source == "/var/lib/incus-storage/identity-roots")
                 && self.instance["type"] == "container"
                 && self.instance["status"] == "Stopped"
                 && self.instance["status_code"] == 102,
@@ -291,10 +322,14 @@ impl CleanPlan {
                 "fresh native requires disk-only devices and pinned root"
             );
             if self.version == 4 {
-                ensure!(devices.get("fuse") == Some(&serde_json::json!(
+                ensure!(
+                    devices.get("fuse")
+                        == Some(&serde_json::json!(
                     {"type":"unix-char","source":"/dev/fuse","path":"/dev/fuse"}))
-                    && !devices.contains_key("3tchedfs") && !devices.contains_key("system-bus"),
-                    "partitioned guest must own its FUSE mount without a host bus bind");
+                        && !devices.contains_key("3tchedfs")
+                        && !devices.contains_key("system-bus"),
+                    "partitioned guest must own its FUSE mount without a host bus bind"
+                );
             }
         }
         Ok(())
@@ -315,8 +350,10 @@ impl CleanPlan {
             return Ok(());
         }
         if self.version == 4 {
-            ensure!(fresh_for_provision(expected) || deleted_for_provision(expected),
-                "partitioned adoption requires a fresh key or explicit deletion tombstone");
+            ensure!(
+                fresh_for_provision(expected) || deleted_for_provision(expected),
+                "partitioned adoption requires a fresh key or explicit deletion tombstone"
+            );
             return Ok(());
         }
         let old = expected
@@ -355,8 +392,10 @@ impl CleanPlan {
 }
 
 fn fresh_for_provision(expected: &IdentityRevision) -> bool {
-    expected.revision == 0 && expected.operation_id.is_empty()
-        && expected.record.is_none() && expected.genesis.is_none()
+    expected.revision == 0
+        && expected.operation_id.is_empty()
+        && expected.record.is_none()
+        && expected.genesis.is_none()
 }
 
 fn deleted_for_provision(expected: &IdentityRevision) -> bool {
@@ -390,7 +429,9 @@ async fn native_proof(
 ) -> Result<(storage::StorageGuard, IncusInstance)> {
     let native = IncusRootRepairBackend::local();
     let pinned = renamed.unwrap_or(&plan.instance);
-    let name = pinned["name"].as_str().context("clean current native name absent")?;
+    let name = pinned["name"]
+        .as_str()
+        .context("clean current native name absent")?;
     let (instance, etag) = native.instance(name).await?;
     if strict_stopped {
         ensure!(
@@ -434,15 +475,18 @@ async fn native_proof(
     // Incus moves its own root-volume directory when renaming the same UUID.
     // External leaf/overlay paths still use the original immutable plan name.
     if name != plan.native_name()? {
-        plan.native_root = format!("/var/lib/incus/storage-pools/{}/containers/{name}/rootfs", plan.pool_name);
+        plan.native_root = format!(
+            "/var/lib/incus/storage-pools/{}/containers/{name}/rootfs",
+            plan.pool_name
+        );
     }
     let guard = tokio::task::spawn_blocking(move || storage::verify(&plan)).await??;
     Ok((guard, parsed))
 }
 
 pub(super) struct CleanRootGuard {
-    pub should_start: bool,
-    _storage: storage::StorageGuard,
+    pub(super) should_start: bool,
+    pub(super) _storage: storage::StorageGuard,
 }
 
 pub(super) async fn guard_start(
@@ -450,14 +494,26 @@ pub(super) async fn guard_start(
     revision: &IdentityRevision,
     sled: &ContainerIdentitySled,
 ) -> Result<Option<CleanRootGuard>> {
+    if let Some(guard) = native_upgrade::guard_start(store, revision, sled).await? {
+        return Ok(Some(guard));
+    }
+    if let Some(guard) = native_attachment::guard_start(store, revision, sled).await? {
+        return Ok(Some(guard));
+    }
     let Some(receipt) = receipt(store, &sled.session_id).await? else {
         return Ok(None);
     };
     let plan: CleanPlan = serde_json::from_str(&receipt.provenance_json)?;
     plan.validate()?;
-    let current_receipt = rename::current_instance(store, &sled.session_id, receipt.instance_json.clone()).await?;
+    let current_receipt =
+        rename::current_instance(store, &sled.session_id, receipt.instance_json.clone()).await?;
     let current_native: JsonValue = serde_json::from_str(
-        &rename::current_instance(store, &sled.session_id, serde_json::to_string(&plan.instance)?).await?
+        &rename::current_instance(
+            store,
+            &sled.session_id,
+            serde_json::to_string(&plan.instance)?,
+        )
+        .await?,
     )?;
     ensure!(
         revision.revision >= receipt.committed_revision
@@ -498,7 +554,11 @@ pub(super) async fn observe_power(
     let instance = snapshot
         .instances
         .iter()
-        .find(|instance| sled.instance.as_ref().is_some_and(|stored| instance.name == stored.name))
+        .find(|instance| {
+            sled.instance
+                .as_ref()
+                .is_some_and(|stored| instance.name == stored.name)
+        })
         .context("clean native power readback absent")?
         .clone();
     ensure!(
@@ -519,6 +579,10 @@ pub(super) async fn provision(
     _request_operation: &str,
     preflight: bool,
 ) -> Result<JsonValue> {
+    if input.creation_mode != op_plugins::state_plugins::identity_sled::ContainerCreationMode::ReplaceChatbot {
+        return native_attachment::provision(engine, store, actor, input, seal, preflight).await;
+    }
+    ensure!(input.parent_principal_id.is_none(), "chatbot replacement has no parent authority");
     canonical_key(&input.wireguard_pubkey)?;
     let sid = op_identity::session::derive_session_id(&input.wireguard_pubkey);
     ensure!(
@@ -543,7 +607,8 @@ pub(super) async fn provision(
     ensure!(
         old.as_ref()
             .is_some_and(|old| old.wireguard_pubkey == input.wireguard_pubkey)
-            || deleted_for_provision(&expected) || fresh_for_provision(&expected),
+            || deleted_for_provision(&expected)
+            || fresh_for_provision(&expected),
         "clean provision requires the existing key or its explicit deletion tombstone"
     );
     if preflight {
@@ -604,9 +669,11 @@ pub(super) async fn provision(
             "replay plan changed"
         );
         let old = old.context("clean replay record missing")?;
-        engine.retain(guard_start(store, &expected, &old)
-            .await?
-            .context("clean replay storage receipt missing")?);
+        engine.retain(
+            guard_start(store, &expected, &old)
+                .await?
+                .context("clean replay storage receipt missing")?,
+        );
         seed_provision::admit(
             engine,
             store,
@@ -690,4 +757,3 @@ pub(super) async fn provision(
         serde_json::json!({"identity":identity,"plan_sha256":input.plan_sha256,"operation_id":operation,"committed_revision":committed_revision,"replayed":false}),
     )
 }
-

@@ -227,7 +227,19 @@ impl StatePlugin for CozoPlugin {
     fn schema(&self) -> Option<PluginSchema> {
         let mut schema = cozo_schema();
         super::common::oscal::ensure_category_metadata_fields(&mut schema);
-        Some(schema)
+        Some(schema.subsidiary(|capability| matches!(
+            capability,
+            "cap.data.cozo.backup.create@v1"
+                | "cap.data.cozo.backup.restore@v1"
+                | "cap.data.cozo.query.run@v1"
+                | "cap.data.cozo.relation.describe@v1"
+                | "cap.data.cozo.relations.export@v1"
+                | "cap.data.cozo.relations.import@v1"
+                | "cap.data.cozo.relations.list@v1"
+                | "cap.data.cozo.system-graph.read@v1"
+                | "cap.data.cozo.system-graph.refresh@v1"
+                | "cap.data.cozo.system-graph.write@v1"
+        )))
     }
 
     async fn calculate_diff(&self, _current: &Value, _desired: &Value) -> Result<StateDiff> {

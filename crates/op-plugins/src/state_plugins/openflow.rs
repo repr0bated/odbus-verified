@@ -940,7 +940,10 @@ impl StatePlugin for OpenFlowPlugin {
     }
 
     fn schema(&self) -> Option<op_state_store::PluginSchema> {
-        Some(openflow_schema())
+        Some(openflow_schema().subsidiary(|capability| matches!(
+            capability,
+            "openflow.read"
+        )))
     }
 
     fn is_available(&self) -> bool {

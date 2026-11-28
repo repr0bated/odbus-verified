@@ -48,9 +48,9 @@ opencode
 # decoy's user-facing 10.0.0.1 VIP reaches the host through the WARP/Xray leg.
 mkdrt
 zeroclaw
-threetched-fs-native
+3tched-fs-native
 # Host FUSE mounts are owned by fstab and the post-release rcS hook.
-threetched-fs
+3tched-fs
 
 # Incus cozo container. Host Cozo stores under /var/lib/op-dbus are opened by
 # op-grpc-bridge. The container disk only held chat-memory-rocksdb, copied to

@@ -32,7 +32,7 @@ pub(crate) async fn search(
     let (embedding_model, hits) = tokio::time::timeout(
         std::time::Duration::from_secs(45),
         op_cognitive::chain_vectors::search_session_events(
-            &input.query, caller.actor_id, &session, input.limit.unwrap_or(10),
+            &input.query, caller.actor_id, &session, input.limit.unwrap_or(10), None,
         ),
     ).await.context("evidence search timed out")??;
     ensure!(scope(engine, caller).await? == session, "evidence scope changed during search");

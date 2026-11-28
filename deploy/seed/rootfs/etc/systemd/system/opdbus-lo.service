@@ -1,0 +1,15 @@
+[Unit]
+Description=Container loopback address for the gRPC door
+# Owner rule: dbus first, then both FUSE units, then everything else.
+# network-pre.target is passive (nothing pulls it in), so it does not order.
+After=network-pre.target dbus.service 3tchedfs.service threetchedfs.service
+Before=op-grpc-bridge.service
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/usr/sbin/ip link set lo up
+ExecStart=/usr/sbin/ip addr replace 10.0.0.2/32 dev lo
+
+[Install]
+WantedBy=multi-user.target

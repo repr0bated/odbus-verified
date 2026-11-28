@@ -1,0 +1,13 @@
+[Unit]
+Description=Hold the shared door socket and splice the host door into this container's door
+After=op-grpc-bridge.service
+StartLimitIntervalSec=0
+
+[Service]
+Type=simple
+ExecStart=/usr/local/libexec/op-dbus/tunnel-door-run
+Restart=always
+RestartSec=2s
+
+[Install]
+WantedBy=multi-user.target

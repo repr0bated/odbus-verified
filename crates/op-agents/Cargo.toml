@@ -22,6 +22,7 @@ path = "src/bin/gen-agent-defs.rs"
 # Internal crates
 op-core = { workspace = true }
 op-http = { workspace = true }
+op-state-store = { path = "../op-state-store" }
 
 # Async runtime
 tokio = { workspace = true }
@@ -29,12 +30,14 @@ async-trait = { workspace = true }
 futures = { workspace = true }
 
 # Serialization
-serde = { workspace = true }
+serde = { workspace = true, features = ["rc"] }
 simd-json = { workspace = true }
 serde_json = { workspace = true }
 serde_yaml = { workspace = true }
 toml = { workspace = true }
 jsonschema = { workspace = true }
+schemars = { workspace = true }
+sha2 = { workspace = true }
 
 # Error handling
 anyhow = { workspace = true }

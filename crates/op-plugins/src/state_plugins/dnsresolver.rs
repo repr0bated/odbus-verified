@@ -88,7 +88,10 @@ impl StatePlugin for DnsResolverPlugin {
     }
 
     fn schema(&self) -> Option<PluginSchema> {
-        Some(dnsresolver_schema())
+        Some(dnsresolver_schema().subsidiary(|capability| matches!(
+            capability,
+            "dnsresolver.read"
+        )))
     }
 
     async fn calculate_diff(&self, _current: &Value, desired: &Value) -> Result<StateDiff> {
@@ -265,9 +268,12 @@ async fn query_manager_state() -> Result<Vec<DnsItem>> {
         id: "manager".into(),
         mode: Mode::ObserveOnly,
         servers,
-        search: Some(domains.into_iter()
-            .filter_map(|(_, domain, route_only)| (!route_only).then_some(domain))
-            .collect()),
+        search: Some(
+            domains
+                .into_iter()
+                .filter_map(|(_, domain, route_only)| (!route_only).then_some(domain))
+                .collect(),
+        ),
         options: None,
     }])
 }

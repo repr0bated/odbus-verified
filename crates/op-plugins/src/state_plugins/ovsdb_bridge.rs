@@ -387,7 +387,10 @@ impl StatePlugin for OvsBridgePlugin {
     }
 
     fn schema(&self) -> Option<op_state_store::PluginSchema> {
-        Some(ovsdb_bridge_schema())
+        Some(ovsdb_bridge_schema().subsidiary(|capability| matches!(
+            capability,
+            "ovsdb.read"
+        )))
     }
 
     fn is_available(&self) -> bool {

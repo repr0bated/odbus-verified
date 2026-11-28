@@ -1,0 +1,6 @@
+#!/bin/sh
+exec 2>&1
+svc=${PWD%/log}; svc=${svc##*/}
+case $svc in ct-egress-bpf-[A-Za-z0-9-]*) ;; *) echo "ct-egress-bpf log: unexpected service dir $PWD" >&2; exit 1 ;; esac
+install -d -o root -g adm -m 0750 "/var/log/$svc"
+exec svlogd -tt "/var/log/$svc"

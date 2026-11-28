@@ -93,19 +93,15 @@ pub fn create_router(state: Arc<AppState>) -> Router {
             post(handlers::chat_router::chat_router_chat_stream_handler),
         )
         .route(
-            "/tched-router/chat",
+            "/threetched/chat",
             post(handlers::chat_router::chat_router_chat_handler),
         )
         .route(
-            "/tched-router/chat/stream",
+            "/threetched/chat/stream",
             post(handlers::chat_router::chat_router_chat_stream_handler),
         )
         .route(
-            "/tched-router/schema",
-            get(handlers::chat_router::chat_router_schema_handler),
-        )
-        .route(
-            "/tched_router/schema",
+            "/threetched/schema",
             get(handlers::chat_router::chat_router_schema_handler),
         )
         // Plugin identity endpoints — model-agnostic, sealed SHM blob catalog
@@ -331,8 +327,7 @@ pub fn create_router(state: Arc<AppState>) -> Router {
         .nest("/groups-admin", groups_admin::create_groups_admin_router())
         .nest("/admin", admin::admin_routes());
 
-    // Serve the pinned Lovable dashboard while keeping `/api` and websocket
-    // routes on this origin. Client-side routes fall back to index.html.
+    // Compliance moved to the door Axum stack (op-grpc-bridge :8090).
     let static_dir = std::env::var("OP_WEB_STATIC_DIR")
         .unwrap_or_else(|_| "/usr/local/share/op-dbus/dashboard-release".to_string());
     let spa =

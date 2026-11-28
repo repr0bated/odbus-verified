@@ -576,7 +576,11 @@ impl StatePlugin for UsersPlugin {
         "2.0.0"
     }
     fn schema(&self) -> Option<PluginSchema> {
-        Some(users_schema())
+        Some(users_schema().subsidiary(|capability| matches!(
+            capability,
+            "users.read"
+                | "users.write"
+        )))
     }
     async fn calculate_diff(&self, _: &Value, _: &Value) -> Result<StateDiff> {
         Ok(StateDiff {

@@ -32,7 +32,15 @@ impl StatePlugin for SchemaTagRegistryPlugin {
         "1.0.0"
     }
     fn schema(&self) -> Option<PluginSchema> {
-        Some(schema_tag_registry_schema())
+        Some(schema_tag_registry_schema().subsidiary(|capability| matches!(
+            capability,
+            "cap.governance.schema-tag-registry.marker.set@v1"
+                | "cap.governance.schema-tag-registry.policy.author@v1"
+                | "cap.governance.schema-tag-registry.policy.revoke@v1"
+                | "cap.governance.schema-tag-registry.policy.update@v1"
+                | "cap.governance.schema-tag-registry.read@v1"
+                | "cap.governance.schema-tag-registry.tag.register@v1"
+        )))
     }
     async fn calculate_diff(&self, _: &Value, _: &Value) -> Result<StateDiff> {
         bail!("schema_tag_registry state changes use admitted methods")

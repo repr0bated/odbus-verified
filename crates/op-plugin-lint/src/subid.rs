@@ -1,56 +1,14 @@
-//! Standalone subid taxonomy check (mirrors `op-plugins` oscal helpers).
-//! Kept local so this crate builds without the zbus workspace patch.
+//! Subid taxonomy check. The taxonomy is owned by the OSCAL subid registry
+//! plugin and defined once in `op-oscal-subid` (no zbus, so this crate still
+//! builds without the workspace patch).
 
-use regex::Regex;
-use std::sync::OnceLock;
-
-const CATEGORIES: &[&str] = &["src", "prj", "sch", "mut", "obs", "evt", "exp"];
-
-const COMPONENT_TYPES: &[&str] = &[
-    "this-system",
-    "system",
-    "interconnection",
-    "software",
-    "hardware",
-    "service",
-    "policy",
-    "physical",
-    "process-procedure",
-    "plan",
-    "guidance",
-    "standard",
-    "validation",
-    // internal. `network` is local; OSCAL has no network component type.
-    "network",
-    "agent",
-    "container",
-    "data",
-    "privacy",
-    "security",
-    "storage",
-    "lxd",
-    // aliases
-    "ui",
-    "llm",
-    "agents",
-];
-
+/// Validate a subid against the canonical taxonomy.
+///
+/// Delegates to [`op_oscal_subid::validate_subid`]; only the error text is
+/// kept in this crate's historical form.
 pub fn validate_subid(subid: &str) -> Result<(), String> {
-    static RE: OnceLock<Regex> = OnceLock::new();
-    let re = RE.get_or_init(|| {
-        let segment = r"[a-z0-9]+(?:[-_][a-z0-9]+)*";
-        let pat = format!(
-            r"^({})\.({})\.{segment}\.{segment}(?:\.{segment}){{0,2}}(?:@v[1-9][0-9]*)?$",
-            CATEGORIES.join("|"),
-            COMPONENT_TYPES.join("|"),
-        );
-        Regex::new(&pat).expect("subid regex")
-    });
-    if re.is_match(subid) {
-        Ok(())
-    } else {
-        Err(format!("subid does not match required pattern: {subid}"))
-    }
+    op_oscal_subid::validate_subid(subid)
+        .map_err(|_| format!("subid does not match required pattern: {subid}"))
 }
 
 /// Known `x-*` extension keys the render contract recognizes.

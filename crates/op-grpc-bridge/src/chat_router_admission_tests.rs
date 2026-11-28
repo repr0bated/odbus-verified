@@ -1,4 +1,3 @@
-//! Prior name: tched_router_admission_tests.
 use super::*;
 use crate::human_principal_dispatch::tests::{
     pk, register, temp_cozo, temp_shm_with_schemas, test_engine,

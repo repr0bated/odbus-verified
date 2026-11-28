@@ -1,0 +1,4 @@
+#!/bin/sh
+set -eu
+install -d -m 0750 /var/log/runit/cozo-ublk-lxd
+exec svlogd -tt /var/log/runit/cozo-ublk-lxd

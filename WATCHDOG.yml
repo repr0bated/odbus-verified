@@ -1,6 +1,6 @@
 advisors:
   - name: default
-    model: salad/qwen3.6-35b-a3b:high
+    model: opencode-go/kimi-k3.1-pro:high
     tools:
       - read
       - security_scan

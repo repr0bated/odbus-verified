@@ -1,0 +1,64 @@
+#!/bin/sh
+set -eu
+PATH=/usr/sbin:/usr/bin:/sbin:/bin
+export PATH
+exec 2>&1
+# A user-space block device server must not be OOM-killed: losing it turns
+# the mounted Btrfs read-only (2026-11-25 20:47). The daemon inherits this.
+echo -1000 > /proc/self/oom_score_adj
+die() { printf 'cozo-ublk-500g: %s\n' "$*" >&2; exit 1; }
+bootstrap=/usr/local/libexec/opdbus-ublk
+dev=/dev/ublkb3
+mountpoint=/mnt/cozo-btrfs-500g
+pool=/var/lib/incus/storage-pools/3tched-pool
+export OP_UBLK_COZO_DB_PATH=/var/lib/op-dbus/ublk-500g UBLK_DEVICE=pool-default-persist UBLK_DEV_ID=3
+read -r OP_UBLK_DEBUG < /etc/op-dbus/env/OP_UBLK_DEBUG
+read -r OP_UBLK_NO_COMPRESSION < /etc/op-dbus/env/OP_UBLK_NO_COMPRESSION
+export OP_UBLK_DEBUG OP_UBLK_NO_COMPRESSION
+[ "$OP_UBLK_NO_COMPRESSION" = 0 ] || die 'expected CBLK payload compression'
+[ -f "$OP_UBLK_COZO_DB_PATH/data/CURRENT" ] || die 'existing RocksDB store is absent'
+[ "$(findmnt -rn -T "$OP_UBLK_COZO_DB_PATH" -o FSTYPE)" = ext4 ] || die 'RocksDB backing is not on ext4'
+sha256sum --strict --check --quiet "$bootstrap/manifest.sha256"
+if [ "$OP_UBLK_DEBUG" = 1 ]; then modprobe ublk_drv dyndbg=+p; else modprobe ublk_drv; fi
+[ ! -b "$dev" ] && [ ! -c /dev/ublkc3 ] || die 'device ID 3 is already in use'
+[ ! -L "$mountpoint" ] && ! mountpoint -q "$mountpoint" || die 'mountpoint is occupied'
+unshare --mount "$bootstrap/cozo-ublk" &
+daemon=$!
+mounted_by_service=no
+stop() {
+    trap '' TERM INT
+    if [ "$mounted_by_service" = yes ]; then
+        while mountpoint -q "$pool"; do
+            case "$(findmnt -rn -M "$pool" -o SOURCE)" in
+                '/dev/ublkb3[/3tched-pool]') ;;
+                *) printf 'cozo-ublk-500g: unexpected Incus pool mount; waiting\n' >&2; sleep 5; continue ;;
+            esac
+            sv -w 30 down incus && umount "$pool" || sleep 5
+        done
+        until umount "$mountpoint"; do sleep 5; done
+    fi
+    kill -TERM "$daemon" 2>/dev/null || :
+    wait "$daemon" 2>/dev/null || :
+    exit 0
+}
+trap stop TERM INT
+i=0
+until [ -b "$dev" ]; do
+    kill -0 "$daemon" 2>/dev/null || die 'daemon exited before creating the device'
+    if [ "$i" -ge 80 ]; then die 'device did not appear'; fi
+    sleep .25
+    i=$((i+1))
+done
+if [ "$(timeout 15 blkid -p -s UUID -o value "$dev")" != b6a13d79-ed2d-4057-8d0c-252fb7947f94 ]; then
+    kill -TERM "$daemon" 2>/dev/null || :
+    wait "$daemon" 2>/dev/null || :
+    die 'unexpected Btrfs filesystem UUID'
+fi
+if ! mount -t btrfs -o noatime,nodiscard "$dev" "$mountpoint"; then
+    kill -TERM "$daemon" 2>/dev/null || :
+    wait "$daemon" 2>/dev/null || :
+    die 'mount failed'
+fi
+mounted_by_service=yes
+printf 'cozo-ublk-500g: mounted %s at %s\n' "$dev" "$mountpoint"
+wait "$daemon"

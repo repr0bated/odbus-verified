@@ -36,7 +36,7 @@ google-cloud-sdk/
 # Local built artifacts
 deploy/bin/
 *.tar.gz
-!vendor/tched-router/source.tar.gz
+!vendor/threetched/source.tar.gz
 !vendor/vercel-json-render-ui/source.tar.gz
 backup.tar.gz
 
@@ -44,6 +44,7 @@ backup.tar.gz
 wgcf-profile.conf
 client_secret*.json
 .env*
+!.env.example
 /odbus.env
 
 # Operation Dashboard UI submodule (if excluded)
@@ -95,7 +96,8 @@ techops/
 # Editor/patch artifacts never belong next to verified source
 *.bak
 *.patch
-!vendor/tched-router/patches/*.patch
+!vendor/threetched/patches/*.patch
+!/deploy/release/lifetime/0001-btrfs-quiescent-destroy.patch
 *.backup
 *.copied
 *.stub
@@ -123,3 +125,21 @@ blob.bin
 
 # Private hackathon conversation and tool-use archive. Transcripts stay local.
 /hackathon2026/
+
+# Worker scratch and side build dirs (never source)
+.superpowers/
+.tmp-threetched-config/
+target-*/
+
+# Keys, tokens and store secrets never go in git (scripts/secret-guard.sh enforces)
+*.key
+*.pem
+*.p12
+*.pfx
+*.age
+*.token
+id_rsa*
+id_ed25519*
+**/secrets/
+**/etc/op-dbus/env
+mcp_token

@@ -1,0 +1,1 @@
+{"status":"success","data":{"startTime":"2026-11-22T08:58:52.32474185Z","CWD":"/etc/sv/prometheus","hostname":"antix1","serverTime":"2026-11-22T09:30:59.999676956Z","reloadConfigSuccess":true,"lastConfigTime":"2026-11-22T08:58:52Z","corruptionCount":0,"goroutineCount":41,"GOMAXPROCS":16,"GOMEMLIMIT":30280130150,"GOGC":"75","GODEBUG":"","storageRetention":"30d"}}

@@ -9,7 +9,7 @@ the container's verified identity and grants determine what the agent can do.
 - `user/`: an initially blank `USER.md` preference template for this identity.
 - `memory/`: access to cognitive MCP memory through identity-bound 3tchedFS
   operations; `MEMORY.md` documents that integration, not a separate note store.
-- `skills/`: integration with the existing tched-router skill owner; no separate
+- `skills/`: integration with the existing threetched skill owner; no separate
   copied skill registry. See its README for the current integration limits.
 
 The soul and shared directories are read-only Btrfs subvolumes. Rules and user

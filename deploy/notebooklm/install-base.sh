@@ -20,7 +20,7 @@ PATH=/usr/sbin:/usr/bin:/sbin:/bin
 export PATH
 umask 022
 
-SCRIPT_DIR=$(CDPATH= cd -- "$(dirname -- "$(readlink -f "$0")")" && pwd)
+SCRIPT_DIR=$(CDPATH='' cd -- "$(dirname -- "$(readlink -f "$0")")" && pwd)
 VERSION_FILE="$SCRIPT_DIR/../config/notebooklm-mcp.version"
 ARTIFACT_CACHE_DIR=${OP_ARTIFACT_CACHE_DIR:-/var/cache/op-dbus/source-artifacts}
 ROOT=/usr/local/lib/opdbus-notebooklm

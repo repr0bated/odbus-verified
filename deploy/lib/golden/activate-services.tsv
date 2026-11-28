@@ -1,0 +1,22 @@
+# Golden activation table: runit services whose binary comes from the live
+# release slot. Columns (tab separated):
+#   service  release-binary  install-path(the path the run script execs)  health
+# health: stable:N   = `sv -w 30 restart` succeeds (runs ./check if present)
+#                      and the service pid is unchanged and "run" N seconds later
+# Services listed here are swapped only if they are ENABLED on the host
+# (/etc/runit/runsvdir/default/<service>) and their run script references the
+# install path. Activation never starts or enables a service.
+# Hard exclusions (3tched-fs, threetched*, cozo-ublk*,
+# zeroclaw*, sddm*, XanMod kernel) are enforced in activate.sh, not here.
+op-mcp-door	op-mcp-door	/usr/local/bin/op-mcp-door	stable:5
+op-chat-responder	op-chat-responder	/usr/local/bin/op-chat-responder	stable:5
+op-of-controller	op-of-controller	/usr/local/bin/op-of-controller	stable:5
+op-grpc-bridge	op-grpc-bridge	/usr/local/libexec/op-dbus/bin/op-grpc-bridge	stable:5
+op-web	op-web-server	/usr/local/libexec/op-dbus/bin/op-web-server	stable:5
+op-runit-systemctl	op-runit-systemctl	/usr/local/libexec/op-dbus/bin/op-runit-systemctl	stable:5
+opdbus-grants	op-grants-materializer	/usr/local/libexec/op-dbus/bin/op-grants-materializer	stable:5
+ovs-vswitchd	op-ovsbr0-setup	/usr/local/bin/op-ovsbr0-setup	stable:5
+3tched-fs	3tched-fs	/usr/local/libexec/op-dbus/bin/3tched-fs	excluded
+threetched-fs	3tched-fs	/usr/local/libexec/op-dbus/bin/3tched-fs	excluded
+subsidiary-hackathon-3tchedfs	3tched-fs	/usr/local/libexec/op-dbus/bin/3tched-fs	excluded
+cozo-ublk	cozo-ublk	/opt/cozo-ublk/cozo-ublk	excluded

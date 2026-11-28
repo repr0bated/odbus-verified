@@ -20,7 +20,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         "proto/transport/internet/tls/config.proto",
     ];
 
-    tonic_build::configure()
+    tonic_prost_build::configure()
         // The server types support isolated mock-transport tests. No upstream
         // HandlerService is registered on the public OP-DBUS listener.
         .build_server(true)

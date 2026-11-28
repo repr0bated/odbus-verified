@@ -48,7 +48,7 @@ ip_json -j -4 route get "$ssh_host" uid "$owner" ipproto tcp dport "$ssh_port" |
 ' >/dev/null || fail 'SSH outer destination is not routed through MASQUE'
 # Inspect authoritative rules through the guard owner's exact readback check,
 # including refusal of additional rules that could bypass the intended drop.
-script_dir=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
+script_dir=$(CDPATH='' cd -- "$(dirname -- "$0")" && pwd)
 "$script_dir/guard.sh" check || fail 'exact SSH carrier leak guard cannot be verified'
 set -- ssh -F /dev/null -4 -N -T -w "$tun_id:$remote_tun_id" \
  -o Tunnel=point-to-point -o BatchMode=yes -o IdentitiesOnly=yes \

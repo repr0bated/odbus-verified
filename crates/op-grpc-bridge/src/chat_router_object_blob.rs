@@ -1,4 +1,3 @@
-//! Prior name: tched_router_object_blob.
 //! chat_router D-Bus + gRPC object blob prototype.
 //!
 //! This is the copy-forward shape for coupling D-Bus identity, plugin schema

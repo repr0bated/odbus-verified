@@ -37,7 +37,7 @@ The UI is **derived from the blobs**, never written against a separate API:
 | Screens | Rendered from a plugin's **sealed schema** (`schema_renderer.render_schema`) — a new method's blob gives it a form and result view automatically |
 | Components | Only components declared in the catalog sealed in the `json_render` blob; a generated spec is **validated against that catalog** before it is shown |
 | Actions | Call the **same sealed method** for whoever is acting: a human through the door (the one generic `PluginService/CallMethod`, with their own credential); the identity through its mount's call file. Same blob, same capability check, same receipt |
-| Results | Every action shows its **receipt** (operation id, outcome, capability) — and a refusal shows the missing capability |
+| Results | The chatbot is the UI: nothing reaches the human until the chatbot renders it. Every action shows its **receipt** (operation id, outcome); a refusal shows that the call was refused. The chatbot never renders capabilities (names, identifiers, grant lists, `required_capability`). Ungranted operations it renders appear as present but not runnable (see `docs/FUSEFS.md` §12.1) |
 
 So a new method needs no UI code to appear: seal the blob, and the UI can
 render and call it. Hand-written UI is only for composition and the

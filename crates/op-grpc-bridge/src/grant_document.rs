@@ -4,6 +4,7 @@ pub const GRANT_GROUPS: &[&str] = &[
     "$ROOT",
     "$ADMIN",
     "$SUPERADMIN",
+    "$SUBSIDIARY",
     "$EXTERNAL-MCP",
     "$VENDOR",
     "$GUEST",
@@ -50,6 +51,7 @@ pub fn validated_grant_entries(
     if grant_document_rejected(entries.keys()) {
         return Err("prohibited wildcard, legacy footprint, or unknown group key".to_string());
     }
+    let mut has_chatbot_owner = false;
     for (key, entry) in entries {
         let entry = entry
             .as_object()
@@ -79,6 +81,23 @@ pub fn validated_grant_entries(
         {
             return Err(format!("display_alias for {key} must be a string"));
         }
+        if let Some(target) = entry.get("owned_chatbot_principal_id") {
+            let valid_principal = |id: &str| {
+                uuid::Uuid::parse_str(id).is_ok_and(|parsed| parsed.to_string() == id)
+            };
+            let target = target
+                .as_str()
+                .ok_or_else(|| format!("chatbot target for {key} must be a principal ID"))?;
+            if has_chatbot_owner
+                || !valid_principal(key)
+                || !valid_principal(target)
+                || key == target
+                || !entries.contains_key(target)
+            {
+                return Err("chatbot ownership requires one distinct owner and target principal".into());
+            }
+            has_chatbot_owner = true;
+        }
         if key.starts_with('$') {
             if entry.contains_key("groups") {
                 return Err(format!("group {key} cannot belong to another group"));
@@ -107,6 +126,17 @@ pub fn validated_grant_entries(
         }
     }
     Ok(entries)
+}
+
+pub(crate) fn chatbot_owner(
+    document: &serde_json::Value,
+) -> Result<Option<(&str, &str)>, String> {
+    let entries = validated_grant_entries(document)?;
+    Ok(entries.iter().find_map(|(principal, entry)| {
+        entry["owned_chatbot_principal_id"]
+            .as_str()
+            .map(|target| (principal.as_str(), target))
+    }))
 }
 
 /// Parse one principal's grants from a document of principals and groups.
@@ -170,7 +200,24 @@ pub fn capabilities_for_principal(
 
 #[cfg(test)]
 mod tests {
-    use super::{capabilities_for_principal, validate_grant_document};
+    use super::{capabilities_for_principal, chatbot_owner, validate_grant_document};
+
+    #[test]
+    fn chatbot_ownership_is_unique_and_adds_no_ambient_capabilities() {
+        const HUMAN: &str = "11111111-1111-4111-8111-111111111111";
+        const CHATBOT: &str = "22222222-2222-4222-8222-222222222222";
+        const OTHER: &str = "33333333-3333-4333-8333-333333333333";
+        let mut document = serde_json::json!({
+            (HUMAN): {"capabilities": [], "owned_chatbot_principal_id": CHATBOT},
+            (CHATBOT): {"capabilities": []}
+        });
+        assert_eq!(chatbot_owner(&document), Ok(Some((HUMAN, CHATBOT))));
+        assert!(capabilities_for_principal(&document, HUMAN).is_empty());
+
+        document[OTHER] =
+            serde_json::json!({"capabilities": [], "owned_chatbot_principal_id": CHATBOT});
+        assert!(chatbot_owner(&document).is_err());
+    }
 
     #[test]
     fn accepts_exact_principals_and_declared_groups() {

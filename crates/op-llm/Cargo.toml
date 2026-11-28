@@ -9,7 +9,7 @@ description = "LLM provider integration with dynamic model discovery for Hugging
 [dependencies]
 serde_json = { workspace = true }
 google-cloud-auth = "1.15"
-# Single schema source: the tched_router plugin owns the LLM schema; op-llm embeds
+# Single schema source: the chat_router plugin owns the LLM schema; op-llm embeds
 # it (see src/schema.rs) instead of defining a divergent copy.
 op-plugins = { path = "../op-plugins" }
 op-state-store = { path = "../op-state-store" }

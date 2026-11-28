@@ -28,12 +28,12 @@
 //! snapshot) that already holds the vectors.
 
 use anyhow::{Context, Result};
-use op_cozo_store::CozoGraphShuttle;
+use op_cozo_store::{CozoGraphShuttle, PointIndexEntry, VOYAGE_POINT_DIM, VOYAGE_POINT_FAMILY};
 use op_snowball::btrfs_delta;
 use op_snowball::{ChainBlockRef, StreamingSnowball};
 use qdrant_client::qdrant::{
-    CreateCollectionBuilder, Distance, GetPointsBuilder, PointId, PointStruct, QueryPointsBuilder,
-    ScoredPoint, UpsertPointsBuilder, VectorParamsBuilder, Condition, Filter,
+    Condition, CreateCollectionBuilder, Distance, Filter, GetPointsBuilder, PointId, PointStruct,
+    QueryPointsBuilder, ScoredPoint, UpsertPointsBuilder, VectorParamsBuilder,
 };
 use qdrant_client::{Payload, Qdrant, QdrantError};
 use serde::Serialize;
@@ -62,25 +62,35 @@ const INDEXED_BLOCK_FILE: &str = ".vector-index-block";
 /// cannot split publication; readers only open the final checkpoint path.
 async fn publish_checkpoint(path: PathBuf, content: Vec<u8>) -> Result<()> {
     tokio::task::spawn_blocking(move || -> Result<()> {
-        let parent = path.parent().filter(|p| !p.as_os_str().is_empty())
+        let parent = path
+            .parent()
+            .filter(|p| !p.as_os_str().is_empty())
             .unwrap_or_else(|| Path::new("."));
         let temporary = parent.join(format!(".vector-checkpoint-{}.tmp", uuid::Uuid::new_v4()));
         let mut file = std::fs::OpenOptions::new()
-            .write(true).create_new(true).mode(0o600).open(&temporary)
+            .write(true)
+            .create_new(true)
+            .mode(0o600)
+            .open(&temporary)
             .context("create checkpoint temporary file")?;
         let result = (|| -> Result<()> {
-            file.write_all(&content).context("write complete checkpoint")?;
+            file.write_all(&content)
+                .context("write complete checkpoint")?;
             file.sync_all().context("sync checkpoint contents")?;
             drop(file);
             std::fs::rename(&temporary, &path).context("atomically replace checkpoint")?;
-            std::fs::File::open(parent)?.sync_all().context("sync checkpoint directory")?;
+            std::fs::File::open(parent)?
+                .sync_all()
+                .context("sync checkpoint directory")?;
             Ok(())
         })();
         if result.is_err() {
             let _ = std::fs::remove_file(&temporary);
         }
         result
-    }).await.context("checkpoint publication task failed")?
+    })
+    .await
+    .context("checkpoint publication task failed")?
 }
 
 /// Decides what of a block is signal. The bridge supplies the sealed plugin
@@ -168,6 +178,10 @@ pub struct VectorMeta {
     pub host_load: HostLoad,
     /// Which policy rendered the text (`schema` or `flatten`).
     pub policy: String,
+    #[serde(default)]
+    pub model_family: Option<String>,
+    #[serde(default)]
+    pub dimensions: Option<usize>,
 }
 
 pub struct ChainVectorIndex {
@@ -189,26 +203,159 @@ pub async fn search_session_events(
     actor_id: &str,
     session_id: &str,
     limit: u32,
+    selected_collection: Option<&str>,
 ) -> Result<(String, Vec<ScoredPoint>)> {
-    anyhow::ensure!(!actor_id.is_empty() && !session_id.is_empty(), "verified event search scope is required");
-    anyhow::ensure!(!query.trim().is_empty() && query.len() <= 4000, "event search query must contain 1 to 4000 bytes");
-    anyhow::ensure!((1..=20).contains(&limit), "event search limit must be between 1 and 20");
+    anyhow::ensure!(
+        !actor_id.is_empty() && !session_id.is_empty(),
+        "verified event search scope is required"
+    );
+    anyhow::ensure!(
+        !query.trim().is_empty() && query.len() <= 4000,
+        "event search query must contain 1 to 4000 bytes"
+    );
+    anyhow::ensure!(
+        (1..=20).contains(&limit),
+        "event search limit must be between 1 and 20"
+    );
     let voyage = VoyageClient::new()?;
     let embedding = voyage.embed(query, Some("query")).await?;
-    let collection = std::env::var("OPDBUS_QDRANT_SNOWBALL_COLLECTION")
-        .unwrap_or_else(|_| DEFAULT_COLLECTION.to_string());
+    let collection = selected_collection.map(str::to_owned).unwrap_or_else(|| {
+        std::env::var("OPDBUS_QDRANT_SNOWBALL_COLLECTION")
+            .unwrap_or_else(|_| DEFAULT_COLLECTION.to_string())
+    });
     let client = Qdrant::from_url(&qdrant_url()).build()?;
-    let response = client.query(
-        QueryPointsBuilder::new(collection)
-            .query(embedding)
-            .filter(Filter::must([
-                Condition::matches("actor_id", actor_id.to_owned()),
-                Condition::matches("session_id", session_id.to_owned()),
-            ]))
-            .limit(u64::from(limit))
-            .with_payload(true),
-    ).await.context("canonical event index search failed")?;
+    let response = client
+        .query(
+            QueryPointsBuilder::new(collection)
+                .query(embedding)
+                .filter(Filter::must([
+                    Condition::matches("actor_id", actor_id.to_owned()),
+                    Condition::matches("session_id", session_id.to_owned()),
+                ]))
+                .limit(u64::from(limit))
+                .with_payload(true),
+        )
+        .await
+        .context("canonical event index search failed")?;
     Ok((voyage.model().to_owned(), response.result))
+}
+
+/// One entry of an identity's sled ledger, ready to embed. `text` is already
+/// filtered by the sealed schema that created the event (no secret or private
+/// fields); `payload` carries the allow-listed provenance fields.
+pub struct LedgerPoint {
+    pub event_hash: String,
+    pub text: String,
+    pub payload: serde_json::Map<String, serde_json::Value>,
+}
+
+/// Session-ledger point ids (UUIDv5 over the event hash, fixed namespace) are
+/// defined once in op-state-store, beside the public-record link that names
+/// them, so the link and the upserts below can never disagree.
+pub use op_state_store::public_link::ledger_point_id;
+
+/// End-of-session vectorization of a sled ledger (owner 2026-11-02: the
+/// snowball is a session ledger vectorized once at the end). The admitted
+/// caller selects its subsidiary collection; other callers use the configured
+/// snowball collection. Returns model, collection and each point id in order.
+pub async fn upsert_session_ledger(
+    registry: &CozoGraphShuttle,
+    points: &[LedgerPoint],
+    selected_collection: Option<&str>,
+) -> Result<(String, String, Vec<String>)> {
+    let collection = selected_collection.map(str::to_owned).unwrap_or_else(|| {
+        std::env::var("OPDBUS_QDRANT_SNOWBALL_COLLECTION")
+            .unwrap_or_else(|_| DEFAULT_COLLECTION.to_string())
+    });
+    if points.is_empty() {
+        return Ok((String::new(), collection, Vec::new()));
+    }
+    let voyage = VoyageClient::new()?;
+    let client = Qdrant::from_url(&qdrant_url()).build()?;
+    if !client
+        .collection_exists(&collection)
+        .await
+        .context("probe snowball collection")?
+    {
+        match client
+            .create_collection(
+                CreateCollectionBuilder::new(&collection)
+                    .vectors_config(VectorParamsBuilder::new(DEFAULT_DIMS, Distance::Cosine)),
+            )
+            .await
+        {
+            Ok(_) => {}
+            Err(error) if is_already_exists(&error) => {}
+            Err(error) => {
+                return Err(anyhow::Error::from(error).context("create snowball collection"));
+            }
+        }
+    }
+    let mut ids = Vec::with_capacity(points.len());
+    let mut structs = Vec::with_capacity(points.len());
+    for point in points {
+        let vector = voyage.embed(&point.text, Some("document")).await?;
+        anyhow::ensure!(
+            vector.len() == VOYAGE_POINT_DIM
+                && vector.iter().all(|value| value.is_finite())
+                && vector.iter().any(|value| *value != 0.0),
+            "invalid Voyage-4 ledger embedding"
+        );
+        anyhow::ensure!(
+            !point.event_hash.is_empty(),
+            "ledger point requires the authoritative event hash"
+        );
+        let mut payload = point.payload.clone();
+        payload.insert("event_hash".into(), point.event_hash.clone().into());
+        payload.insert("text".into(), point.text.clone().into());
+        payload.insert("source".into(), "sled_ledger".into());
+        payload.insert("model_family".into(), VOYAGE_POINT_FAMILY.into());
+        payload.insert("dim".into(), vector.len().into());
+        let mut links = vec![
+            ("collection".into(), collection.clone()),
+            ("embedding_model".into(), voyage.model().to_owned()),
+        ];
+        for key in [
+            "source",
+            "session_id",
+            "actor_id",
+            "event_hash",
+            "plugin_id",
+            "method",
+            "operation_id",
+            "subid",
+        ] {
+            if let Some(value) = payload
+                .get(key)
+                .and_then(|v| v.as_str())
+                .filter(|v| !v.is_empty())
+            {
+                links.push((key.to_owned(), value.to_owned()));
+            }
+        }
+        let id = ledger_point_id(&point.event_hash).to_string();
+        registry.register_vector_point(
+            &PointIndexEntry {
+                entity: format!("sled:event:{}", point.event_hash),
+                point_id: id.clone(),
+                collection: collection.clone(),
+                model_family: VOYAGE_POINT_FAMILY.into(),
+                dim: vector.len(),
+                chunker_ver: "sled-ledger-v1".into(),
+            },
+            &links,
+        )?;
+        let payload: Payload = serde_json::Value::Object(payload)
+            .try_into()
+            .context("build ledger vector payload")?;
+        structs.push(PointStruct::new(id.clone(), vector, payload));
+        ids.push(id);
+    }
+    client
+        .upsert_points(UpsertPointsBuilder::new(&collection, structs).wait(true))
+        .await
+        .with_context(|| format!("upsert session ledger into '{collection}'"))?;
+    Ok((voyage.model().to_owned(), collection, ids))
 }
 
 #[derive(Debug, Serialize, PartialEq, Eq)]
@@ -392,6 +539,11 @@ impl ChainVectorIndex {
 
         let mut embedded = 0usize;
         let mut upserted_to_qdrant = 0usize;
+        let cozo = if write_qdrant {
+            Some(open_point_registry()?)
+        } else {
+            None
+        };
         for block in &pending {
             let lines = self.policy.embedding_lines(block);
             let text = match &lines {
@@ -419,6 +571,8 @@ impl ChainVectorIndex {
                 embed_ms,
                 host_load: HostLoad::sample(),
                 policy: if lines.is_some() { "schema" } else { "flatten" }.into(),
+                model_family: Some(VOYAGE_POINT_FAMILY.into()),
+                dimensions: Some(vector.len()),
             };
             if let Ok(meta_value) = simd_json::serde::to_owned_value(&meta)
                 && let Err(error) = self
@@ -428,8 +582,8 @@ impl ChainVectorIndex {
             {
                 tracing::warn!(%error, block = block.block_num, "vector sidecar not written");
             }
-            if write_qdrant {
-                self.upsert_block(block, vector).await?;
+            if let Some(cozo) = &cozo {
+                self.upsert_block(cozo, block, vector).await?;
                 upserted_to_qdrant += 1;
             }
             embedded += 1;
@@ -467,6 +621,7 @@ impl ChainVectorIndex {
     /// prefer `ingest_received` after receive when filling the replica index.
     /// No Voyage key and no re-embedding spend.
     pub async fn reindex_from_chain(&self) -> Result<IngestSummary> {
+        let cozo = open_point_registry()?;
         let blocks = self.chain.blocks().await?;
         let mut upserted = 0usize;
         let mut skipped = 0usize;
@@ -479,7 +634,7 @@ impl ChainVectorIndex {
             match self.chain.read_vector(block.block_num).await? {
                 Some(vector) => {
                     let vector = self.fit_dims(vector, block.block_num)?;
-                    self.upsert_block(block, vector).await?;
+                    self.upsert_block(&cozo, block, vector).await?;
                     upserted += 1;
                 }
                 None => skipped += 1,
@@ -533,12 +688,7 @@ impl ChainVectorIndex {
     /// Pass `None` to resume from the persisted watermark (`0` on first run,
     /// which indexes everything present).
     pub async fn ingest_received(&self, from_block: Option<u64>) -> Result<IngestSummary> {
-        let cozo_path = std::env::var("COGNITIVE_COZO_DB_PATH").context(
-            "COGNITIVE_COZO_DB_PATH is required to persist chain vector links",
-        )?;
-        let cozo = CozoGraphShuttle::new_persistent(std::path::PathBuf::from(cozo_path))
-            .map_err(|error| anyhow::anyhow!(error))
-            .context("open Cozo for chain vector links")?;
+        let cozo = open_point_registry()?;
 
         let watermark = match from_block {
             Some(block) => block,
@@ -570,30 +720,12 @@ impl ChainVectorIndex {
             };
             let vector = self.fit_dims(vector, *block_num)?;
 
-            match blocks.iter().find(|block| block.block_num == *block_num) {
-                Some(block) => {
-                    let links = chain_links(block);
-                    let link_refs: Vec<(&str, &str)> = links
-                        .iter()
-                        .map(|(kind, value)| (kind.as_str(), value.as_str()))
-                        .collect();
-                    cozo
-                        .replace_chain_vector_links(&point_id(block.block_num).to_string(), &link_refs)
-                        .map_err(|e| anyhow::Error::new(e))
-                        .with_context(|| {
-                            format!(
-                                "failed to write chain links for block {}",
-                                block.block_num
-                            )
-                        })?;
-                    // A visible point suppresses gap retries: commit its links first.
-                    self.upsert_block(block, vector).await?;
-                }
-                // Vector present without its timing record (partial or
-                // out-of-order receive). Index it by block number so a later
-                // pass can enrich it rather than dropping it.
-                None => self.upsert_orphan_vector(*block_num, vector).await?,
-            }
+            let block = blocks
+                .binary_search_by_key(block_num, |block| block.block_num)
+                .ok()
+                .and_then(|index| blocks.get(index))
+                .context("received vector lacks a timing record")?;
+            self.upsert_block(&cozo, block, vector).await?;
             upserted += 1;
         }
 
@@ -718,11 +850,18 @@ impl ChainVectorIndex {
         &self.chain_path
     }
 
-    async fn upsert_block(&self, block: &ChainBlockRef, vector: Vec<f32>) -> Result<()> {
+    async fn upsert_block(
+        &self,
+        cozo: &CozoGraphShuttle,
+        block: &ChainBlockRef,
+        vector: Vec<f32>,
+    ) -> Result<()> {
         // Allow-listed provenance only: identity digests and hashes for
         // filtering, never raw arguments and never the session genesis.
         let mut payload_map = serde_json::Map::new();
         payload_map.insert("block_num".into(), block.block_num.into());
+        payload_map.insert("model_family".into(), VOYAGE_POINT_FAMILY.into());
+        payload_map.insert("dim".into(), vector.len().into());
         // Snowball carries the authoritative ChainEvent hash verbatim.
         // The compatibility input digest is provenance copied from the
         // payload; neither value is re-hashed by the vector projection.
@@ -756,13 +895,37 @@ impl ChainVectorIndex {
         if let Ok(Some(meta)) = self.chain.read_vector_meta(block.block_num).await {
             let meta: serde_json::Value =
                 simd_json::serde::from_owned_value(meta).unwrap_or(serde_json::Value::Null);
+            if let Some(family) = meta["model_family"].as_str() {
+                anyhow::ensure!(
+                    family == VOYAGE_POINT_FAMILY,
+                    "incompatible footprint embedding model family"
+                );
+            }
+            if let Some(dimensions) = meta["dimensions"].as_u64() {
+                anyhow::ensure!(
+                    dimensions == vector.len() as u64,
+                    "footprint dimensions disagree with sidecar"
+                );
+            }
             payload_map.insert("vector_meta".into(), meta);
         }
         let payload: Payload = serde_json::Value::Object(payload_map)
             .try_into()
             .context("failed to build snowball vector payload")?;
 
-        let point = PointStruct::new(point_id(block.block_num).to_string(), vector, payload);
+        let id = point_id(block.block_num).to_string();
+        cozo.register_vector_point(
+            &PointIndexEntry {
+                entity: format!("snowball:block:{}", block.block_num),
+                point_id: id.clone(),
+                collection: self.collection.clone(),
+                model_family: VOYAGE_POINT_FAMILY.into(),
+                dim: vector.len(),
+                chunker_ver: "snowball-block-v1".into(),
+            },
+            &chain_links(block),
+        )?;
+        let point = PointStruct::new(id, vector, payload);
         self.qdrant
             .upsert_points(UpsertPointsBuilder::new(&self.collection, vec![point]).wait(true))
             .await
@@ -775,42 +938,25 @@ impl ChainVectorIndex {
         Ok(())
     }
 
-    async fn upsert_orphan_vector(&self, block_num: u64, vector: Vec<f32>) -> Result<()> {
-        let payload: Payload = serde_json::json!({
-            "block_num": block_num,
-            "timing_record_missing": true,
-        })
-        .try_into()
-        .context("failed to build orphan vector payload")?;
-
-        let point = PointStruct::new(point_id(block_num).to_string(), vector, payload);
-        self.qdrant
-            .upsert_points(UpsertPointsBuilder::new(&self.collection, vec![point]).wait(true))
-            .await
-            .with_context(|| format!("failed to upsert orphan vector for block {block_num}"))?;
-        Ok(())
-    }
-
-    /// Match the collection width. Voyage's voyage-4 family is Matryoshka, so a
-    /// longer vector truncates into the same space; Qdrant's Cosine distance
-    /// normalizes, so no renormalization is needed after truncation. A *short*
-    /// vector is a real mismatch and is refused rather than zero-padded.
-    fn fit_dims(&self, mut vector: Vec<f32>, block_num: u64) -> Result<Vec<f32>> {
-        let want = self.dims as usize;
-        if vector.len() > want {
-            vector.truncate(want);
-        }
+    fn fit_dims(&self, vector: Vec<f32>, block_num: u64) -> Result<Vec<f32>> {
         anyhow::ensure!(
-            vector.len() == want,
-            "embedding for block {block_num} has {} dims, collection '{}' expects {want}",
-            vector.len(),
-            self.collection
+            self.dims == VOYAGE_POINT_DIM as u64
+                && vector.len() == VOYAGE_POINT_DIM
+                && vector.iter().all(|value| value.is_finite())
+                && vector.iter().any(|value| *value != 0.0),
+            "embedding for block {block_num} must contain {VOYAGE_POINT_DIM} finite components and a nonzero norm"
         );
         Ok(vector)
     }
 
     fn indexed_block_path(&self) -> PathBuf {
-        self.chain_path.join(INDEXED_BLOCK_FILE)
+        if self.collection == DEFAULT_COLLECTION {
+            return self.chain_path.join(INDEXED_BLOCK_FILE);
+        }
+        use sha2::{Digest, Sha256};
+        let suffix = Sha256::digest(self.collection.as_bytes());
+        self.chain_path
+            .join(format!("{INDEXED_BLOCK_FILE}-{suffix:x}"))
     }
 
     /// Highest block number whose vector is in the index.
@@ -823,10 +969,21 @@ impl ChainVectorIndex {
     }
 
     async fn write_indexed_block(&self, block_num: u64) -> Result<()> {
-        publish_checkpoint(self.indexed_block_path(), format!("{block_num}\n").into_bytes())
-            .await
-            .context("failed to persist index watermark")
+        publish_checkpoint(
+            self.indexed_block_path(),
+            format!("{block_num}\n").into_bytes(),
+        )
+        .await
+        .context("failed to persist index watermark")
     }
+}
+
+fn open_point_registry() -> Result<CozoGraphShuttle> {
+    let path = std::env::var_os("COGNITIVE_COZO_DB_PATH")
+        .context("COGNITIVE_COZO_DB_PATH is required to persist chain vector links")?;
+    CozoGraphShuttle::new_persistent(PathBuf::from(path))
+        .map_err(anyhow::Error::new)
+        .context("open Cozo point registry for Snowball")
 }
 
 /// Deterministic point id for a block.
@@ -987,8 +1144,9 @@ mod tests {
     fn timing_u64(value: &simd_json::OwnedValue, key: &str) -> Option<u64> {
         match value {
             simd_json::OwnedValue::Object(map) => map.get(key).and_then(|v| match v {
-                simd_json::OwnedValue::I64(n) => Some(*n as u64),
-                simd_json::OwnedValue::U64(n) => Some(*n),
+                // simd-json 0.13 keeps integers under Static(StaticNode::…).
+                simd_json::OwnedValue::Static(simd_json::StaticNode::I64(n)) => Some(*n as u64),
+                simd_json::OwnedValue::Static(simd_json::StaticNode::U64(n)) => Some(*n),
                 _ => None,
             }),
             _ => None,
@@ -1002,7 +1160,7 @@ mod tests {
     ) {
         match value {
             simd_json::OwnedValue::Object(map) => {
-                for (key, child) in map {
+                for (key, child) in map.iter() {
                     flatten_timing_data(child, &format!("{prefix}.{key}"), out);
                 }
             }
@@ -1012,14 +1170,13 @@ mod tests {
                 }
             }
             simd_json::OwnedValue::String(s) => out.push((prefix.to_string(), s.to_string())),
-            simd_json::OwnedValue::I64(n) => out.push((prefix.to_string(), n.to_string())),
-            simd_json::OwnedValue::U64(n) => out.push((prefix.to_string(), n.to_string())),
-            simd_json::OwnedValue::F64(n) => out.push((prefix.to_string(), n.to_string())),
-            simd_json::OwnedValue::Bool(b) => out.push((prefix.to_string(), b.to_string())),
-            simd_json::OwnedValue::Static(simd_json::StaticNode::Null) => {}
-            simd_json::OwnedValue::Static(simd_json::StaticNode::Bool(b)) => {
-                out.push((prefix.to_string(), b.to_string()));
-            }
+            simd_json::OwnedValue::Static(node) => match node {
+                simd_json::StaticNode::I64(n) => out.push((prefix.to_string(), n.to_string())),
+                simd_json::StaticNode::U64(n) => out.push((prefix.to_string(), n.to_string())),
+                simd_json::StaticNode::F64(n) => out.push((prefix.to_string(), n.to_string())),
+                simd_json::StaticNode::Bool(b) => out.push((prefix.to_string(), b.to_string())),
+                simd_json::StaticNode::Null => {}
+            },
         }
     }
 
@@ -1052,15 +1209,36 @@ mod tests {
         }"#;
         let block = block_from_timing_json(json, 12);
         let links = links_map(&block);
-        assert_eq!(links.get("conversation_id").map(String::as_str), Some("conv-abc"));
+        assert_eq!(
+            links.get("conversation_id").map(String::as_str),
+            Some("conv-abc")
+        );
         assert_eq!(links.get("turn_id").map(String::as_str), Some("turn-7"));
-        assert_eq!(links.get("event_hash").map(String::as_str), Some("block-event-hash"));
-        assert_eq!(links.get("input_patch_hash").map(String::as_str), Some("patch-digest"));
-        assert_eq!(links.get("plugin_id").map(String::as_str), Some("chat_plugin"));
+        assert_eq!(
+            links.get("event_hash").map(String::as_str),
+            Some("block-event-hash")
+        );
+        assert_eq!(
+            links.get("input_patch_hash").map(String::as_str),
+            Some("patch-digest")
+        );
+        assert_eq!(
+            links.get("plugin_id").map(String::as_str),
+            Some("chat_plugin")
+        );
         assert_eq!(links.get("actor_id").map(String::as_str), Some("actor-1"));
-        assert_eq!(links.get("session_id").map(String::as_str), Some("session-1"));
-        assert_eq!(links.get("sealed_id_digest").map(String::as_str), Some("sealed-1"));
-        assert_eq!(links.get("capability_id").map(String::as_str), Some("cap-1"));
+        assert_eq!(
+            links.get("session_id").map(String::as_str),
+            Some("session-1")
+        );
+        assert_eq!(
+            links.get("sealed_id_digest").map(String::as_str),
+            Some("sealed-1")
+        );
+        assert_eq!(
+            links.get("capability_id").map(String::as_str),
+            Some("cap-1")
+        );
         assert_eq!(links.get("subid").map(String::as_str), Some("schema-subid"));
         assert!(!links.contains_key("chat_id"));
     }
@@ -1097,7 +1275,11 @@ mod tests {
         let links = chain_links(&block);
         assert_eq!(links.len(), 2);
         assert!(links.iter().any(|(k, v)| k == "event_hash" && v == "ev"));
-        assert!(links.iter().any(|(k, v)| k == "plugin_id" && v == "only-plugin"));
+        assert!(
+            links
+                .iter()
+                .any(|(k, v)| k == "plugin_id" && v == "only-plugin")
+        );
         for (kind, value) in &links {
             assert!(!value.is_empty(), "kind {kind} must not be an empty string");
         }

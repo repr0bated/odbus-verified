@@ -4,15 +4,40 @@ set -eu
 exec 2>&1
 umask 077
 
-ENV_FILE=${OP_DECOY_NETWORK_ENV_FILE:-/etc/op-dbus/decoy-network.env}
-[ -r "$ENV_FILE" ] || {
-    echo "op-decoy-network: missing environment file: $ENV_FILE" >&2
-    exit 1
+# Import only this owner's settings, never the entire host secret environment.
+# Names match the established /etc/profile.d/op-dbus-env.sh convention.
+SETTINGS_DIR=${OP_DECOY_NETWORK_SETTINGS_DIR:-/etc/op-dbus/env}
+protected_file() {
+    [ -f "$1" ] && [ ! -L "$1" ] &&
+        [ "$(stat -c '%u:%a' "$1")" = 0:600 ]
 }
-set -a
-# shellcheck disable=SC1090
-. "$ENV_FILE"
-set +a
+if [ -f "$SETTINGS_DIR/op-network-role" ]; then
+    [ -d "$SETTINGS_DIR" ] && [ ! -L "$SETTINGS_DIR" ] &&
+        [ "$(stat -c '%u' "$SETTINGS_DIR")" = 0 ] || exit 1
+    _mode=$(stat -c '%a' "$SETTINGS_DIR")
+    [ "$((0$_mode & 0022))" = 0 ] || exit 1
+    for _name in OP_NETWORK_ROLE OP_DECOY_NETWORK_INTERFACES OP_DECOY_NATIVE_LISTEN \
+        OP_DECOY_NATIVE_CA_FILE OP_DECOY_NATIVE_CERT_FILE OP_DECOY_NATIVE_KEY_FILE \
+        OP_DECOY_NATIVE_BRIDGE_CERT_FILE OP_DECOY_NETWORK_COZO_PATH \
+        OP_BLOB_CATALOG_DIR OP_DECOY_NATIVE_RELEASE_ROOT; do
+        _file=$SETTINGS_DIR/$(printf %s "$_name" | tr 'A-Z_' 'a-z-')
+        case $_name in OP_BLOB_CATALOG_DIR|OP_DECOY_NATIVE_RELEASE_ROOT)
+            [ -e "$_file" ] || continue ;;
+        esac
+        protected_file "$_file" || { echo "op-decoy-network: unprotected/missing setting: $_name" >&2; exit 1; }
+        export "$_name=$(cat "$_file")"
+    done
+    unset _name _file _mode
+else
+    # Existing deployments retain their protected legacy file. New deployments
+    # use the per-setting selection above and never create an aggregate file.
+    ENV_FILE=${OP_DECOY_NETWORK_ENV_FILE:-/etc/op-dbus/decoy-network.env}
+    protected_file "$ENV_FILE" || { echo "op-decoy-network: no protected settings selection" >&2; exit 1; }
+    set -a
+    # shellcheck disable=SC1090
+    . "$ENV_FILE"
+    set +a
+fi
 
 [ "${OP_NETWORK_ROLE:-}" = decoy ] || {
     echo "op-decoy-network: OP_NETWORK_ROLE must be decoy" >&2
@@ -33,7 +58,15 @@ set +a
     echo "op-decoy-network: OP_BLOB_CATALOG_DIR must use the canonical SHM catalog" >&2
     exit 1
 }
+# Resolve the reviewed prepared release once: a selector flip during staging
+# must not pair one release's catalog materializer with another native binary.
+RELEASE_ROOT=$(readlink -f "${OP_DECOY_NATIVE_RELEASE_ROOT:-/}")
+[ -d "$RELEASE_ROOT" ] && [ "$(stat -c %u "$RELEASE_ROOT")" = 0 ] || exit 1
+_mode=$(stat -c %a "$RELEASE_ROOT")
+[ "$((0$_mode & 0022))" = 0 ] || exit 1
+OPBLOB=${RELEASE_ROOT%/}/usr/local/bin/opblob
+OWNER=${RELEASE_ROOT%/}/usr/local/bin/op-decoy-network
+[ -x "$OPBLOB" ] && [ -x "$OWNER" ] || exit 1
 install -d -m 0755 /dev/shm/opdbus/plugin-blobs
-/usr/local/bin/opblob stage-shm
-
-exec /usr/local/bin/op-decoy-network
+"$OPBLOB" stage-shm
+exec "$OWNER"

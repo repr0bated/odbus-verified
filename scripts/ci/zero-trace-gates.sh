@@ -5,7 +5,7 @@
 # intentionally outside this gate.
 set -eu
 
-cd "$(CDPATH= cd -- "$(dirname -- "$0")/../.." && pwd)"
+cd "$(CDPATH='' cd -- "$(dirname -- "$0")/../.." && pwd)"
 
 fail_match() {
     description=$1

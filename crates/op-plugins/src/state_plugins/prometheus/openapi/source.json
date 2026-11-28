@@ -1,0 +1,11 @@
+{
+  "project": "prometheus/prometheus",
+  "tag": "v3.16.0",
+  "commit": "e2e28adeee2c5883d000fc82aca6008cfbf7e96d",
+  "url": "https://raw.githubusercontent.com/prometheus/prometheus/v3.16.0/web/api/v1/testdata/openapi_3.1_golden.yaml",
+  "file": "openapi-3.1.yaml",
+  "sha256": "f52088b9776010d49ad1ef85000198d39d69fdcc3d1f8f944eb46c5a4781b8b7",
+  "license": "Apache-2.0",
+  "official": true,
+  "notes": "Golden copy of the spec Prometheus itself serves at /api/v1/openapi.yaml (web/api/v1/openapi.go). The live antix1 3.16.0 server (revision e2e28ade) serves an identical document apart from info.version and servers[0].url."
+}

@@ -1,0 +1,3 @@
+#!/bin/sh
+install -d -m 0750 /var/log/door-tls-init
+exec svlogd -tt /var/log/door-tls-init

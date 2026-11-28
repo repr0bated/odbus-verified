@@ -1,0 +1,24 @@
+#!/bin/sh
+# NextDNS client (official nextdns binary). Profile ID and device name come
+# from the identity sled at /agent/user: op-identity-accept verifies the
+# decoy-issued IID1 against the trust store and prints
+# "session_id profile_id device_name" (NextDNS is always sealed in).
+# The profile ID is never echoed to the log.
+exec 2>&1
+S=/agent/user
+[ -r "$S/issued_identity.iid1" ] && [ -r "$S/sealed_id" ] || { echo "identity sled absent"; sleep 30; exit 1; }
+KEY=
+[ -r "$S/wireguard_pubkey" ] && KEY=$(tr -d ' \n' <"$S/wireguard_pubkey")
+[ -n "$KEY" ] || KEY=$(sed -n 's/.*"wireguard_pubkey"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' "$S/identity_sled.json" 2>/dev/null | head -n1)
+[ -n "$KEY" ] || { echo "sled carries no wireguard public key"; sleep 30; exit 1; }
+# --out is the sled's own sealed_id: identical content -> verified, nothing written.
+OUT=$(/usr/local/bin/op-identity-accept --issued "$S/issued_identity.iid1" --pubkey "$KEY" \
+      --trust-store /etc/op-dbus/decoy-trust.json --out "$S/sealed_id" 2>/dev/null) \
+  || { echo "sled identity did not verify"; sleep 30; exit 1; }
+set -- $OUT; PROFILE=${2:-}; DEVICE=${3:-}
+echo "$PROFILE" | grep -Eq '^[0-9a-f]{6}$' && echo "$DEVICE" | grep -Eq '^[A-Za-z0-9._-]{1,128}$' \
+  || { echo "sealed NextDNS context malformed"; sleep 30; exit 1; }
+echo "starting nextdns for device $DEVICE (profile from sled)"
+# Device name rides on the DoH path (nextdns has no device-name flag).
+exec /usr/bin/nextdns run -listen 127.0.0.1:53 -report-client-info \
+  -profile "$PROFILE" -forwarder "https://dns.nextdns.io/$PROFILE/$DEVICE"

@@ -3,7 +3,7 @@
 # container.  A running Incus instance alone is never considered ready.
 set -eu
 
-REPO_ROOT=$(CDPATH= cd -- "$(dirname -- "$0")/../.." && pwd)
+REPO_ROOT=$(CDPATH='' cd -- "$(dirname -- "$0")/../.." && pwd)
 CONTRACT=${1:-"$REPO_ROOT/deploy/config/container-socket-contracts.json"}
 failures=0
 
@@ -61,7 +61,7 @@ SERVICE_CHECK
                 netstat -lnt
             else
                 exit 127
-            fi | grep -Eq '[:.]$port[[:space:]]'
+            fi | grep -Eq '[:.]${port}[[:space:]]'
         "; then
             echo "  ok   tcp $port"
         else

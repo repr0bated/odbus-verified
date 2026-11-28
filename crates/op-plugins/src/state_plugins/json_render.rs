@@ -635,7 +635,10 @@ impl StatePlugin for JsonRenderPlugin {
     }
 
     fn schema(&self) -> Option<PluginSchema> {
-        Some(json_render_schema())
+        Some(json_render_schema().subsidiary(|capability| matches!(
+            capability,
+            "json_render.read"
+        )))
     }
 
     async fn calculate_diff(&self, _current: &Value, _desired: &Value) -> Result<StateDiff> {
@@ -706,8 +709,11 @@ pub(crate) fn json_render_schema() -> PluginSchema {
     let state = simd_json::serde::to_owned_value(&JsonRenderState::default())
         .expect("JsonRenderState default serializes");
     super::schemars_adapter::apply_state_defaults(&mut schema, &state);
-    schema.fields.get_mut("ui_authoring")
-        .expect("UI authoring is a declared schema field").read_only = true;
+    schema
+        .fields
+        .get_mut("ui_authoring")
+        .expect("UI authoring is a declared schema field")
+        .read_only = true;
 
     // Add methods
     schema.methods.insert(

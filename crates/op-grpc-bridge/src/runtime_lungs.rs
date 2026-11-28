@@ -22,6 +22,7 @@ use crate::runtime::{Runtime, RuntimeError};
 
 #[path = "runtime_lungs_identity.rs"]
 mod identity;
+pub(crate) use identity::BrowserWaiterIdentity;
 use identity::{LungsIdentity, ProcessIdentity};
 
 pub(crate) const DEFAULT_LUNGS_SOCKET: &str = "/run/opdbus/lungs/lungs.sock";
@@ -61,6 +62,18 @@ struct LungsPlugin {
 
 #[zbus::interface(name = "org.opdbus.v1.PluginV1")]
 impl LungsPlugin {
+    async fn authorize_method(&self, method: &str, capability: &str) -> zbus::fdo::Result<bool> {
+        let caller = self.identity.caller().await.map_err(binding_denial)?;
+        let (_, declaration) = match self.runtime.pinned_method(&self.plugin_id, method) {
+            Ok(declaration) => declaration,
+            Err(_) => return Ok(false),
+        };
+        if capability.is_empty() || declaration.required_capability.as_deref() != Some(capability) {
+            return Ok(false);
+        }
+        Ok(self.runtime.authorize_nested(&caller, &self.plugin_id, method).await.is_ok())
+    }
+
     async fn call_with_operation_id(
         &self,
         method: &str,
@@ -284,6 +297,7 @@ pub(crate) async fn start(runtime: Arc<Runtime>) -> Result<LungsServer> {
     let catalog_dir = std::env::var_os("OP_BLOB_CATALOG_DIR").map(PathBuf::from)
         .unwrap_or_else(|| PathBuf::from(op_blob::catalog::DEFAULT_SHM_DIR));
     let state_dir = op_core::projection_shm::shm_state_dir();
+    let identity_store = runtime.identity_store().clone();
     let path = std::env::var_os("OPDBUS_LUNGS_SOCKET").map(PathBuf::from)
         .unwrap_or_else(|| PathBuf::from(DEFAULT_LUNGS_SOCKET));
     let objects: Arc<Vec<(String, String)>> = Arc::new(runtime.catalog().plugins().iter().map(|plugin| {
@@ -313,7 +327,7 @@ pub(crate) async fn start(runtime: Arc<Runtime>) -> Result<LungsServer> {
                 incoming = listener.accept() => {
                     let (stream, _) = incoming.context("accept lungs connection")?;
                     let Ok(permit) = slots.clone().try_acquire_owned() else { continue; };
-                    let identity = match LungsIdentity::capture(&stream, host.clone(), catalog_dir.clone(), state_dir.clone()) {
+                    let identity = match LungsIdentity::capture(&stream, host.clone(), catalog_dir.clone(), state_dir.clone(), identity_store.clone()) {
                         Ok(identity) => identity,
                         Err(error) => {
                             tracing::warn!(%error, "lungs peer proof refused");

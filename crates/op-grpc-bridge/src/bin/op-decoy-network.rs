@@ -1,6 +1,7 @@
-//! Decoy-only native network owner. No host bridge startup path invokes this.
+//! Explicit decoy-only binary. Normal bridge startup never calls this path.
+
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
-    tracing_subscriber::fmt().init();
-    op_grpc_bridge::decoy_network::run_decoy().await
+    let _ = tracing_subscriber::fmt().try_init();
+    op_grpc_bridge::run_decoy().await
 }

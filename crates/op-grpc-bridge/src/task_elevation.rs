@@ -221,27 +221,37 @@ pub(crate) async fn dispatch(
 }
 
 async fn authorize(runtime: &Runtime, caller: &VerifiedCaller, args: &Value) -> Result<Value> {
-    runtime.require_capability(caller, AUTHORIZE_CAPABILITY).await?;
+    runtime
+        .require_capability(caller, AUTHORIZE_CAPABILITY)
+        .await?;
     let mut input: AuthorizeTaskInput =
         serde_json::from_value(args.clone()).context("invalid authorize_task arguments")?;
     let action = validate_authorize_input(&input)?;
     // A password cannot grant an operation that the original principal lacks.
-    runtime.authorize_nested(caller, &input.plugin, &input.method).await?;
+    runtime
+        .authorize_nested(caller, &input.plugin, &input.method)
+        .await?;
     let elevation = runtime.task_elevation();
     let now = Utc::now();
     elevation.check_lockout(&caller.principal_id, now)?;
     let password = zeroize::Zeroizing::new(std::mem::take(&mut input.password));
     let authority = elevation.authority();
     let accepted = tokio::task::spawn_blocking(move || authority.verify("root", &password))
-        .await.context("root password check worker failed")??;
+        .await
+        .context("root password check worker failed")??;
     if !accepted {
         elevation.record_failure(&caller.principal_id, now);
         bail!("root password was not accepted");
     }
-    runtime.require_capability(caller, AUTHORIZE_CAPABILITY).await?;
-    runtime.authorize_nested(caller, &input.plugin, &input.method).await?;
+    runtime
+        .require_capability(caller, AUTHORIZE_CAPABILITY)
+        .await?;
+    runtime
+        .authorize_nested(caller, &input.plugin, &input.method)
+        .await?;
     lock(&elevation.failures).remove(&caller.principal_id);
-    let expires_at = elevation.issue(&caller.principal_id, &caller.session_id, &input, Utc::now())?;
+    let expires_at =
+        elevation.issue(&caller.principal_id, &caller.session_id, &input, Utc::now())?;
     Ok(serde_json::to_value(AuthorizeTaskOutput {
         action_id: action.to_string(),
         expires_at: expires_at.to_rfc3339(),

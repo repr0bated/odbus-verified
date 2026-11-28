@@ -10,7 +10,17 @@ description = "CLI tool for introspecting the org.opdbus.v1.plugins D-Bus tree"
 name = "dbus-plugin-cli"
 path = "src/main.rs"
 
+# Operator CLI over the mounted 3tchedFS namespace: every plugin, method and
+# argument flag comes from that live mirror of the sealed blobs, as does completion.
+[[bin]]
+name = "zcall"
+path = "src/bin/zcall/main.rs"
+
 [dependencies]
+# zcall calls methods only through the identity's mounted 3tchedFS namespace.
+_3tched-fs = { path = "../_3tched-fs" }
+libc = { workspace = true }
+reqwest = { workspace = true }
 op-core = { workspace = true }
 op-identity = { path = "../op-identity" }
 tokio = { workspace = true }

@@ -1,0 +1,7 @@
+#!/bin/sh
+# runit TEMPLATE: pair once, after the gateway is up, before the bridge.
+exec 2>&1
+sv check threetched-gateway >/dev/null 2>&1 || { echo "waiting for threetched-gateway"; sleep 3; exit 1; }
+/usr/local/libexec/op-dbus/provisioning/pair-threetched-gateway.sh || { sleep 30; exit 1; }
+touch /run/threetched-paired
+exec sleep infinity

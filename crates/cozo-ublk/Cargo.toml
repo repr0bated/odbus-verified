@@ -1,0 +1,18 @@
+[package]
+name = "cozo-ublk"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[[bin]]
+name = "cozo-ublk"
+path = "src/main.rs"
+
+[[bin]]
+name = "cblk-recover"
+path = "src/bin/cblk-recover.rs"
+
+[dependencies]
+libc = { workspace = true }
+libublk = "=0.4.8"
+op-cozo-store = { workspace = true }

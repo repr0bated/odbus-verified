@@ -1,8 +1,8 @@
 {
   "permissions": {
     "allow": [
-      "Bash(ls -l /etc/runit/sv/tched-router /etc/runit/runsvdir/default/tched-router /usr/local/bin/zeroclaw /usr/bin/zeroclaw 2>/dev/null; readlink -f /etc/runit/sv/tched-router/run 2>/dev/null; readlink -f /usr/local/bin/zeroclaw 2>/dev/null; readlink -f /usr/bin/zeroclaw 2>/dev/null)",
-      "Read(//etc/runit/sv/tched-router/**)",
+      "Bash(ls -l /etc/runit/sv/threetched /etc/runit/runsvdir/default/threetched /usr/local/bin/zeroclaw /usr/bin/zeroclaw 2>/dev/null; readlink -f /etc/runit/sv/threetched/run 2>/dev/null; readlink -f /usr/local/bin/zeroclaw 2>/dev/null; readlink -f /usr/bin/zeroclaw 2>/dev/null)",
+      "Read(//etc/runit/sv/threetched/**)",
       "Bash(tar:*)",
       "Bash(python3:*)"
     ]

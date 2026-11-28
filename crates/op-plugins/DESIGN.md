@@ -5,7 +5,7 @@
 > and `schemas/` loaders. Current contracts belong to their plugins; runtime
 > presence comes from the sealed blob catalog. See
 > [current architecture](../../docs/src/architecture/overview.md) and
-> [tched_router contract ownership](../../docs/src/architecture/tched-router-baseline.md).
+> [threetched contract ownership](../../docs/src/architecture/threetched-baseline.md).
 
 **Crate**: `op-plugins`  
 **Scope**: Complete inventory of all state plugins, schema coverage audit, quality evaluation,

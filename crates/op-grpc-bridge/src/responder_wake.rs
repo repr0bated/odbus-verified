@@ -27,72 +27,45 @@ pub(crate) struct ResponderWake {
     /// Conversation ID (for chat turns).
     #[serde(skip_serializing_if = "Option::is_none")]
     pub conversation_id: Option<String>,
-    /// Brief preview of the request content (for logging/debugging).
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub preview: Option<String>,
 }
 
-/// Publish a responder wake notification via EMQX.
-///
-/// This is best-effort and off the critical path — a failed publish only
-/// delays the responder's discovery of the pending request. The responder
-/// can also poll via `list_pending_for_responder()`.
-pub(crate) async fn publish_responder_wake(wake: ResponderWake, responder_principal_id: &str) {
-    let args = serde_json::json!({
-        "responder_principal_id": responder_principal_id,
-        "request_id": wake.request_id,
-        "owner_key": wake.owner_key,
-        "owner_principal_id": wake.owner_principal_id,
-        "conversation_id": wake.conversation_id,
-        "preview": wake.preview,
-    });
-
-    if let Err(error) =
-        op_plugins::state_plugins::emqx::dispatch_emqx_method("publish_responder_wake", &args).await
-    {
-        tracing::debug!(
-            %error,
-            "responder wake not published"
-        );
-    }
+/// Publish on the responder's existing authenticated owner topic. Failure is
+/// returned after input commit and must never trigger a submit replay.
+pub(crate) async fn publish_responder_wake(wake: ResponderWake,
+    responder: &op_identity::sealed_id::SealedId) -> anyhow::Result<()> {
+    let owner_key = crate::runtime_mqtt::owner_key_for_claims(responder)?;
+    op_plugins::state_plugins::emqx::dispatch_emqx_method("publish_responder_wake",
+        &serde_json::json!({
+            "responder_owner_key": owner_key,
+            "request_id": wake.request_id,
+            "owner_key": wake.owner_key,
+            "owner_principal_id": wake.owner_principal_id,
+            "conversation_id": wake.conversation_id,
+        })).await?;
+    Ok(())
 }
 
 /// Build a ResponderWake for a chat turn.
 pub(crate) fn chat_turn_wake(
     turn: &crate::chat_response_turns::PendingTurn,
-    message_preview: Option<&str>,
+    _message_preview: Option<&str>,
 ) -> ResponderWake {
     ResponderWake {
         request_id: turn.turn_id().to_string(),
-        owner_key: crate::chat_response_state::owner_key(&turn.owner.principal_id),
+        owner_key: {
+            use sha2::{Digest, Sha256};
+            format!("{:x}", Sha256::digest(turn.owner.principal_id.as_bytes()))
+        },
         owner_principal_id: turn.owner.principal_id.clone(),
         conversation_id: Some(turn.conversation_id().to_string()),
-        preview: message_preview.map(|s| truncate_preview(s, 100)),
     }
 }
 
-/// Truncate a preview string to a maximum length, adding ellipsis if needed.
-fn truncate_preview(s: &str, max_len: usize) -> String {
-    if s.len() <= max_len {
-        s.to_string()
-    } else {
-        let truncated: String = s.chars().take(max_len.saturating_sub(3)).collect();
-        format!("{}...", truncated)
-    }
-}
 
 #[cfg(test)]
 mod tests {
     use super::*;
 
-    #[test]
-    fn preview_truncation() {
-        assert_eq!(truncate_preview("short", 100), "short");
-        let long = "a".repeat(150);
-        let truncated = truncate_preview(&long, 100);
-        assert!(truncated.len() <= 100);
-        assert!(truncated.ends_with("..."));
-    }
 
     #[test]
     fn responder_wake_serializes() {
@@ -101,7 +74,6 @@ mod tests {
             owner_key: "ab".repeat(32),
             owner_principal_id: "human-principal".into(),
             conversation_id: Some("conv-456".into()),
-            preview: Some("What is the status?".into()),
         };
         let json = serde_json::to_string(&wake).unwrap();
         assert!(json.contains("turn-123"));
@@ -113,7 +85,6 @@ mod tests {
             owner_key: "cd".repeat(32),
             owner_principal_id: "other-principal".into(),
             conversation_id: None,
-            preview: None,
         };
         let json_minimal = serde_json::to_string(&wake_minimal).unwrap();
         assert!(!json_minimal.contains("conversation_id"));

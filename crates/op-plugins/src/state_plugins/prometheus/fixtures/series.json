@@ -1,0 +1,1 @@
+{"status":"success","data":[{"__name__":"up","instance":"antix1","job":"node"},{"__name__":"up","instance":"antix1","job":"grafana"},{"__name__":"up","instance":"antix1","job":"incus"},{"__name__":"up","instance":"antix1","job":"prometheus"}]}

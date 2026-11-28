@@ -1,0 +1,15 @@
+#!/bin/sh
+# Grafana OSS (tarball in /opt/grafana). Binds the CloudflareWARP mesh address
+# only (same as incusd/op-web); waits for it so boot ordering does not matter.
+# Admin password comes from the root-only file and is only honoured on first DB
+# creation (rotate with: grafana cli admin reset-admin-password).
+exec 2>&1
+addr=100.96.0.5
+ip -4 -o addr show | grep -q " $addr/" || { echo "waiting for $addr"; sleep 5; exit 1; }
+pwf=/root/grafana-admin-password
+[ -s "$pwf" ] || { echo "missing $pwf"; sleep 30; exit 1; }
+install -d -m 0750 -o grafana -g grafana /var/lib/grafana /var/lib/grafana/plugins
+GF_SECURITY_ADMIN_PASSWORD=$(cat "$pwf"); export GF_SECURITY_ADMIN_PASSWORD
+cd /opt/grafana || exit 1
+exec chpst -u grafana:grafana /opt/grafana/bin/grafana server \
+  --homepath=/opt/grafana --config=/etc/grafana/grafana.ini

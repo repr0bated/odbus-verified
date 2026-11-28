@@ -6,7 +6,7 @@ fail() { printf 'prepare-lungs-client: %s\n' "$*" >&2; exit 1; }
 usage='usage (host root): TOP READ_ONLY_RELEASE | --container NAME NATIVE_UUID ROOT_SUBVOLUME_UUID OLD_CLIENT_SHA256_OR_absent READ_ONLY_RELEASE'
 [[ $(id -u) == 0 ]] || fail "$usage"
 mode=image
-container= native_uuid= root_uuid= old_client= private_root= stage=
+container='' native_uuid='' root_uuid='' old_client='' private_root='' stage=''
 case "${1:-}" in
     --container)
         [[ $# == 6 ]] || fail "$usage"
@@ -194,7 +194,7 @@ install -m 0755 "$client" "$guest/usr/local/bin/3tched-fs"
 install -d -m 0755 "$empty" "$store" "$upstream_store"
 # Same selection as the host adapter; only declarations are delivered, never
 # live state or credentials. Both mounts write through the same lungs endpoint.
-upstream_plugins=threetched,tched_router
+upstream_plugins=threetched
 "$client" --store "$store" capture --schema-only --catalog "$catalog" --state "$empty" \
     --exclude-plugin "$upstream_plugins"
 "$client" --store "$upstream_store" capture --schema-only --catalog "$catalog" --state "$empty" \
@@ -225,7 +225,7 @@ jq -n --arg release "${release##*/}" --arg release_kind "$release_kind" \
       client_sha256:$client_sha256,catalog_manifest_sha256:$catalog_sha256,
       socket:"/run/3tched-lungs.socket",binding:"BindCurrentContainer",state:"empty",
       mounts:[{service:"3tchedfs.service",mountpoint:"/run/mounts/3tchedFS",store:"/usr/share/op-dbus/lungs-view"},
-              {service:"threetchedfs.service",mountpoint:"/run/mounts/threetched",store:"/usr/share/op-dbus/threetched-view"}],
+              {service:"threetchedfs.service",mountpoint:"/run/mounts/threetchedFS",store:"/usr/share/op-dbus/threetched-view"}],
       mount_table:"/etc/fstab"}' \
     > "$guest/usr/share/op-dbus/lungs-client.json"
 chmod 0644 "$guest/usr/share/op-dbus/lungs-client.json"

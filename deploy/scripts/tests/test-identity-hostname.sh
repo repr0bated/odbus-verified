@@ -1,7 +1,7 @@
 #!/bin/sh
 # Exercise fresh-guest hostname preparation without Incus or storage effects.
 set -eu
-repo=$(CDPATH= cd -- "$(dirname -- "$0")/../../.." && pwd)
+repo=$(CDPATH='' cd -- "$(dirname -- "$0")/../../.." && pwd)
 helper=$repo/deploy/runit/libexec-3tched/op-identity-root
 fixture=$(mktemp -d)
 trap 'rm -rf -- "$fixture"' EXIT

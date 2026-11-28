@@ -20,7 +20,7 @@ pub struct CleanProvisionReceipt {
     pub instance_json: String,
 }
 
-fn read(
+pub(super) fn read(
     tx: &MultiTransaction,
     sid: &str,
 ) -> std::result::Result<Option<CleanProvisionReceipt>, CozoError> {
@@ -44,10 +44,20 @@ fn read(
         instance_json: string(row, 6)?,
     };
     if !valid_root_repair_digest(&receipt.plan_sha256)
-        || receipt.operation_id != format!("clean-provision-{}", receipt.plan_sha256)
         || receipt.expected_revision.checked_add(1) != Some(receipt.committed_revision)
         || receipt.provenance_json.len() > 32768
     {
+        return Err(err("corrupt clean provision receipt identity"));
+    }
+    let operation_valid = receipt.operation_id == format!("clean-provision-{}", receipt.plan_sha256)
+        || (receipt.operation_id == format!("native-attachment-{}", receipt.plan_sha256)
+            && serde_json::from_str::<Value>(&receipt.provenance_json).is_ok_and(|provenance| {
+                provenance["version"] == 5
+                    && matches!(provenance["creation_mode"].as_str(),
+                        Some("attach_existing_human" | "create_subsidiary"))
+                    && provenance["session_id"] == sid
+            }));
+    if !operation_valid {
         return Err(err("corrupt clean provision receipt identity"));
     }
     Ok(Some(receipt))
@@ -87,8 +97,10 @@ pub(super) fn validate(
     let provenance: Value = serde_json::from_str(&provision.provenance_json)?;
     let fresh_partitioned = provenance["version"] == 4
         && provenance["partitioned_overlay"].is_object()
-        && provision.expected.revision == 0 && provision.expected.operation_id.is_empty()
-        && old.is_none() && provision.expected.genesis.is_none();
+        && provision.expected.revision == 0
+        && provision.expected.operation_id.is_empty()
+        && old.is_none()
+        && provision.expected.genesis.is_none();
     if !explicitly_deleted && !fresh_partitioned && old.is_none() {
         return Err(err(
             "clean provision requires an existing key or explicit deletion tombstone",
@@ -151,8 +163,11 @@ pub(super) fn validate(
         || device["attached"] != true
         || instance["status"] != "Stopped"
         || instance["type"] != "container"
-        || !(instance["name"] == "3tchedChatbot" || instance["name"] == CONTROL_PLANE_NATIVE_NAME
-            || instance["name"].as_str().is_some_and(is_numbered_native_name))
+        || !(instance["name"] == "3tchedChatbot"
+            || instance["name"] == CONTROL_PLANE_NATIVE_NAME
+            || instance["name"]
+                .as_str()
+                .is_some_and(is_numbered_native_name))
         || !(provenance["version"] == if explicitly_deleted { 3 } else { 2 }
             || (provenance["version"] == 4 && (fresh_partitioned || explicitly_deleted)))
         || provenance["session_id"] != sid
@@ -334,6 +349,23 @@ pub(super) fn validate_cas(
         .record
         .as_ref()
         .ok_or_else(|| err("clean provision tombstone cannot be resurrected"))?;
+    if serde_json::from_str::<Value>(&receipt.provenance_json)?["version"] == 5 {
+        if old.principal_kind.as_deref() == Some("human") && old.instance_json.is_empty() {
+            if !next.instance_json.is_empty() || old.btrfs_device_json != next.btrfs_device_json {
+                return Err(err("retired human binding requires native attachment"));
+            }
+            return Ok(());
+        }
+        let pinned = container_rename::current_instance(tx, &previous.session_id, &receipt.instance_json)?;
+        let pinned = native_upgrade::current_instance(tx, &previous.session_id, &pinned)?;
+        if previous.revision < receipt.committed_revision
+            || old.btrfs_device_json != next.btrfs_device_json
+            || !clean_provision_instance_binding_matches(&pinned, &next.instance_json)
+        {
+            return Err(err("native attachment storage and instance authority are immutable"));
+        }
+        return Ok(());
+    }
     let mut old_device: Value = serde_json::from_str(&old.btrfs_device_json)?;
     let mut new_device: Value = serde_json::from_str(&next.btrfs_device_json)?;
     old_device
@@ -344,7 +376,8 @@ pub(super) fn validate_cas(
         .as_object_mut()
         .ok_or_else(|| err("invalid clean device"))?
         .remove("attached");
-    let pinned = container_rename::current_instance(tx, &previous.session_id, &receipt.instance_json)?;
+    let pinned =
+        container_rename::current_instance(tx, &previous.session_id, &receipt.instance_json)?;
     if previous.revision < receipt.committed_revision
         || old_device != new_device
         || !clean_provision_instance_binding_matches(&pinned, &next.instance_json)
@@ -352,4 +385,46 @@ pub(super) fn validate_cas(
         return Err(err("completed clean provision binding is immutable"));
     }
     Ok(())
+}
+
+pub(super) fn attachment_preserves_identity(old: &IdentitySledRecord, next: &IdentitySledRecord) -> bool {
+    old.session_id == next.session_id && old.wireguard_pubkey == next.wireguard_pubkey
+        && old.interface == next.interface && old.peer_ip == next.peer_ip
+        && old.mutation_index == next.mutation_index && old.session_genesis == next.session_genesis
+        && old.trace_id == next.trace_id && old.schema_version == next.schema_version
+        && old.vector_id == next.vector_id && old.sealed_id == next.sealed_id
+        && old.principal_kind == next.principal_kind && old.btrfs_device_json == next.btrfs_device_json
+        && old.session_started_at == next.session_started_at && old.last_seen_at == next.last_seen_at
+        && old.expires_at == next.expires_at
+}
+
+#[cfg(test)]
+mod native_binding_tests {
+    use super::*;
+
+    #[test]
+    fn human_attachment_changes_only_native_binding_and_power() {
+        let mut old: IdentitySledRecord = serde_json::from_value(serde_json::json!({
+            "session_id":"","wireguard_pubkey":"","interface":"","peer_ip":"","mutation_index":0,
+            "session_genesis":"","trace_id":"","schema_version":3,"vector_id":"","sealed_id":"",
+            "principal_kind":null,"btrfs_device_json":"","instance_json":"",
+            "session_started_at":1,"last_seen_at":1,"active":true,"expires_at":0
+        })).unwrap();
+        old.session_id = "human-session".into();
+        old.principal_kind = Some("human".into());
+        old.sealed_id = "original-sid1".into();
+        old.session_genesis = "original-genesis".into();
+        let mut next = old.clone();
+        next.instance_json = r#"{"name":"ID-1"}"#.into();
+        next.active = false;
+        assert!(attachment_preserves_identity(&old, &next));
+        next.sealed_id = "replacement-sid1".into();
+        assert!(!attachment_preserves_identity(&old, &next));
+        next = old.clone();
+        next.principal_kind = Some("service".into());
+        assert!(!attachment_preserves_identity(&old, &next));
+        next = old.clone();
+        next.mutation_index += 1;
+        assert!(!attachment_preserves_identity(&old, &next));
+    }
 }

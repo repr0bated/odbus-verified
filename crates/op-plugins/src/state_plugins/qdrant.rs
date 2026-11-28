@@ -413,7 +413,7 @@ pub async fn dispatch_qdrant_method(
 /// typed dispatch, which has no other way to observe this plugin's live
 /// state — the per-method responses above are each a narrow slice, not the
 /// plugin's full state.
-pub async fn current_state() -> Result<QdrantState> {
+pub async fn current_state(collection_prefix: Option<&str>) -> Result<QdrantState> {
     let client = QdrantHttpClient::new()?;
     let root = client
         .request(reqwest::Method::GET, "", None, false)
@@ -435,6 +435,9 @@ pub async fn current_state() -> Result<QdrantState> {
 
     let mut collections = Vec::with_capacity(names.len());
     for name in &names {
+        if collection_prefix.is_some_and(|prefix| !name.starts_with(prefix)) {
+            continue;
+        }
         let segment = QdrantHttpClient::collection_segment(name)?;
         let detail = client
             .request(
@@ -451,9 +454,18 @@ pub async fn current_state() -> Result<QdrantState> {
     }
 
     Ok(QdrantState {
-        version: root["version"].as_str().context("Qdrant root info omitted version")?.to_owned(),
-        title: root["title"].as_str().context("Qdrant root info omitted title")?.to_owned(),
-        commit: root["commit"].as_str().context("Qdrant root info omitted commit")?.to_owned(),
+        version: root["version"]
+            .as_str()
+            .context("Qdrant root info omitted version")?
+            .to_owned(),
+        title: root["title"]
+            .as_str()
+            .context("Qdrant root info omitted title")?
+            .to_owned(),
+        commit: root["commit"]
+            .as_str()
+            .context("Qdrant root info omitted commit")?
+            .to_owned(),
         http_endpoint: QdrantPlugin::http_endpoint(),
         grpc_endpoint: QdrantPlugin::grpc_endpoint(),
         collections,
@@ -740,7 +752,19 @@ impl StatePlugin for QdrantPlugin {
     fn schema(&self) -> Option<PluginSchema> {
         let mut schema = qdrant_schema();
         super::common::oscal::ensure_category_metadata_fields(&mut schema);
-        Some(schema)
+        Some(schema.subsidiary(|capability| matches!(
+            capability,
+            "cap.data.qdrant.collection.create@v1"
+                | "cap.data.qdrant.collection.delete@v1"
+                | "cap.data.qdrant.collection.list@v1"
+                | "cap.data.qdrant.payload-index.create@v1"
+                | "cap.data.qdrant.point.delete@v1"
+                | "cap.data.qdrant.point.scroll@v1"
+                | "cap.data.qdrant.point.search@v1"
+                | "cap.data.qdrant.point.upsert@v1"
+                | "cap.data.qdrant.snapshot.create@v1"
+                | "cap.data.qdrant.snapshot.list@v1"
+        )))
     }
 
     async fn calculate_diff(&self, _current: &Value, _desired: &Value) -> Result<StateDiff> {

@@ -74,7 +74,10 @@ impl StatePlugin for Login1Plugin {
     }
 
     fn schema(&self) -> Option<PluginSchema> {
-        Some(login1_schema())
+        Some(login1_schema().subsidiary(|capability| matches!(
+            capability,
+            "login1.read"
+        )))
     }
 
     async fn calculate_diff(&self, current: &Value, desired: &Value) -> Result<StateDiff> {

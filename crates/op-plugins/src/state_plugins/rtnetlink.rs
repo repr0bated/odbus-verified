@@ -81,7 +81,19 @@ impl StatePlugin for RtnetlinkPlugin {
     }
 
     fn schema(&self) -> Option<op_state_store::PluginSchema> {
-        Some(rtnetlink_schema())
+        Some(rtnetlink_schema().subsidiary(|capability| matches!(
+            capability,
+            "cap.network.rtnetlink.default-route.set@v1"
+                | "cap.network.rtnetlink.ipv4-address.add@v1"
+                | "cap.network.rtnetlink.ipv4-address.del@v1"
+                | "cap.network.rtnetlink.link-state.set@v1"
+                | "cap.network.rtnetlink.link.add@v1"
+                | "cap.network.rtnetlink.link.del@v1"
+                | "cap.network.rtnetlink.mac-address.set@v1"
+                | "cap.network.rtnetlink.route.add@v1"
+                | "cap.network.rtnetlink.route.del@v1"
+                | "cap.network.rtnetlink.rule.add@v1"
+        )))
     }
 
     fn is_available(&self) -> bool {
@@ -113,9 +125,12 @@ impl StatePlugin for RtnetlinkPlugin {
                 let needs_update = desired_iface.state != current_iface.state
                     || desired_iface.mac_address != current_iface.mac_address
                     || desired_iface.addresses != current_iface.addresses
-                    || desired_iface.default_gateway.as_ref().is_some_and(|gateway| {
-                        current_iface.default_gateway.as_ref() != Some(gateway)
-                    });
+                    || desired_iface
+                        .default_gateway
+                        .as_ref()
+                        .is_some_and(|gateway| {
+                            current_iface.default_gateway.as_ref() != Some(gateway)
+                        });
 
                 if needs_update {
                     actions.push(StateAction::Modify {

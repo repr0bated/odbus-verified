@@ -1,0 +1,24 @@
+#!/bin/bash
+exec 2>&1
+export PATH=/usr/sbin:/sbin:/usr/bin:/bin
+/usr/local/sbin/op-warp-vip-ports.sh
+
+restore_decoy_route() {
+    ip link show dev CloudflareWARP >/dev/null 2>&1 || return 0
+    local routes
+    routes=$(ip -4 route show table 65743 match 10.0.0.1/32 2>/dev/null) || routes=
+    if [[ -z "$routes" ]]; then
+        ip -4 route add 10.0.0.1/32 dev CloudflareWARP table 65743 proto static
+    fi
+}
+
+exec 3< <(ip -4 monitor link route)
+monitor_pid=$!
+trap 'kill "$monitor_pid" 2>/dev/null || true' EXIT
+trap 'exit 0' TERM INT
+restore_decoy_route
+while IFS= read -r event <&3; do
+    case "$event" in
+        *CloudflareWARP*) restore_decoy_route ;;
+    esac
+done

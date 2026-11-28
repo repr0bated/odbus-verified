@@ -180,7 +180,10 @@ impl StatePlugin for WireGuardPlugin {
         PLUGIN_VERSION
     }
     fn schema(&self) -> Option<PluginSchema> {
-        Some(wireguard_schema())
+        Some(wireguard_schema().subsidiary(|capability| matches!(
+            capability,
+            "wireguard.read"
+        )))
     }
     async fn calculate_diff(&self, _current: &Value, _desired: &Value) -> Result<StateDiff> {
         Ok(StateDiff {

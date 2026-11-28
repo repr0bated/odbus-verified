@@ -62,6 +62,14 @@ async fn lookup_in(
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct RegistryUnavailable;
 
+impl std::fmt::Display for RegistryUnavailable {
+    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        formatter.write_str("human principal registry unavailable")
+    }
+}
+
+impl std::error::Error for RegistryUnavailable {}
+
 pub async fn resolve_key_for_assertion(
     pubkey: &str,
 ) -> Result<Option<HumanPrincipalRecord>, RegistryUnavailable> {

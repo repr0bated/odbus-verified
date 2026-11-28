@@ -1,7 +1,7 @@
 #!/bin/bash
 # Private mount AND network namespaces keep /run/netns and all packets isolated.
 set -euo pipefail
-script_dir=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
+script_dir=$(CDPATH='' cd -- "$(dirname -- "$0")" && pwd)
 if [ "$#" = 0 ]; then exec sudo -n unshare --mount --net "$0" --inside; fi
 [ "$1" = --inside ] || exit 1
 mount --make-rprivate /

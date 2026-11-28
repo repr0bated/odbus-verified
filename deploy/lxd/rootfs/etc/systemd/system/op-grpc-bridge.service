@@ -1,0 +1,18 @@
+[Unit]
+Description=Subsidiary door (op-grpc-bridge) on 10.0.0.2, over this container's own 3tchedFS
+# The host projects this container's 3tchedFS and threetchedFS into /run
+# (subsidiary-<name>-3tchedfs); there are no in-guest FUSE units to wait for.
+After=opdbus-lo.service door-tls-init.service
+Requires=opdbus-lo.service door-tls-init.service
+ConditionPathIsMountPoint=/run/mounts/3tchedFS
+
+[Service]
+Type=simple
+EnvironmentFile=/etc/op-dbus/bridge.env
+RuntimeDirectory=op-grpc-bridge
+ExecStart=/usr/local/libexec/op-dbus/bin/op-grpc-bridge
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

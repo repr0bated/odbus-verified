@@ -21,7 +21,7 @@ safe_host_directory() {
 for directory in /etc/3tched /etc/3tched/skills /etc/3tched/rules /etc/3tched/user /etc/3tched/shared /etc/3tched/soul /etc/3tched/memory; do
     safe_host_directory "$directory"
 done
-client=$(realpath -e -- "${THREETCHED_FS:-/usr/local/libexec/op-dbus/bin/3tched-fs}")
+client=$(realpath -e -- "${_3TCHED_FS:-/usr/local/libexec/op-dbus/bin/3tched-fs}")
 [[ -f $client && -x $client && $(stat -c %u "$client") == 0 ]] || die 'unsafe mounted client'
 mode=$(stat -c %a "$client")
 (( (8#$mode & 022) == 0 )) || die 'mounted client is writable by another owner'

@@ -244,7 +244,13 @@ impl StatePlugin for GhostbridgePlugin {
 
     fn schema(&self) -> Option<PluginSchema> {
         let schema = ghostbridge_schema();
-        Some(schema)
+        Some(schema.subsidiary(|capability| matches!(
+            capability,
+            "cap.service.ghostbridge.endpoints.read@v1"
+                | "cap.service.ghostbridge.ghostrunner.read@v1"
+                | "cap.service.ghostbridge.identity.read@v1"
+                | "cap.service.ghostbridge.state.read@v1"
+        )))
     }
 
     async fn calculate_diff(&self, _current: &Value, _desired: &Value) -> Result<StateDiff> {

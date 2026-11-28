@@ -20,7 +20,7 @@ name=$1
 sid=b0c777e3-0955-cd8b-3d01-ca12998cae28
 key=Env5zPMmM1Zhypu5/DY/yU4PRYW/4AOEq2KZ4OSc+18=
 operator=${OP_3TCHEDFS_EXPECTED_SESSION-414fbc56-03fb-20ab-758a-bcc7a7cbdc0e}
-client=${THREETCHED_FS:-/usr/local/libexec/op-dbus/bin/3tched-fs}
+client=${_3TCHED_FS:-/usr/local/libexec/op-dbus/bin/3tched-fs}
 control_mount=${OP_3TCHEDFS_MOUNT:-/run/mounts/3tchedFS}
 # --expected-session checks the existing mounted caller; it does not inject an
 # identity or use a different principal when admission fails.

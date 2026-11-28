@@ -1,0 +1,13 @@
+[Unit]
+Description=Generate this container's door TLS pair (key stays in the container)
+# Owner rule: dbus first, then both FUSE units, then everything else.
+After=local-fs.target systemd-tmpfiles-setup.service dbus.service 3tchedfs.service threetchedfs.service
+Before=op-grpc-bridge.service
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/usr/local/libexec/op-dbus/door-tls-init
+
+[Install]
+WantedBy=multi-user.target

@@ -375,7 +375,10 @@ impl StatePlugin for CronPlugin {
     fn schema(&self) -> Option<PluginSchema> {
         let mut schema = cron_schema();
         super::common::oscal::ensure_category_metadata_fields(&mut schema);
-        Some(schema)
+        Some(schema.subsidiary(|capability| matches!(
+            capability,
+            "cron.read"
+        )))
     }
     async fn calculate_diff(&self, _: &Value, _: &Value) -> Result<StateDiff> {
         bail!("cron state is observed from the native gateway; use a declared cron method")

@@ -1,9 +1,10 @@
 # Subid Taxonomy — GhostBridge Operational Routing
 
-This document is the authoritative subid taxonomy for the GhostBridge host
-consolidation. It is derived from `oscal-subids-report.md` and is used by the
-Gemma routing brain to map subids → tags → OpenFlow flow rules + xray routing
-rules.
+This document describes the subid taxonomy (pattern, categories, rules) and
+how routing tags use it. The registry of actual subids is the sealed catalog
+(see "Registry location"); the vocabulary is `crates/op-oscal-subid/src/lib.rs`.
+Originally derived from `oscal-subids-report.md` for the GhostBridge host
+consolidation (subids -> tags -> OpenFlow flow rules + xray routing rules).
 
 ## Dual-identifier model
 
@@ -30,19 +31,17 @@ rules.
 A routing tag is a short stable label used by both OpenFlow and xray. Each tag
 is declared in the subid registry and maps to one or more subids.
 
-Tags used by the host consolidation:
+Tags are not a separate registry: a tag is valid only when it names a subid
+that the sealed catalog already carries (see "Registry location").
 
-| tag | purpose | primary subid | backend |
-|---|---|---|---|
-| `xray-tls` | xray TLS ingress on 443 | `src.network.xray.serve@v1` | ingress |
-| `xray-reality` | xray REALITY ingress on 8443 | `src.network.xray.serve@v1` | ingress |
-| `grpc-bridge` | zeroclaw gateway on 127.0.0.1:8090 | `exp.service.zeroclaw.serve@v1` | gRPC |
-| `cognitive` | embedded runtime in `op-grpc-bridge`; no separate listener | plugin-owned cognitive operation subids | bridge MCP / gRPC |
-| `qdrant` | qdrant vector store on 127.0.0.1:6334 | `src.service.qdrant.serve@v1` | TCP |
-| `netmaker-api` | Netmaker REST API on 127.0.0.1:28081 | `src.service.netmaker-api.serve@v1` | TCP |
-| `netmaker-mq` | Netmaker message broker on 127.0.0.1:21883 | `src.service.netmaker-mq.serve@v1` | TCP |
-| `netmaker-ui` | Netmaker dashboard on 127.0.0.1:28082 | `exp.service.netmaker-ui.serve@v1` | TCP |
-| `nextdns` | local NextDNS resolver on 127.0.0.1:53 | `src.service.nextdns.serve@v1` | DNS redirect |
+> **Retired (2026-11-22).** The table that stood here (tags `xray-tls`,
+> `xray-reality`, `grpc-bridge` -> "zeroclaw gateway on 127.0.0.1:8090"
+> `exp.service.zeroclaw.serve@v1`, `cognitive`, `qdrant`, `netmaker-*`,
+> `nextdns`) described the pre-consolidation GhostBridge/zeroclaw host. It is
+> not a registry and was never sealed: 127.0.0.1:8090 is no longer a zeroclaw
+> gateway (the door is the op-grpc-bridge on 10.0.0.2:8090), and runtime
+> membership of every subid comes only from the sealed catalog. Read subids
+> from the catalog (`oscal_subid_registry` discovery), not from this page.
 
 ## Subid → tag → xray rule
 
@@ -77,9 +76,26 @@ Example:
 
 ## Registry location
 
-The canonical subid registry is `/etc/ghostbridge/subid-registry.json`.
-Gemma watches this file (or receives it via D-Bus /dev/shm) and regenerates
-routing artifacts on change.
+The canonical subid registry is the **sealed plugin catalog**
+(`/var/lib/opdbus/plugin-blobs`, manifest `.manifest.json`; versioned by the
+blob `FORMAT_VERSION`, `catalog_hash`/`previous_catalog_hash`/`generation` and
+each plugin's `schema_hash`). Every sealed method, field and event carries its
+subid there (`x-oscal-subid`, `MethodDecl.subid`).
+
+- Runtime membership comes only from the sealed catalog; the
+  `oscal_subid_registry` plugin discovers and annotates existing subids but
+  **cannot mint one** (`crates/op-plugins/src/state_plugins/oscal_subid_registry.rs:1-7`).
+- The taxonomy vocabulary (categories, component types, validation) has one
+  source, `crates/op-oscal-subid/src/lib.rs:1-21`, re-exported by
+  `op-plugins` `common::oscal`, `op_blob::subid` and `op-plugin-lint`.
+- A new subid is a sealed schema change: it enters through a plugin schema and
+  a catalog reseal, never through a side file.
+- Retired: `/etc/ghostbridge/subid-registry.json` and the "Gemma watches this
+  file (or receives it via D-Bus /dev/shm)" path. No component reads it; it is
+  not a registry.
+- Grouping (owner, 2026-11-22): chats and ledger entries are grouped by the
+  existing subids they already carry (sled ledger `subid` field, episode
+  fields' `x-oscal-subid`); grouping never invents a subid.
 
 ## Rules
 

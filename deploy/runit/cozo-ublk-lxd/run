@@ -1,0 +1,68 @@
+#!/bin/sh
+# Copy of cozo-ublk-500g for the LXD pool: Cozo/RocksDB store
+# /var/lib/op-dbus/ublk-lxd (device pool-default-persist, 500 GiB sparse,
+# 64 KiB CBLK chunks) served as /dev/ublkb4, btrfs "cozo-lxd" mounted at
+# /mnt/cozo-btrfs-lxd. Same pinned cozo-ublk binary and settings as 500g.
+set -eu
+PATH=/usr/sbin:/usr/bin:/sbin:/bin
+export PATH
+exec 2>&1
+# A user-space block device server must not be OOM-killed: losing it turns
+# the mounted Btrfs read-only (2026-11-25 20:47). The daemon inherits this.
+echo -1000 > /proc/self/oom_score_adj
+die() { printf 'cozo-ublk-lxd: %s\n' "$*" >&2; exit 1; }
+bootstrap=/usr/local/libexec/opdbus-ublk
+dev=/dev/ublkb4
+mountpoint=/mnt/cozo-btrfs-lxd
+pool=/var/lib/lxd/storage-pools/lxd-pool
+export OP_UBLK_COZO_DB_PATH=/var/lib/op-dbus/ublk-lxd UBLK_DEVICE=pool-default-persist UBLK_DEV_ID=4
+read -r OP_UBLK_DEBUG < /etc/op-dbus/env/OP_UBLK_DEBUG
+read -r OP_UBLK_NO_COMPRESSION < /etc/op-dbus/env/OP_UBLK_NO_COMPRESSION
+export OP_UBLK_DEBUG OP_UBLK_NO_COMPRESSION
+[ "$OP_UBLK_NO_COMPRESSION" = 0 ] || die 'expected CBLK payload compression'
+[ -f "$OP_UBLK_COZO_DB_PATH/data/CURRENT" ] || die 'existing RocksDB store is absent'
+[ "$(findmnt -rn -T "$OP_UBLK_COZO_DB_PATH" -o FSTYPE)" = ext4 ] || die 'RocksDB backing is not on ext4'
+sha256sum --strict --check --quiet "$bootstrap/manifest.sha256"
+if [ "$OP_UBLK_DEBUG" = 1 ]; then modprobe ublk_drv dyndbg=+p; else modprobe ublk_drv; fi
+# A stopped daemon leaves /dev/ublkc4 registered; cozo-ublk removes that stale
+# device itself. Refuse only when a live process still holds it.
+if [ -c /dev/ublkc4 ] && fuser -s /dev/ublkc4; then die 'device ID 4 is served by a live process'; fi
+[ ! -L "$mountpoint" ] && ! mountpoint -q "$mountpoint" || die 'mountpoint is occupied'
+install -d -m 0711 "$mountpoint"
+unshare --mount "$bootstrap/cozo-ublk" &
+daemon=$!
+mounted_by_service=no
+stop() {
+    trap '' TERM INT
+    if [ "$mounted_by_service" = yes ]; then
+        while mountpoint -q "$pool"; do
+            sv -w 30 down lxd && umount "$pool" || sleep 5
+        done
+        until umount "$mountpoint"; do sleep 5; done
+    fi
+    kill -TERM "$daemon" 2>/dev/null || :
+    wait "$daemon" 2>/dev/null || :
+    exit 0
+}
+trap stop TERM INT
+i=0
+# a stale device node may still exist until the daemon replaces it
+until [ -b "$dev" ] && [ "$(cat /sys/block/ublkb4/size 2>/dev/null || echo 0)" -gt 0 ]; do
+    kill -0 "$daemon" 2>/dev/null || die 'daemon exited before creating the device'
+    if [ "$i" -ge 80 ]; then die 'device did not appear'; fi
+    sleep .25
+    i=$((i+1))
+done
+if [ "$(timeout 15 blkid -p -s UUID -o value "$dev")" != 1a24ac88-14cd-4682-9b53-4de108d93498 ]; then
+    kill -TERM "$daemon" 2>/dev/null || :
+    wait "$daemon" 2>/dev/null || :
+    die 'unexpected Btrfs filesystem UUID'
+fi
+if ! mount -t btrfs -o noatime,nodiscard "$dev" "$mountpoint"; then
+    kill -TERM "$daemon" 2>/dev/null || :
+    wait "$daemon" 2>/dev/null || :
+    die 'mount failed'
+fi
+mounted_by_service=yes
+printf 'cozo-ublk-lxd: mounted %s at %s\n' "$dev" "$mountpoint"
+wait "$daemon"

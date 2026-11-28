@@ -441,7 +441,7 @@ impl StatePlugin for OpenFlowObfuscationPlugin {
             ),
         );
 
-        Some(schema)
+        Some(schema.subsidiary(|_| false))
     }
 
     fn capabilities(&self) -> PluginCapabilities {

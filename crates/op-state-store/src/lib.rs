@@ -20,6 +20,8 @@ pub mod memory_store;
 pub mod method_receipt;
 pub mod metrics;
 pub mod plugin_schema;
+pub mod public_link;
+pub mod public_record;
 pub mod public_state;
 pub mod schema_projection;
 pub mod schema_validator;
@@ -34,11 +36,12 @@ pub use error::StateStoreError;
 pub use event_chain::{
     ActionOrigin, ChainConfig, ChainEvent, ChainVerificationResult, Decision, DenyReason,
     EventBatch, EventChain, MerkleProof, OperationType, StateSnapshot, TagImmutabilityProof,
+    legacy_genesis_hash,
 };
 pub use execution_job::{ExecutionJob, ExecutionResult, ExecutionStatus};
 pub use memory_store::MemoryStore;
 pub use plugin_schema::{
-    CapabilityDecl, Constraint, DEFAULT_SCHEMA_DIALECT, FieldSchema, FieldType, FieldWriteDecl,
+    CapabilityDecl, Constraint, SchemaPurpose, DEFAULT_SCHEMA_DIALECT, FieldSchema, FieldType, FieldWriteDecl,
     MethodDecl, PluginCapabilities, PluginSchema, ReadOnlyCondition, SchemaCatalog,
     SchemaLoadError, SchemaRegistry, SideEffect, SignalDecl,
     ValidationResult as SchemaValidationResult, dialects,

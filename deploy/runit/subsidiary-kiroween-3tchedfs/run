@@ -1,0 +1,80 @@
+#!/bin/bash
+# Project the kiroween subsidiary's own 3tchedFS and threetchedFS into the tmpfs its LXD
+# container receives as /run. The container gets call files only, no host
+# socket. Only the container's mapped root may write them.
+# No NIC and no egress proxy. Subsidiary networking is not this service:
+# the OVN edge NIC is withdrawn, and effects go through these call files
+# and the bridge's tracked egress. Xray is not part of that path.
+exec 2>&1
+set -euo pipefail
+SESSION=$(cat /etc/op-dbus/env/subsidiary-kiroween-session) || exit 78
+case $SESSION in ''|*[!0-9a-f-]*) echo 'invalid session'; exit 78;; esac
+BASE=/run/opdbus/subsidiary
+RUN=$BASE/$SESSION/run
+# LXD requires the device source to exist when the container is created; its
+# mapped root uid is only known afterwards.
+install -d -m 0700 "$BASE" "$BASE/$SESSION" || exit 1
+install -d -m 0755 "$RUN" || exit 1
+OWNER=$(cat /etc/op-dbus/env/subsidiary-kiroween-call-owner-uid 2>/dev/null) || { echo 'waiting for the container uid map'; exec sleep 10; }
+case $OWNER in ''|0|*[!0-9]*) echo 'invalid mapped root uid'; exit 78;; esac
+GROUP=$(cat /etc/op-dbus/env/subsidiary-kiroween-call-owner-gid 2>/dev/null) || { echo 'waiting for the container gid map'; exec sleep 10; }
+case $GROUP in ''|0|*[!0-9]*) echo 'invalid mapped root gid'; exit 78;; esac
+STATE=/var/lib/opdbus-subsidiary/$SESSION/empty-state
+# One capture of the sealed catalog. threetched is not filtered: excluding it
+# or capturing it alone hides threetched_plugins and threetched_skills. Incus
+# stays out; that exclusion is a separate owner decision. Both surfaces mount
+# this store. The host's threetched-only store is already mounted and is not
+# reused.
+OWN=/dev/shm/3tchedfs-subsidiary-kiroween
+i=0
+until [ -S /run/opdbus/lungs/lungs.sock ] && [ -d /dev/shm/opdbus/plugin-blobs ]; do
+    i=$((i + 1)); [ "$i" -lt 120 ] || { echo 'lungs socket or catalog not ready'; exit 1; }
+    sleep 1
+done
+install -d -m 0755 "$STATE"
+# The guest writes this tree, so host root must never resolve a path inside a
+# tree a guest has already held: every run detaches the old tmpfs and prepares
+# a fresh one. A running container keeps its old view until it is restarted.
+if mountpoint -q "$RUN"; then umount -R -l "$RUN" || exit 1; fi
+mount -t tmpfs -o "nosuid,nodev,size=256m,mode=0755,uid=$OWNER,gid=$GROUP" tmpfs "$RUN" || exit 1
+install -d -m 0755 "$RUN/mounts" "$RUN/mounts/3tchedFS" "$RUN/mounts/threetchedFS" || exit 1
+# The original three-device intent cannot change. Populate its freshly built
+# /run before first exposure, never resolving a guest-controlled mount target.
+install -d -m 0755 "$RUN/mounts/opdbus/tunnel-browser"
+mount --bind /run/opdbus/tunnel-browser "$RUN/mounts/opdbus/tunnel-browser"
+mount -o remount,bind,ro,nosuid,nodev,noexec "$RUN/mounts/opdbus/tunnel-browser"
+# The container's door checks every mounted schema against the same sealed
+# catalog its views were captured from; it reads it here, read-only.
+install -d -m 0755 "$RUN/mounts/opdbus/plugin-blobs"
+mount --bind /dev/shm/opdbus/plugin-blobs "$RUN/mounts/opdbus/plugin-blobs"
+mount -o remount,bind,ro,nosuid,nodev,noexec "$RUN/mounts/opdbus/plugin-blobs"
+# The copy at /usr/local/libexec/op-dbus/bin/3tched-fs is stale: it projects the
+# sealed threetched object and then grafts the binary, so /plugins/threetched
+# is created twice. Use the host view's pinned release binary.
+conf=/etc/runit/runsvdir/default/3tched-fs/conf
+BIN=$(sed -n "s/^OPDBUS_FUSE_BINARY='\{0,1\}\([^']*\)'\{0,1\}$/\1/p" "$conf")
+case $BIN in
+    /*) ;;
+    *) echo 'host 3tched-fs binary pin is absent'; exit 1 ;;
+esac
+[ -x "$BIN" ] && [ ! -L "$BIN" ] || { echo 'pinned 3tched-fs binary is unavailable'; exit 1; }
+"$BIN" --store "$OWN" capture --schema-only --catalog /dev/shm/opdbus/plugin-blobs \
+    --state "$STATE" --exclude-plugin incus >"$STATE/capture.json" || exit 1
+view() { # fs name, surface, mount directory
+    exec "$BIN" --store "$OWN" mount --fs-name "$1" --surface "$2" --state "$STATE" \
+        --catalog /dev/shm/opdbus/plugin-blobs --lungs-socket /run/opdbus/lungs/lungs.sock \
+        --lungs-session "$SESSION" --call-owner-uid "$OWNER" --allow-other --auto-unmount "$RUN/mounts/$3"
+}
+PIDS=()
+cleanup() {
+    trap - EXIT TERM INT HUP
+    if [ "${#PIDS[@]}" -gt 0 ]; then kill "${PIDS[@]}" 2>/dev/null || :; fi
+    wait || :
+}
+trap cleanup EXIT
+trap 'exit 0' TERM INT HUP
+view 3tchedFS 3tched 3tchedFS & PIDS+=("$!")
+view threetched threetched threetchedFS & PIDS+=("$!")
+# Losing either view tears the unit down so runit restores the pair together.
+wait -n "${PIDS[@]}" || :
+exit 1

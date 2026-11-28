@@ -45,7 +45,10 @@ impl StatePlugin for LargeLanguageModelPlugin {
     fn schema(&self) -> Option<PluginSchema> {
         let mut schema = large_language_model_schema();
         super::common::oscal::ensure_category_metadata_fields(&mut schema);
-        Some(schema)
+        Some(schema.subsidiary(|capability| matches!(
+            capability,
+            "llm.invoke"
+        )))
     }
     async fn calculate_diff(&self, _current: &Value, _desired: &Value) -> Result<StateDiff> {
         Ok(StateDiff {

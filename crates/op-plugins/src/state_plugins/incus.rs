@@ -13,16 +13,17 @@ use op_state::{
 use op_state_store::PluginSchema;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
-use simd_json::{json, prelude::*, OwnedValue as Value};
+use simd_json::{OwnedValue as Value, json, prelude::*};
 use std::collections::{BTreeMap, HashMap};
 use std::time::Duration;
 use tokio::net::UnixStream;
 use tokio_tungstenite::{
-    tungstenite::{protocol::WebSocketConfig, Message},
     WebSocketStream,
+    tungstenite::{Message, protocol::WebSocketConfig},
 };
 
 use super::incus_device::{Device, NamedDevice};
+pub use op_cozo_store::IDENTITY_STORAGE_SYSCALL_DENY;
 
 /// Top-level state representing all Incus instances on the system.
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
@@ -39,7 +40,7 @@ pub struct IncusState {
 /// `type: proxy`. The previous non-standard `sockets`/`IncusProxySocket` field is
 /// gone; a container's relationship to the shared `container.sock` is resolved
 /// by name at the projection/gemma layer, not embedded here.
-#[derive(Debug, Clone, Default, Serialize, Deserialize, JsonSchema)]
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize, JsonSchema)]
 pub struct IncusInstance {
     pub name: String,
     /// Instance status: "Running", "Stopped", "Frozen"
@@ -306,20 +307,17 @@ impl IncusPlugin {
         state: IdentitySessionPowerState,
     ) -> Result<(String, &'static str)> {
         let (_, body) = Self::identity_session_power_request(session_id, state)?;
-        if instance_name != session_id
-            && !numbered_native_name(instance_name)
-            && !(instance_name == op_cozo_store::CONTROL_PLANE_NATIVE_NAME
-                && session_id == "b0c777e3-0955-cd8b-3d01-ca12998cae28")
-        {
-            anyhow::bail!("native identity power target is not canonical or the pinned chatbot");
-        }
+        // The durable bridge owner proves UUID/key/session ownership. This
+        // transport only validates a single safe native path component;
+        // human display names are not a separate authority class.
+        validate_segment(instance_name, "bound identity instance name")?;
         Ok((format!("/1.0/instances/{instance_name}/state"), body))
     }
 
     /// The bridge supplies an already validated durable identity binding.
-    /// This transport accepts canonical legacy names and numbered names only
-    /// after the bridge validates their durable identity binding; spelling is
-    /// not ownership. It never resolves identities or allocates names.
+    /// The bridge validates the durable UUID/key/session binding before this
+    /// transport call; spelling is not ownership. Never resolves identities
+    /// or allocates native names.
     pub async fn set_bound_identity_session_power_state(
         session_id: &str,
         instance_name: &str,
@@ -363,12 +361,20 @@ impl IncusPlugin {
     /// Provision the project plugin's restricted container in one Incus
     /// operation. Image/pool/path are trusted deployment policy, not chat input.
     pub fn project_creation_body(
-        project_id: &str, owner_session_id: &str, fingerprint: &str, pool: &str, persist_path: &str,
+        project_id: &str,
+        owner_session_id: &str,
+        fingerprint: &str,
+        pool: &str,
+        persist_path: &str,
     ) -> Result<serde_json::Value> {
-        anyhow::ensure!(uuid::Uuid::parse_str(project_id)?.to_string() == project_id
-            && fingerprint.len() == 64 && fingerprint.bytes().all(|c| c.is_ascii_hexdigit())
-            && !pool.is_empty() && std::path::Path::new(persist_path).is_absolute(),
-            "invalid project provisioning policy");
+        anyhow::ensure!(
+            uuid::Uuid::parse_str(project_id)?.to_string() == project_id
+                && fingerprint.len() == 64
+                && fingerprint.bytes().all(|c| c.is_ascii_hexdigit())
+                && !pool.is_empty()
+                && std::path::Path::new(persist_path).is_absolute(),
+            "invalid project provisioning policy"
+        );
         Ok(serde_json::json!({
             "type":"container", "ephemeral":false,
             "source":{"type":"image","fingerprint":fingerprint}, "profiles":[],
@@ -423,7 +429,9 @@ impl IncusPlugin {
             ["list", "--format=json"] => {
                 Self::incus_api_call("GET", "/1.0/instances?recursion=1", None).await
             }
-            ["init", ..] => anyhow::bail!("native creation requires the durable MutationEngine allocation owner"),
+            ["init", ..] => anyhow::bail!(
+                "native creation requires the durable MutationEngine allocation owner"
+            ),
             ["delete", name, "--force"] => {
                 Ok(serde_json::to_vec(&IncusApi::local().delete(name).await?)?)
             }
@@ -662,7 +670,9 @@ impl IncusPlugin {
 
     /// Apply a single Create action for an instance.
     pub async fn apply_create(_instance: &IncusInstance) -> Result<Vec<String>> {
-        anyhow::bail!("declarative creation is unsupported; use admitted create_instance for durable ID-N allocation")
+        anyhow::bail!(
+            "declarative creation is unsupported; use admitted create_instance for durable ID-N allocation"
+        )
     }
 
     async fn apply_modify(current: &IncusInstance, desired: &IncusInstance) -> Result<Vec<String>> {
@@ -923,7 +933,7 @@ impl StatePlugin for IncusPlugin {
     }
 
     fn schema(&self) -> Option<op_state_store::PluginSchema> {
-        Some(incus_schema())
+        Some(incus_schema().subsidiary(|_| false))
     }
 
     fn is_available(&self) -> bool {
@@ -1229,18 +1239,23 @@ mod tests {
         )
         .unwrap();
         assert_eq!(body, r#"{"action":"stop"}"#);
+        let (path, _) = IncusPlugin::bound_identity_session_power_request(
+            "fb86888e-d6ab-d4f7-6278-9fe116c46b1c", "Jeremy", IdentitySessionPowerState::Running,
+        ).unwrap();
+        assert_eq!(path, "/1.0/instances/Jeremy/state");
         for (session, name) in [
-            ("00000000-0000-4000-8000-000000000001", "3tchedCockpitBot"),
-            (sid, "Chatbot3tched"),
-            (sid, "another-container"),
+            ("invalid-session", "Jeremy"),
+            (sid, ""),
             (sid, "../../host?project=default"),
         ] {
-            assert!(IncusPlugin::bound_identity_session_power_request(
-                session,
-                name,
-                IdentitySessionPowerState::Running,
-            )
-            .is_err());
+            assert!(
+                IncusPlugin::bound_identity_session_power_request(
+                    session,
+                    name,
+                    IdentitySessionPowerState::Running,
+                )
+                .is_err()
+            );
         }
     }
 
@@ -1261,16 +1276,20 @@ mod tests {
         )
         .expect("stop request");
         assert_eq!(stop_body, r#"{"action":"stop"}"#);
-        assert!(IncusPlugin::identity_session_power_request(
-            "../../host?project=default",
-            IdentitySessionPowerState::Running,
-        )
-        .is_err());
-        assert!(IncusPlugin::identity_session_power_request(
-            &session_id.to_uppercase(),
-            IdentitySessionPowerState::Running,
-        )
-        .is_err());
+        assert!(
+            IncusPlugin::identity_session_power_request(
+                "../../host?project=default",
+                IdentitySessionPowerState::Running,
+            )
+            .is_err()
+        );
+        assert!(
+            IncusPlugin::identity_session_power_request(
+                &session_id.to_uppercase(),
+                IdentitySessionPowerState::Running,
+            )
+            .is_err()
+        );
     }
 
     #[test]
@@ -1415,14 +1434,25 @@ pub struct ReconcileNativeCreationInput {
 }
 
 pub fn numbered_native_name(name: &str) -> bool {
-    name.strip_prefix("ID-").is_some_and(|n| n.parse::<i64>()
-        .is_ok_and(|value| value > 0 && value.to_string() == n))
+    name.strip_prefix("ID-").is_some_and(|n| {
+        n.parse::<i64>()
+            .is_ok_and(|value| value > 0 && value.to_string() == n)
+    })
 }
 
 /// Pure request preparation; only the bridge's durable owner may submit it.
 pub fn native_creation_body(input: &CreateInstanceInput) -> Result<serde_json::Value> {
-    anyhow::ensure!(input.name.is_empty(), "name is server assigned; omit name for ID-N creation");
-    anyhow::ensure!(matches!(input.instance_type.as_str(), "container" | "virtual-machine"), "invalid Incus instance type");
+    anyhow::ensure!(
+        input.name.is_empty(),
+        "name is server assigned; omit name for ID-N creation"
+    );
+    anyhow::ensure!(
+        matches!(
+            input.instance_type.as_str(),
+            "container" | "virtual-machine"
+        ),
+        "invalid Incus instance type"
+    );
     let source = match input.source_mode.as_str() {
         "image" => image_source(&input.image)?,
         "empty" if input.image.is_empty() => serde_json::json!({"type":"none"}),
@@ -1430,61 +1460,108 @@ pub fn native_creation_body(input: &CreateInstanceInput) -> Result<serde_json::V
     };
     let config = input.config.clone().unwrap_or_default();
     validate_config(&config)?;
-    anyhow::ensure!(!config.contains_key("user.opdbus.creation_operation")
-        && !config.contains_key("user.opdbus.creation_digest"),
-        "creation receipt markers are server assigned");
+    anyhow::ensure!(
+        !config.contains_key("user.opdbus.creation_operation")
+            && !config.contains_key("user.opdbus.creation_digest"),
+        "creation receipt markers are server assigned"
+    );
     let mut devices = BTreeMap::new();
     for named in &input.devices {
         validate_segment(&named.name, "device name")?;
-        anyhow::ensure!(devices.insert(named.name.clone(), named.device.to_incus_map()).is_none(), "duplicate Incus device name");
+        anyhow::ensure!(
+            devices
+                .insert(named.name.clone(), named.device.to_incus_map())
+                .is_none(),
+            "duplicate Incus device name"
+        );
     }
-    Ok(serde_json::json!({"type":input.instance_type,"source":source,
-        "profiles":input.profiles,"config":config,"devices":devices,"ephemeral":false}))
+    Ok(
+        serde_json::json!({"type":input.instance_type,"source":source,
+        "profiles":input.profiles,"config":config,"devices":devices,"ephemeral":false}),
+    )
 }
 
 /// Native transport only. Admission, allocation and the durable POST fence
 /// belong to MutationEngine; no plugin method dispatches here directly.
 pub async fn create_reserved_native(body: &serde_json::Value) -> Result<()> {
-    let name = body["name"].as_str().context("allocated native name missing")?;
+    let name = body["name"]
+        .as_str()
+        .context("allocated native name missing")?;
     let reserved_chatbot = name == op_cozo_store::CONTROL_PLANE_NATIVE_NAME
         && body["type"] == "container"
         && body["config"]["user.opdbus.session_id"] == "b0c777e3-0955-cd8b-3d01-ca12998cae28"
-        && std::env::var("OP_CONTROL_PLANE_CHATBOT_WIREGUARD_PUBKEY").ok()
-            .is_some_and(|key| !key.trim().is_empty()
-                && body["config"]["user.opdbus.wireguard_public_key"] == key.trim());
-    anyhow::ensure!((numbered_native_name(name) || reserved_chatbot)
-        && body["config"]["user.opdbus.creation_operation"].as_str().is_some_and(|op| uuid::Uuid::parse_str(op).is_ok_and(|id| id.to_string() == op))
-        && body["config"]["user.opdbus.creation_digest"].as_str().is_some_and(|digest| digest.len() == 64 && digest.bytes().all(|b| b.is_ascii_digit() || (b'a'..=b'f').contains(&b))),
-        "native create requires a numbered or configured chatbot durable reservation");
-    IncusApi::local().call("POST", "/1.0/instances", Some(&body.to_string()), None).await?;
+        && std::env::var("OP_CONTROL_PLANE_CHATBOT_WIREGUARD_PUBKEY")
+            .ok()
+            .is_some_and(|key| {
+                !key.trim().is_empty()
+                    && body["config"]["user.opdbus.wireguard_public_key"] == key.trim()
+            });
+    anyhow::ensure!(
+        (numbered_native_name(name) || reserved_chatbot)
+            && body["config"]["user.opdbus.creation_operation"]
+                .as_str()
+                .is_some_and(|op| uuid::Uuid::parse_str(op).is_ok_and(|id| id.to_string() == op))
+            && body["config"]["user.opdbus.creation_digest"]
+                .as_str()
+                .is_some_and(|digest| digest.len() == 64
+                    && digest
+                        .bytes()
+                        .all(|b| b.is_ascii_digit() || (b'a'..=b'f').contains(&b))),
+        "native create requires a numbered or configured chatbot durable reservation"
+    );
+    IncusApi::local()
+        .call("POST", "/1.0/instances", Some(&body.to_string()), None)
+        .await?;
     Ok(())
 }
 
 /// Fixed stopped/unprivileged chatbot preparation; storage remains external.
 pub async fn identity_creation_body(session: &str, public_key: &str) -> Result<serde_json::Value> {
-    let pool = IncusApi::local().call("GET", "/1.0/storage-pools/identity-roots", None, None).await
+    let pool = IncusApi::local()
+        .call("GET", "/1.0/storage-pools/identity-roots", None, None)
+        .await
         .context("prepare requires the externally configured identity-roots pool")?;
-    anyhow::ensure!(pool["driver"] == "dir" && pool["status"] == "Created"
-        && pool["config"]["source"] == "/var/lib/incus-storage/identity-roots",
-        "identity-roots pool differs from trusted preparation policy");
-    let profile = IncusApi::local().call("GET", "/1.0/profiles/3tched-lungs", None, None).await?;
-    let devices = profile["devices"].as_object().context("3tched-lungs devices missing")?;
-    anyhow::ensure!(devices.keys().all(|key| matches!(key.as_str(), "runtime-run" | "lungs-socket-dir"))
-        && devices.get("lungs-socket-dir") == Some(&serde_json::json!({
+    anyhow::ensure!(
+        pool["driver"] == "dir"
+            && pool["status"] == "Created"
+            && pool["config"]["source"] == "/var/lib/incus-storage/identity-roots",
+        "identity-roots pool differs from trusted preparation policy"
+    );
+    let profile = IncusApi::local()
+        .call("GET", "/1.0/profiles/3tched-lungs", None, None)
+        .await?;
+    let devices = profile["devices"]
+        .as_object()
+        .context("3tched-lungs devices missing")?;
+    anyhow::ensure!(
+        devices
+            .keys()
+            .all(|key| matches!(key.as_str(), "runtime-run" | "lungs-socket-dir"))
+            && devices.get("lungs-socket-dir")
+                == Some(&serde_json::json!({
             "type":"disk","source":"/run/opdbus/lungs","path":"/run/opdbus/lungs","readonly":"true"})),
-        "3tched-lungs devices differ from trusted socket-only profile");
-    anyhow::ensure!(profile["config"].as_object().is_some_and(|config| config.is_empty()),
-        "3tched-lungs profile config must be empty");
+        "3tched-lungs devices differ from trusted socket-only profile"
+    );
+    anyhow::ensure!(
+        profile["config"]
+            .as_object()
+            .is_some_and(|config| config.is_empty()),
+        "3tched-lungs profile config must be empty"
+    );
     let mut runtime = profile["devices"]["runtime-run"].clone();
-    let runtime_object = runtime.as_object_mut().context("3tched-lungs runtime-run disk missing")?;
+    let runtime_object = runtime
+        .as_object_mut()
+        .context("3tched-lungs runtime-run disk missing")?;
     runtime_object.remove("initial.mode");
-    anyhow::ensure!(runtime == serde_json::json!({"type":"disk","source":"tmpfs:","path":"/run"}),
-        "runtime-run differs from trusted tmpfs disk");
+    anyhow::ensure!(
+        runtime == serde_json::json!({"type":"disk","source":"tmpfs:","path":"/run"}),
+        "runtime-run differs from trusted tmpfs disk"
+    );
     Ok(serde_json::json!({
         "type":"container","ephemeral":false,"source":{"type":"none"},"profiles":["3tched-lungs"],
         "config":{"security.privileged":"false","security.nesting":"false","security.protection.shift":"true",
             "boot.autostart":"false","security.syscalls.deny_default":"true",
-            "security.syscalls.deny":"ioctl errno 1 [1,0x4008941a,SCMP_CMP_MASKED_EQ,0xffffffff]\nioctl errno 1 [1,0x5000940f,SCMP_CMP_MASKED_EQ,0xffffffff]\nioctl errno 1 [1,0x5000943f,SCMP_CMP_MASKED_EQ,0xffffffff]",
+            "security.syscalls.deny":IDENTITY_STORAGE_SYSCALL_DENY,
             "user.opdbus.session_id":session,"user.opdbus.wireguard_public_key":public_key,
             "user.display_name":"control-plane-chatbot","raw.lxc":format!("lxc.uts.name = {session}")},
         "devices":{"root":{"type":"disk","path":"/","pool":"identity-roots"},"runtime-run":runtime,
@@ -1492,7 +1569,61 @@ pub async fn identity_creation_body(session: &str, public_key: &str) -> Result<s
     }))
 }
 
-fn default_source_mode() -> String { "image".into() }
+/// Native-pool empty placeholder. The admitted creation journal pins the
+/// immutable Golden wrapper consumed once by the external storage owner.
+pub async fn native_identity_creation_body(session: &str, public_key: &str, parent: &str) -> Result<serde_json::Value> {
+    let pool = IncusApi::local().call("GET", "/1.0/storage-pools/3tched-pool", None, None).await?;
+    anyhow::ensure!(pool["driver"] == "btrfs" && pool["status"] == "Created",
+        "native identity creation requires the existing 3tched-pool Btrfs pool");
+    let seed = std::env::var("OP_IDENTITY_GOLDEN_SEED_NAME").context("approved Golden seed name absent")?;
+    anyhow::ensure!(!seed.is_empty() && seed.len() <= 128 && seed != "." && seed != ".."
+        && seed.bytes().all(|b| b.is_ascii_alphanumeric() || matches!(b, b'-' | b'_' | b'.' | b'@')),
+        "approved Golden seed name is unsafe");
+    let seed_uuid = std::env::var("OP_IDENTITY_GOLDEN_SUBVOLUME_UUID").context("approved Golden seed UUID absent")?;
+    let pool_fsid = std::env::var("OP_IDENTITY_POOL_FSID").context("approved pool FSID absent")?;
+    for value in [&seed_uuid, &pool_fsid] {
+        anyhow::ensure!(uuid::Uuid::parse_str(value)?.to_string() == *value, "noncanonical native storage pin");
+    }
+    let seed_id = std::env::var("OP_IDENTITY_GOLDEN_SUBVOLUME_ID").context("Golden seed ID absent")?;
+    anyhow::ensure!(seed_id.parse::<u64>()? >= 256, "invalid Golden seed ID");
+    let metadata_hash = std::env::var("OP_IDENTITY_GOLDEN_METADATA_SHA256").context("Golden metadata hash absent")?;
+    anyhow::ensure!(metadata_hash.len() == 64 && metadata_hash.bytes().all(|b| b.is_ascii_hexdigit() && !b.is_ascii_uppercase()),
+        "invalid Golden metadata hash");
+    // The identity volume is prepared by the issuing/storage authority before
+    // admission. No credential or arbitrary source path is accepted here.
+    Ok(serde_json::json!({
+        "type":"container","ephemeral":false,"source":{"type":"none"},"profiles":[],
+        "config":{
+            "security.privileged":"false","security.nesting":"false","security.idmap.isolated":"true",
+            "security.protection.shift":"true","boot.autostart":"false",
+            "raw.lxc":format!("lxc.uts.name = {session}\nlxc.init.cmd = /sbin/runit-init"),
+            "security.syscalls.deny_default":"true",
+            "security.syscalls.deny":IDENTITY_STORAGE_SYSCALL_DENY,
+            "user.opdbus.session_id":session,"user.opdbus.wireguard_public_key":public_key,
+            "user.opdbus.principal_kind":"service","user.opdbus.creation_mode":"create_subsidiary",
+            "user.opdbus.parent_principal_id":parent,"user.opdbus.golden_seed_name":seed,
+            "user.opdbus.golden_seed_uuid":seed_uuid,"user.opdbus.pool_fsid":pool_fsid,
+            "user.opdbus.golden_seed_id":seed_id,"user.opdbus.golden_metadata_sha256":metadata_hash
+        },
+        "devices":{
+            "root":{"type":"disk","path":"/","pool":"3tched-pool"},
+            "identity-sled":{"type":"disk","path":"/agent/user","pool":"3tched-pool",
+                "source":format!("identity-{session}"),"readonly":"true"},
+            "runtime-run":{"type":"disk","source":"tmpfs:","path":"/run"},
+            "fuse":{"type":"unix-char","source":"/dev/fuse","path":"/dev/fuse"},
+            "lungs-socket-dir":{"type":"disk","source":"/run/opdbus/lungs",
+                "path":"/run/opdbus/lungs","readonly":"true"},
+            "catalog":{"type":"disk","source":"/var/lib/opdbus/plugin-blobs",
+                "path":"/var/lib/opdbus/plugin-blobs","readonly":"true"},
+            "decoy-trust":{"type":"disk","source":"/etc/op-dbus/decoy-trust.json",
+                "path":"/etc/op-dbus/decoy-trust.json","readonly":"true"}
+        }
+    }))
+}
+
+fn default_source_mode() -> String {
+    "image".into()
+}
 
 fn default_instance_type() -> String {
     "container".to_string()
@@ -1637,6 +1768,29 @@ impl IncusRootRepairBackend {
 
     pub async fn instance(&self, name: &str) -> Result<(serde_json::Value, String)> {
         self.api.instance(name).await
+    }
+
+    /// Names of the instances whose own config carries `user.opdbus.session_id
+    /// == session_id`. Read-only; the identity sled volume names the session,
+    /// Incus names the container.
+    /// Whether any instance still carries this name or this `volatile.uuid`.
+    /// Read-only; used to prove a replaced native instance is really gone.
+    pub async fn instance_name_or_uuid_present(&self, name: &str, uuid: &str) -> Result<bool> {
+        let listed = self.api.call("GET", "/1.0/instances?recursion=1", None, None).await?;
+        let instances = listed.as_array().context("Incus instance list must be an array")?;
+        Ok(instances.iter().any(|instance| {
+            instance["name"] == name || instance["config"]["volatile.uuid"] == uuid
+        }))
+    }
+
+    pub async fn instances_with_session(&self, session_id: &str) -> Result<Vec<String>> {
+        let listed = self.api.call("GET", "/1.0/instances?recursion=1", None, None).await?;
+        let instances = listed.as_array().context("Incus instance list must be an array")?;
+        Ok(instances
+            .iter()
+            .filter(|instance| instance["config"]["user.opdbus.session_id"] == session_id)
+            .filter_map(|instance| instance["name"].as_str().map(str::to_owned))
+            .collect())
     }
 
     /// Read the current running init PID for kernel-authenticated local lungs.
@@ -1849,6 +2003,25 @@ impl IncusRootRepairBackend {
         Ok(())
     }
 
+    /// Exact, stopped, same-UUID safety transition, never a generic config API.
+    pub async fn harden_stopped_identity(&self, name: &str, native_uuid: &str,
+        expected: &serde_json::Value, expected_etag: &str) -> Result<()> {
+        let path = instance_path(name)?;
+        let (current, etag) = self.instance(name).await?;
+        anyhow::ensure!(!expected_etag.is_empty() && etag == expected_etag && current == *expected
+            && current["status"] == "Stopped" && current["config"]["volatile.uuid"] == native_uuid,
+            "stopped identity hardening UUID, definition or ETag changed");
+        for field in ["config", "expanded_config"] {
+            anyhow::ensure!(current[field]["security.syscalls.deny"].as_str()
+                .is_none_or(|deny| deny.is_empty() || deny == IDENTITY_STORAGE_SYSCALL_DENY),
+                "root upgrade cannot erase an unrelated syscall deny list");
+        }
+        let body = serde_json::json!({"config":{
+            "security.syscalls.deny_default":"true","security.syscalls.deny":IDENTITY_STORAGE_SYSCALL_DENY}});
+        self.api.call("PATCH", &path, Some(&body.to_string()), Some(expected_etag)).await?;
+        Ok(())
+    }
+
     /// Incus 7.4 honors If-Match for this PATCH (unlike rebuild/move POSTs).
     /// The owner must still verify the complete stopped native readback.
     pub async fn redirect_persist_source(
@@ -1914,19 +2087,38 @@ impl IncusRootRepairBackend {
 
     /// One stopped, same-instance native rename. Admission, UUID ownership and
     /// the durable one-POST fence belong to the identity owner.
-    pub async fn rename_stopped_identity(&self, old_name: &str, new_name: &str,
-        native_uuid: &str, expected_etag: &str) -> Result<()> {
+    pub async fn rename_stopped_identity(
+        &self,
+        old_name: &str,
+        new_name: &str,
+        native_uuid: &str,
+        expected_etag: &str,
+    ) -> Result<()> {
         validate_segment(old_name, "old instance name")?;
         validate_segment(new_name, "new instance name")?;
-        anyhow::ensure!(old_name != new_name && !expected_etag.is_empty(),
-            "native rename requires distinct names and an ETag");
+        anyhow::ensure!(
+            old_name != new_name && !expected_etag.is_empty(),
+            "native rename requires distinct names and an ETag"
+        );
         let (current, etag) = self.instance(old_name).await?;
-        anyhow::ensure!(etag == expected_etag && current["name"] == old_name
-            && current["type"] == "container" && current["status"] == "Stopped"
-            && current["status_code"] == 102 && current["config"]["volatile.uuid"] == native_uuid,
-            "stopped native rename binding or ETag changed");
+        anyhow::ensure!(
+            etag == expected_etag
+                && current["name"] == old_name
+                && current["type"] == "container"
+                && current["status"] == "Stopped"
+                && current["status_code"] == 102
+                && current["config"]["volatile.uuid"] == native_uuid,
+            "stopped native rename binding or ETag changed"
+        );
         let body = serde_json::json!({"name":new_name, "migration":false});
-        self.api.call("POST", &instance_path(old_name)?, Some(&body.to_string()), Some(expected_etag)).await?;
+        self.api
+            .call(
+                "POST",
+                &instance_path(old_name)?,
+                Some(&body.to_string()),
+                Some(expected_etag),
+            )
+            .await?;
         Ok(())
     }
 
@@ -2449,7 +2641,11 @@ pub struct IncusMethodObservationError {
 
 impl std::fmt::Display for IncusMethodObservationError {
     fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(formatter, "Incus authoritative state did not confirm the completed method receipt: {}", self.cause)
+        write!(
+            formatter,
+            "Incus authoritative state did not confirm the completed method receipt: {}",
+            self.cause
+        )
     }
 }
 
@@ -2656,7 +2852,9 @@ async fn dispatch_incus_with_api(
     args: &serde_json::Value,
 ) -> Result<serde_json::Value> {
     match method {
-        "create_instance" => anyhow::bail!("native creation requires the durable MutationEngine allocation owner"),
+        "create_instance" => {
+            anyhow::bail!("native creation requires the durable MutationEngine allocation owner")
+        }
         "modify_instance" => {
             let input: ModifyInstanceInput = serde_json::from_value(args.clone())
                 .context("invalid modify_instance arguments")?;
@@ -2934,10 +3132,19 @@ pub(crate) fn incus_schema() -> PluginSchema {
         ]
     }));
     let mut methods = std::collections::HashMap::new();
-    methods.insert("reconcile_creation".into(),
-        super::plugin_scaffold_helpers::method_decl_from_schemars_with_output::<ReconcileNativeCreationInput, CreateInstanceOutput>(
-            "reconcile_creation", op_state_store::SideEffect::Mutation, true,
-            "cap.service.incus.instance.create@v1", "mut.service.incus.instance.reconcile-creation@v1"));
+    methods.insert(
+        "reconcile_creation".into(),
+        super::plugin_scaffold_helpers::method_decl_from_schemars_with_output::<
+            ReconcileNativeCreationInput,
+            CreateInstanceOutput,
+        >(
+            "reconcile_creation",
+            op_state_store::SideEffect::Mutation,
+            true,
+            "cap.service.incus.instance.create@v1",
+            "mut.service.incus.instance.reconcile-creation@v1",
+        ),
+    );
     methods.insert(
         "create_instance".to_string(),
         super::plugin_scaffold_helpers::method_decl_from_schemars_with_output::<
@@ -3348,17 +3555,21 @@ mod transport_tests {
     #[tokio::test]
     async fn rejects_truncated_chunked_response() {
         let response = b"HTTP/1.1 200 OK\r\nTransfer-Encoding: chunked\r\n\r\n5\r\nhello\r\n";
-        assert!(request_with_response(response, Duration::from_secs(1))
-            .await
-            .is_err());
+        assert!(
+            request_with_response(response, Duration::from_secs(1))
+                .await
+                .is_err()
+        );
     }
 
     #[tokio::test]
     async fn rejects_truncated_content_length_response() {
         let response = b"HTTP/1.1 200 OK\r\nContent-Length: 5\r\n\r\nhi";
-        assert!(request_with_response(response, Duration::from_secs(1))
-            .await
-            .is_err());
+        assert!(
+            request_with_response(response, Duration::from_secs(1))
+                .await
+                .is_err()
+        );
     }
 
     #[tokio::test]
@@ -3392,9 +3603,11 @@ mod transport_tests {
     #[tokio::test]
     async fn timeout_rejects_incomplete_response() {
         let response = b"HTTP/1.1 200 OK\r\nTransfer-Encoding: chunked\r\n\r\n5\r\nhe";
-        assert!(request_with_response(response, Duration::from_millis(30))
-            .await
-            .is_err());
+        assert!(
+            request_with_response(response, Duration::from_millis(30))
+                .await
+                .is_err()
+        );
     }
 
     #[tokio::test]
@@ -3403,9 +3616,11 @@ mod transport_tests {
             super::dispatch_incus_method("start_instance", &serde_json::json!({"name": 42}))
                 .await
                 .expect_err("typed input must reject non-string names");
-        assert!(malformed
-            .to_string()
-            .contains("invalid start_instance arguments"));
+        assert!(
+            malformed
+                .to_string()
+                .contains("invalid start_instance arguments")
+        );
 
         let unknown = super::dispatch_incus_method("not_declared", &serde_json::json!({}))
             .await
@@ -3715,10 +3930,10 @@ mod transport_tests {
 
         let mut wrong_project = observed_instance("demo", "Running", 103);
         wrong_project["project"] = "other".into();
-        assert!(IncusPlugin::parse_instance_list(
-            serde_json::to_vec(&vec![wrong_project]).unwrap()
-        )
-        .is_err());
+        assert!(
+            IncusPlugin::parse_instance_list(serde_json::to_vec(&vec![wrong_project]).unwrap())
+                .is_err()
+        );
     }
 
     #[test]
@@ -4175,9 +4390,11 @@ mod transport_tests {
             )
             .await
             .expect_err("unfinished or failed operation must not acknowledge completion");
-            assert!(result
-                .to_string()
-                .contains(if error.is_empty() { status } else { error }));
+            assert!(
+                result
+                    .to_string()
+                    .contains(if error.is_empty() { status } else { error })
+            );
         }
         let error = dispatch_fixture("delete_instance", serde_json::json!({"name": "demo"}), vec![
             instance_read(),
@@ -4256,11 +4473,13 @@ mod transport_tests {
             serde_json::json!({"name": "demo", "command": [""]}),
             serde_json::json!({"name": "demo", "command": ["tool", "\0"]}),
         ] {
-            assert!(super::dispatch_incus_with_api(&api, "exec_instance", &args)
-                .await
-                .unwrap_err()
-                .to_string()
-                .contains("Incus exec"));
+            assert!(
+                super::dispatch_incus_with_api(&api, "exec_instance", &args)
+                    .await
+                    .unwrap_err()
+                    .to_string()
+                    .contains("Incus exec")
+            );
         }
         let error = super::dispatch_incus_with_api(
             &api,

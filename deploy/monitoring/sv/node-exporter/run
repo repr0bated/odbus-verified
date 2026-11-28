@@ -1,0 +1,11 @@
+#!/bin/sh
+# node_exporter, loopback only. FUSE and incus-internal mounts are excluded so a
+# stuck FUSE daemon can never wedge the filesystem collector.
+exec 2>&1
+install -d -m 0755 -o node_exporter -g node_exporter /var/lib/node_exporter/textfile
+exec chpst -u node_exporter:node_exporter /usr/local/bin/node_exporter \
+  --web.listen-address=127.0.0.1:9100 \
+  --collector.textfile.directory=/var/lib/node_exporter/textfile \
+  --collector.filesystem.fs-types-exclude='^(autofs|binfmt_misc|bpf|cgroup2?|configfs|debugfs|devpts|devtmpfs|fusectl|fuse|fuse\..*|hugetlbfs|iso9660|mqueue|nsfs|overlay|proc|procfs|pstore|rpc_pipefs|securityfs|selinuxfs|squashfs|erofs|sysfs|tracefs|nfs4?|cifs|9p)$' \
+  --collector.filesystem.mount-points-exclude='^/(dev|proc|run/credentials/.+|sys|var/lib/incus/.+|var/lib/docker/.+|var/lib/containers/storage/.+)($|/)' \
+  --collector.netdev.device-exclude='^(veth.*|tap.*)$'

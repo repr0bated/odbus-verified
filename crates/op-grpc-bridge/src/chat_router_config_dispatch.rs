@@ -1,4 +1,4 @@
-//! Prior name: tched_config_dispatch.
+//! Prior name: _3tched_config_dispatch.
 //! Native read adapter for the chat_router v0.8.4 config surface.
 //!
 //! Runtime performs sealed admission and pins/rechecks the exact plugin schema
@@ -13,7 +13,7 @@ use op_plugins::state_plugins::chat_router::{
 use serde_json::Value;
 
 use crate::chat_router_runtime::{
-    ConfigSecretPolicy, NativeConfigMutation, ChatRouterRuntimeClient,
+    ChatRouterRuntimeClient, ConfigSecretPolicy, NativeConfigMutation,
 };
 
 /// Backing for the authored typed config methods. The generated per-section

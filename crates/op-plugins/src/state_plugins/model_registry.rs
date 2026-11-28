@@ -1073,7 +1073,10 @@ impl StatePlugin for ModelRegistryPlugin {
     fn schema(&self) -> Option<PluginSchema> {
         let mut schema = model_registry_schema();
         super::common::oscal::ensure_category_metadata_fields(&mut schema);
-        Some(schema)
+        Some(schema.subsidiary(|capability| matches!(
+            capability,
+            "model_registry.read"
+        )))
     }
 
     async fn calculate_diff(&self, _current: &Value, _desired: &Value) -> Result<StateDiff> {

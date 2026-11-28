@@ -274,7 +274,10 @@ impl StatePlugin for MailServerPlugin {
     }
 
     fn schema(&self) -> Option<op_state_store::PluginSchema> {
-        Some(mail_server_schema())
+        Some(mail_server_schema().subsidiary(|capability| matches!(
+            capability,
+            "mail.read"
+        )))
     }
 
     async fn calculate_diff(&self, _current: &Value, _desired: &Value) -> Result<StateDiff> {

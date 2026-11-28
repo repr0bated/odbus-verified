@@ -150,7 +150,10 @@ impl StatePlugin for KeyringPlugin {
     }
 
     fn schema(&self) -> Option<PluginSchema> {
-        Some(keyring_schema())
+        Some(keyring_schema().subsidiary(|capability| matches!(
+            capability,
+            "keyring.read"
+        )))
     }
 
     fn capabilities(&self) -> PluginCapabilities {

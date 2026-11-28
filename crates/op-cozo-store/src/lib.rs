@@ -12,21 +12,35 @@ type Params = BTreeMap<String, DataValue>;
 mod external_mcp_sessions;
 pub use external_mcp_sessions::ExternalMcpSessionRecord;
 
+mod point_index;
+pub use point_index::{PointIndexEntry, VOYAGE_POINT_DIM, VOYAGE_POINT_FAMILY, vector_point_id};
+
 mod system_graph;
 pub use system_graph::*;
 
+mod block_store;
+pub use block_store::{
+    BlockDevice, BlockStoreCounts, CozoBlockStore, DEFAULT_UBLK_COZO_DB_PATH,
+    POOL_DEFAULT_PERSIST_BYTES, POOL_DEFAULT_PERSIST_DEVICE, POOL_PERSIST_ROLE, UBLK_CHUNK_BYTES,
+    UBLK_COZO_DB_PATH_ENV, UBLK_LOGICAL_BLOCK_BYTES, ublk_cozo_db_path,
+};
+pub mod cblk;
 mod identity_inventory;
 mod identity_transactions;
 pub use identity_inventory::{
     IdentityInventoryCounts, IdentityInventoryEntry, IdentityInventoryPage, IdentityInventoryQuery,
 };
 pub use identity_transactions::{
-    ContainerRenameJournal, ContainerRenameRequest, CONTROL_PLANE_NATIVE_NAME, container_rename_native_matches,
-    NativeCreationRequest, NativeCreationRecord, is_numbered_native_name,
-    CleanProvisionReceipt, IdentityCleanProvision, clean_provision_instance_binding_matches,
-    IdentityCommit, IdentityCompareExchange, IdentityIntent, IdentityPhysicalRootMigration,
-    IdentityRecoverySnapshot, IdentityRevision, PhysicalRootMigrationReceipt, RootRepairJournal,
-    SeedProvisionJournal, physical_root_instance_binding_matches,
+    CONTROL_PLANE_NATIVE_NAME, CleanProvisionReceipt, ContainerRenameJournal,
+    ContainerRenameRequest, IdentityCleanProvision, IdentityCommit, IdentityCompareExchange,
+    IdentityIntent, IdentityPhysicalRootMigration, IdentityRecoverySnapshot, IdentityRevision,
+    NativeCreationRecord, NativeCreationRequest, PhysicalRootMigrationReceipt, RootRepairJournal,
+    NativeRootUpgradeJournal,
+    IDENTITY_STORAGE_SYSCALL_DENY, native_root_policy_transition_matches,
+    ContainerExecRequest, ContainerExecJournal, LxdSubsidiary,
+    SeedProvisionJournal, clean_provision_instance_binding_matches,
+    container_rename_native_matches, is_numbered_native_name,
+    physical_root_instance_binding_matches,
 };
 mod runtime_document_transactions;
 pub use runtime_document_transactions::{
@@ -49,12 +63,12 @@ pub use chat_response_conversations::{
 };
 mod ctl_plane_chatbot_episodes;
 mod workflow_executions;
-pub use workflow_executions::WorkflowExecutionRecord;
 pub use ctl_plane_chatbot_episodes::{
     EpisodeEmbeddingRecord, EpisodePage, EpisodeScope, EpisodeSnapshot, KNOWLEDGE_SNAPSHOT_LIMIT,
     MAX_CHATBOT_EPISODE_BYTES, MAX_CHATBOT_SNAPSHOT_BYTES, ScopedEpisodeRecord,
     ScopedKnowledgeRecord,
 };
+pub use workflow_executions::WorkflowExecutionRecord;
 
 /// Strongly-typed error for CozoDB graph operations.
 ///
@@ -131,6 +145,10 @@ pub struct IdentitySledRecord {
     /// Actor class is persisted with the atomic identity revision metadata.
     /// It is distinct from SID1's transport principal_kind.
     pub principal_kind: Option<String>,
+    /// Organizational relation (subsidiary marker) as JSON, `""` when absent.
+    /// Stored beside the fixed session row in `identity_org_relations`.
+    #[serde(default)]
+    pub org_relation_json: String,
     pub btrfs_device_json: String,
     pub instance_json: String,
     pub session_started_at: i64,
@@ -532,8 +550,20 @@ impl CozoGraphShuttle {
                 principal_kind: String default ""
             }"#,
             // Private same-UUID name cutover; native POST permission is never replayed.
+            r#":create identity_org_relations {
+                session_id: String => document: String
+            }"#,
+            r#":create identity_lxd_subsidiaries {
+                session_id: String => document: String
+            }"#,
             r#":create identity_container_renames {
                 session_id: String => document: String
+            }"#,
+            r#":create identity_native_root_upgrades {
+                session_id: String, operation_id: String => document: String
+            }"#,
+            r#":create identity_container_execs {
+                operation_id: String => document: String
             }"#,
             // Private one-row-per-session repair fence in this same Cozo DB.
             // Ordinary session events cannot create, overwrite or truncate it.
@@ -592,6 +622,7 @@ impl CozoGraphShuttle {
                 registered_at: Int default 0,
                 revoked_at: Int default 0
             }"#,
+            r#":create point_index { collection: String, point_id: String => entity: String, model_family: String, dim: Int, chunker_ver: String }"#,
             r#":create chain_vector_link {
                 point_id: String,
                 kind: String
@@ -1037,10 +1068,7 @@ impl CozoGraphShuttle {
     }
 
     /// Remove all rows from a set of relations. Used to clean up on deny/delete.
-    pub fn clear_relations(
-        &self,
-        names: &[String],
-    ) -> std::result::Result<(), CozoError> {
+    pub fn clear_relations(&self, names: &[String]) -> std::result::Result<(), CozoError> {
         if names.is_empty() {
             return Ok(());
         }
@@ -1703,7 +1731,7 @@ impl CozoGraphShuttle {
         rec: &IdentitySledRecord,
     ) -> std::result::Result<(), CozoError> {
         let _guard = self.legacy_identity_write_guard(&rec.session_id)?;
-        if rec.principal_kind.is_some() {
+        if rec.principal_kind.is_some() || !rec.org_relation_json.is_empty() {
             return Err(CozoError::Other(
                 "actor classification requires atomic identity intent".into(),
             ));
@@ -1833,14 +1861,16 @@ impl CozoGraphShuttle {
             &self.db,
             "actor[session_id, principal_kind] := *identity_revisions{session_id, principal_kind}\n\
              actor[session_id, principal_kind] := *identity_sessions{session_id}, not *identity_revisions{session_id}, principal_kind = ''\n\
+             org[session_id, document] := *identity_org_relations{session_id, document}\n\
+             org[session_id, document] := *identity_sessions{session_id}, not *identity_org_relations{session_id}, document = ''\n\
              ?[session_id, wireguard_pubkey, interface, peer_ip, mutation_index, \
              session_genesis, trace_id, schema_version, vector_id, sealed_id, \
              btrfs_device_json, instance_json, session_started_at, last_seen_at, active, \
-             expires_at, principal_kind] := \
+             expires_at, principal_kind, org_relation_json] := \
              *identity_sessions[session_id, wireguard_pubkey, interface, peer_ip, mutation_index, \
              session_genesis, trace_id, schema_version, vector_id, sealed_id, \
              btrfs_device_json, instance_json, session_started_at, last_seen_at, active, \
-             expires_at], actor[session_id, principal_kind], \
+             expires_at], actor[session_id, principal_kind], org[session_id, org_relation_json], \
              session_id = $sid",
             p,
         )
@@ -1859,14 +1889,16 @@ impl CozoGraphShuttle {
             &self.db,
             "actor[session_id, principal_kind] := *identity_revisions{session_id, principal_kind}\n\
              actor[session_id, principal_kind] := *identity_sessions{session_id}, not *identity_revisions{session_id}, principal_kind = ''\n\
+             org[session_id, document] := *identity_org_relations{session_id, document}\n\
+             org[session_id, document] := *identity_sessions{session_id}, not *identity_org_relations{session_id}, document = ''\n\
              ?[session_id, wireguard_pubkey, interface, peer_ip, mutation_index, \
              session_genesis, trace_id, schema_version, vector_id, sealed_id, \
              btrfs_device_json, instance_json, session_started_at, last_seen_at, active, \
-             expires_at, principal_kind] := \
+             expires_at, principal_kind, org_relation_json] := \
              *identity_sessions[session_id, wireguard_pubkey, interface, peer_ip, mutation_index, \
              session_genesis, trace_id, schema_version, vector_id, sealed_id, \
              btrfs_device_json, instance_json, session_started_at, last_seen_at, active, \
-             expires_at], actor[session_id, principal_kind]",
+             expires_at], actor[session_id, principal_kind], org[session_id, org_relation_json]",
             BTreeMap::new(),
         )
         .map_err(|e| CozoError::Other(format!("list identity sleds: {e}")))?;
@@ -2278,6 +2310,7 @@ fn row_to_identity_sled(headers: &[String], row: &[DataValue]) -> IdentitySledRe
             let value = row_str(headers, row, "principal_kind");
             (!value.is_empty()).then_some(value)
         },
+        org_relation_json: row_str(headers, row, "org_relation_json"),
         btrfs_device_json: row_text(headers, row, "btrfs_device_json"),
         instance_json: row_text(headers, row, "instance_json"),
         session_started_at: row_cell(headers, row, "session_started_at")
@@ -2434,6 +2467,7 @@ mod identity_sled_tests {
             vector_id: "".to_string(),
             sealed_id: "sid1:abc".to_string(),
             principal_kind: None,
+            org_relation_json: String::new(),
             btrfs_device_json: r#"{"device_path":"/dev/loop9","mount_point":"/mnt/x","btrfs_uuid":"","cozo_id":"","attached":false}"#.to_string(),
             instance_json: r#"{"name":"sid-1","status":"Stopped","type":"container"}"#.to_string(),
             session_started_at: 100,

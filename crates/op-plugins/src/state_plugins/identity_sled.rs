@@ -38,6 +38,43 @@ pub const RECORD_FORMAT: u32 = 3;
 pub const SCHEMA_CONTENT_HASH: &str =
     include_str!(concat!(env!("OUT_DIR"), "/identity_sled_schema_hash.txt"));
 
+/// Creation authority is explicit; omitted mode retains the existing chatbot
+/// replacement contract and cannot select a human or subsidiary implicitly.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize, schemars::JsonSchema)]
+#[serde(rename_all = "snake_case")]
+pub enum ContainerCreationMode {
+    #[default]
+    ReplaceChatbot,
+    AttachExistingHuman,
+    CreateSubsidiary,
+}
+
+/// Bounded noninteractive development command inside an already bound Incus
+/// guest. Target identity is resolved by the owner; no host exec parameters.
+#[derive(Debug, Clone, Serialize, Deserialize, schemars::JsonSchema)]
+#[serde(deny_unknown_fields)]
+pub struct ExecuteInOwnedContainerInput {
+    pub operation_id: String,
+    pub session_id: String,
+    #[schemars(length(min = 1, max = 128))]
+    pub command: Vec<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, schemars::JsonSchema)]
+pub struct ExecuteInOwnedContainerOutput {
+    pub operation_id: String,
+    pub session_id: String,
+    pub native_uuid: String,
+    pub exit_code: i64,
+    pub stdout: String,
+    pub stderr: String,
+    pub stdout_bytes: u64,
+    pub stderr_bytes: u64,
+    pub stdout_truncated: bool,
+    pub stderr_truncated: bool,
+    pub replayed: bool,
+}
+
 /// Administrative same-instance rename, fenced by a stable caller operation id.
 /// It never accepts native config, storage, credentials or replacement identity.
 #[derive(Debug, Clone, Serialize, Deserialize, schemars::JsonSchema)]
@@ -126,6 +163,12 @@ pub struct ContainerIdentitySled {
     #[serde(default)]
     #[schemars(extend("x-oscal-subid" = "src.service.identity-sled.instance@v1"))]
     pub instance: Option<super::incus::IncusInstance>,
+    /// Organizational relation of this identity (for example a subsidiary and
+    /// its name). It is OSCAL-tagged so the relation can be mapped to
+    /// controls; it is not derived from the container name and may be moved.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[schemars(extend("x-oscal-subid" = "src.service.identity-sled.org-relation@v1"))]
+    pub org_relation: Option<OrgRelation>,
     /// Unix seconds when the session began.
     #[serde(default)]
     pub session_started_at: i64,
@@ -179,6 +222,33 @@ impl ContainerIdentitySled {
             && self.arrival_timestamp != 0
             && !self.chain_head_at_arrival.is_empty()
     }
+}
+
+/// Kind of organizational relation. New kinds (org-chart units and the like)
+/// are added as variants under the same subid.
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, schemars::JsonSchema)]
+#[serde(rename_all = "snake_case")]
+pub enum OrgRelationKind {
+    Subsidiary,
+}
+
+/// An identity's place in an organization. `parent` is an open reference
+/// (a principal or session id, a URI, an org-chart node); its resolution is
+/// not fixed here, so the relation can be re-pointed when the final model
+/// is settled.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, schemars::JsonSchema)]
+#[serde(deny_unknown_fields)]
+#[schemars(extend("x-oscal-subid" = "sch.service.identity-sled.org-relation.schema@v1"))]
+pub struct OrgRelation {
+    #[schemars(extend("x-oscal-subid" = "src.service.identity-sled.org-relation.kind@v1"))]
+    pub kind: OrgRelationKind,
+    /// Organizational name, e.g. the subsidiary name.
+    #[schemars(extend("x-oscal-subid" = "src.service.identity-sled.org-relation.name@v1"))]
+    pub name: String,
+    /// Reference to the parent, wherever it lives.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[schemars(extend("x-oscal-subid" = "src.service.identity-sled.org-relation.parent@v1"))]
+    pub parent: Option<String>,
 }
 
 /// The identity's private writable Btrfs leaf. Cozo owns its assignment;
@@ -261,6 +331,7 @@ impl StatePlugin for IdentitySledPlugin {
         "identity_sled"
     }
 
+    // v4.10 adds verified principal and current-grant self-context, without credentials.
     // v4.9 adds a durable identity-bound same-container native-name cutover.
     // v4.8 returns the exact same-owner refreshed SID1 on the authorized result.
     // v4.5 adopts an externally prepared fresh container with same-key CAS.
@@ -271,13 +342,19 @@ impl StatePlugin for IdentitySledPlugin {
     // The native Device discriminants remain unchanged.
     // SID1, RECORD_FORMAT and durable identity record/revision formats do not change.
     fn version(&self) -> &str {
-        "4.9.0"
+        "4.11.0"
     }
 
     fn schema(&self) -> Option<PluginSchema> {
         let mut schema = super::plugin_scaffold_helpers::identity_sled_plugin_schema();
         super::common::oscal::ensure_category_metadata_fields(&mut schema);
-        Some(schema)
+        Some(schema.subsidiary(|capability| matches!(
+            capability,
+            "cap.identity.sled.self.read@v1"
+                | "cap.service.identity-sled.container.exec@v1"
+                | "identity_sled.inventory.read"
+                | "identity_sled.read"
+        )))
     }
 
     async fn calculate_diff(&self, _current: &Value, _desired: &Value) -> Result<StateDiff> {
@@ -323,7 +400,7 @@ pub(crate) fn identity_sled_schema() -> PluginSchema {
         .expect("schemars schema serializes to JSON");
     let mut schema = super::schemars_adapter::plugin_schema_from_json(
         "identity_sled",
-        "4.9.0",
+        "4.11.0",
         "Container identity sleds: the container is the sled is the identity; host is container zero; each record is seeded by its sealed blob",
         &root,
     );
@@ -345,6 +422,14 @@ pub(crate) fn identity_sled_schema() -> PluginSchema {
     #[derive(Debug, Clone, Serialize, Deserialize, schemars::JsonSchema)]
     #[serde(deny_unknown_fields)]
     pub struct GetOwnIdentityInput {}
+    /// Authenticated self-context; grants are a snapshot, not delegated authority.
+    #[derive(Debug, Clone, Serialize, Deserialize, schemars::JsonSchema)]
+    #[serde(deny_unknown_fields)]
+    pub struct GetOwnIdentityOutput {
+        pub identity: ContainerIdentitySled,
+        pub principal_id: String,
+        pub held_capabilities: Vec<String>,
+    }
     /// Read-only, own-session inputs needed to prepare a trusted root repair
     /// plan. This never returns SID1 bytes or accepts a caller-chosen target.
     #[derive(Debug, Clone, Serialize, Deserialize, schemars::JsonSchema)]
@@ -399,6 +484,10 @@ pub(crate) fn identity_sled_schema() -> PluginSchema {
     pub struct PrepareContainerInput {
         pub wireguard_pubkey: String,
         pub operation_id: String,
+        #[serde(default)]
+        pub creation_mode: ContainerCreationMode,
+        #[serde(default)]
+        pub parent_principal_id: Option<String>,
     }
     #[derive(Debug, Clone, Serialize, Deserialize, schemars::JsonSchema)]
     pub struct PrepareContainerOutput {
@@ -420,11 +509,19 @@ pub(crate) fn identity_sled_schema() -> PluginSchema {
         /// writes fresh same-key records; it never composes or mounts roots.
         #[schemars(length(min = 64, max = 64), regex(pattern = "^[0-9a-f]{64}$"))]
         pub plan_sha256: String,
+        #[serde(default)]
+        pub creation_mode: ContainerCreationMode,
+        #[serde(default)]
+        pub parent_principal_id: Option<String>,
     }
     #[derive(Debug, Clone, Serialize, Deserialize, schemars::JsonSchema)]
     #[serde(deny_unknown_fields)]
     pub struct InspectProvisionPreflightInput {
         pub wireguard_pubkey: String,
+        #[serde(default)]
+        pub creation_mode: ContainerCreationMode,
+        #[serde(default)]
+        pub parent_principal_id: Option<String>,
     }
     #[derive(Debug, Clone, Serialize, Deserialize, schemars::JsonSchema)]
     #[serde(deny_unknown_fields)]
@@ -467,6 +564,17 @@ pub(crate) fn identity_sled_schema() -> PluginSchema {
     pub struct RepairOwnRootInput {
         #[schemars(length(min = 64, max = 64), regex(pattern = "^[0-9a-f]{64}$"))]
         pub plan_sha256: String,
+    }
+    #[derive(Debug, Clone, Serialize, Deserialize, schemars::JsonSchema)]
+    pub struct UpgradeOwnNativeRootOutput {
+        pub session_id: String,
+        pub native_uuid: String,
+        pub operation_id: String,
+        pub old_root_uuid: String,
+        pub new_root_uuid: String,
+        pub rollback_name: String,
+        pub committed_revision: u64,
+        pub replayed: bool,
     }
     #[derive(Debug, Clone, Serialize, Deserialize, schemars::JsonSchema)]
     #[serde(deny_unknown_fields)]
@@ -550,22 +658,60 @@ pub(crate) fn identity_sled_schema() -> PluginSchema {
         pub session_id: String,
         pub seq: u64,
     }
+    /// End the session's ledger: vectorize every entry on the identity's sled
+    /// ledger once, link each vector in Cozo, then clear the ledger. Fixed
+    /// identity data on the sled is never touched.
+    #[derive(Debug, Clone, Serialize, Deserialize, schemars::JsonSchema)]
+    #[serde(deny_unknown_fields)]
+    pub struct FinalizeSessionInput {
+        pub session_id: String,
+    }
+    #[derive(Debug, Clone, Serialize, Deserialize, schemars::JsonSchema)]
+    pub struct FinalizeSessionOutput {
+        pub session_id: String,
+        /// Ledger entries embedded and upserted to Qdrant.
+        pub vectorized: u64,
+        /// Qdrant collection holding the vectors.
+        pub collection: String,
+        /// Embedding model used; empty when the ledger was empty.
+        pub embedding_model: String,
+    }
 
     use super::plugin_scaffold_helpers::method_decl_from_schemars_with_output;
     use op_state_store::SideEffect;
+    schema.methods.insert(
+        "execute_in_owned_container".to_string(),
+        method_decl_from_schemars_with_output::<ExecuteInOwnedContainerInput, ExecuteInOwnedContainerOutput>(
+            "execute_in_owned_container", SideEffect::Mutation, true,
+            "cap.service.identity-sled.container.exec@v1", "mut.service.identity-sled.container.exec@v1",
+        ),
+    );
+    schema.methods.insert(
+        "upgrade_own_native_root".to_string(),
+        method_decl_from_schemars_with_output::<RepairOwnRootInput, UpgradeOwnNativeRootOutput>(
+            "upgrade_own_native_root", SideEffect::Mutation, true,
+            "identity_sled.write", "mut.service.identity-sled.native-root.upgrade@v1",
+        ),
+    );
 
     schema.methods.insert(
         "prepare_container".to_string(),
         method_decl_from_schemars_with_output::<PrepareContainerInput, PrepareContainerOutput>(
-            "prepare_container", SideEffect::Mutation, true,
-            "identity_sled.write", "mut.service.identity-sled.container.prepare@v1",
+            "prepare_container",
+            SideEffect::Mutation,
+            true,
+            "identity_sled.write",
+            "mut.service.identity-sled.container.prepare@v1",
         ),
     );
     schema.methods.insert(
         "rename_container".to_string(),
         method_decl_from_schemars_with_output::<RenameContainerInput, RenameContainerOutput>(
-            "rename_container", SideEffect::Mutation, true,
-            "identity_sled.write", "mut.service.identity-sled.container.rename@v1",
+            "rename_container",
+            SideEffect::Mutation,
+            true,
+            "identity_sled.write",
+            "mut.service.identity-sled.container.rename@v1",
         ),
     );
     schema.methods.insert(
@@ -580,7 +726,7 @@ pub(crate) fn identity_sled_schema() -> PluginSchema {
     );
     schema.methods.insert(
         "get_own_identity".to_string(),
-        method_decl_from_schemars_with_output::<GetOwnIdentityInput, GetIdentityOutput>(
+        method_decl_from_schemars_with_output::<GetOwnIdentityInput, GetOwnIdentityOutput>(
             "get_own_identity",
             SideEffect::Read,
             true,
@@ -646,16 +792,28 @@ pub(crate) fn identity_sled_schema() -> PluginSchema {
     );
     schema.methods.insert(
         "inspect_provision_preflight".to_string(),
-        method_decl_from_schemars_with_output::<InspectProvisionPreflightInput, InspectProvisionPreflightOutput>(
-            "inspect_provision_preflight", SideEffect::Read, true,
-            "identity_sled.write", "obs.service.identity-sled.container.provision-preflight@v1",
+        method_decl_from_schemars_with_output::<
+            InspectProvisionPreflightInput,
+            InspectProvisionPreflightOutput,
+        >(
+            "inspect_provision_preflight",
+            SideEffect::Read,
+            true,
+            "identity_sled.write",
+            "obs.service.identity-sled.container.provision-preflight@v1",
         ),
     );
     schema.methods.insert(
         "delete_provision_record".to_string(),
-        method_decl_from_schemars_with_output::<DeleteProvisionRecordInput, DeleteProvisionRecordOutput>(
-            "delete_provision_record", SideEffect::Mutation, true,
-            "identity_sled.write", "mut.service.identity-sled.provision-record.delete@v1",
+        method_decl_from_schemars_with_output::<
+            DeleteProvisionRecordInput,
+            DeleteProvisionRecordOutput,
+        >(
+            "delete_provision_record",
+            SideEffect::Mutation,
+            true,
+            "identity_sled.write",
+            "mut.service.identity-sled.provision-record.delete@v1",
         ),
     );
     schema.methods.insert(
@@ -725,6 +883,16 @@ pub(crate) fn identity_sled_schema() -> PluginSchema {
         ),
     );
     schema.methods.insert(
+        "finalize_session".to_string(),
+        method_decl_from_schemars_with_output::<FinalizeSessionInput, FinalizeSessionOutput>(
+            "finalize_session",
+            SideEffect::Mutation,
+            false,
+            "identity_sled.write",
+            "mut.service.identity-sled.session.finalize@v1",
+        ),
+    );
+    schema.methods.insert(
         "get_session_history".to_string(),
         method_decl_from_schemars_with_output::<GetSessionHistoryInput, GetSessionHistoryOutput>(
             "get_session_history",
@@ -762,7 +930,14 @@ pub(crate) fn identity_sled_schema() -> PluginSchema {
         "identity_sled.write".to_string(),
         op_state_store::CapabilityDecl {
             id: "identity_sled.write".to_string(),
-            description: "Grants: write_identity, provision_container, inspect_provision_preflight, delete_provision_record, attach_btrfs_device, touch_session, record_session_event.".to_string(),
+            description: "Grants: write_identity, prepare_container, provision_container, inspect_provision_preflight, upgrade_own_native_root, delete_provision_record, attach_btrfs_device, touch_session, record_session_event, finalize_session. Dedicated guest exec requires its separate exact capability.".to_string(),
+        },
+    );
+    schema.capabilities.insert(
+        "cap.service.identity-sled.container.exec@v1".to_string(),
+        op_state_store::CapabilityDecl {
+            id: "cap.service.identity-sled.container.exec@v1".to_string(),
+            description: "Runs bounded noninteractive argv only inside the caller's own Incus guest, or an exact human-parent/sole-chatbot-owner target; never host execution or identity impersonation.".to_string(),
         },
     );
     schema.capabilities.insert(
@@ -800,7 +975,10 @@ mod tests {
         let args = serde_json::to_value(&method.args).unwrap();
         let args = jsonschema::Validator::new(&args).unwrap();
         assert!(args.validate(&serde_json::json!({})).is_ok());
-        assert!(args.validate(&serde_json::json!({"session_id":"other"})).is_err());
+        assert!(
+            args.validate(&serde_json::json!({"session_id":"other"}))
+                .is_err()
+        );
         let output = serde_json::to_value(method.returns.as_ref().unwrap()).unwrap();
         let output = jsonschema::Validator::new(&output).unwrap();
         let mut value = serde_json::json!({
@@ -812,7 +990,7 @@ mod tests {
         assert!(output.validate(&value).is_err());
     }
     #[test]
-    fn get_own_identity_is_empty_input_separately_granted_and_reuses_typed_output() {
+    fn get_own_identity_is_empty_input_separately_granted_and_has_typed_self_context() {
         let schema = identity_sled_schema();
         let own = &schema.methods["get_own_identity"];
         assert_eq!(
@@ -822,7 +1000,7 @@ mod tests {
         assert_eq!(own.subid, "obs.service.identity-sled.identity.self.get@v1");
         assert!(own.idempotent);
         assert_eq!(own.side_effect, op_state_store::SideEffect::Read);
-        assert_eq!(own.returns, schema.methods["get_identity"].returns);
+        assert_ne!(own.returns, schema.methods["get_identity"].returns);
         assert_eq!(
             schema.methods["get_identity"]
                 .required_capability
@@ -832,7 +1010,15 @@ mod tests {
         let args = serde_json::to_value(&own.args).unwrap();
         let validator = jsonschema::Validator::new(&args).unwrap();
         assert!(validator.validate(&serde_json::json!({})).is_ok());
-        for selector in ["session_id", "trace_id", "identity", "host"] {
+        for selector in [
+            "session_id",
+            "trace_id",
+            "identity",
+            "host",
+            "principal_id",
+            "held_capabilities",
+            "sealed_id",
+        ] {
             assert!(
                 validator
                     .validate(&serde_json::json!({selector: "foreign"}))
@@ -841,6 +1027,55 @@ mod tests {
             );
         }
         assert!(validator.validate(&serde_json::json!(null)).is_err());
+
+        let output = serde_json::to_value(own.returns.as_ref().unwrap()).unwrap();
+        let validator = jsonschema::Validator::new(&output).unwrap();
+        let identity = serde_json::json!({
+            "session_id": "own-session",
+            "wireguard_pubkey": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="
+        });
+        let value = serde_json::json!({
+            "identity": identity,
+            "principal_id": "verified-principal",
+            "held_capabilities": ["cap.identity.sled.self.read@v1"]
+        });
+        assert!(validator.validate(&value).is_ok());
+        for field in ["identity", "principal_id", "held_capabilities"] {
+            let mut missing = value.clone();
+            missing.as_object_mut().unwrap().remove(field);
+            assert!(
+                validator.validate(&missing).is_err(),
+                "missing {field} admitted"
+            );
+        }
+        for (field, invalid) in [
+            ("principal_id", serde_json::json!(null)),
+            ("held_capabilities", serde_json::json!("identity_sled.read")),
+            ("held_capabilities", serde_json::json!([true])),
+            ("sealed_id", serde_json::json!("not-an-output-field")),
+        ] {
+            let mut malformed = value.clone();
+            malformed[field] = invalid;
+            assert!(
+                validator.validate(&malformed).is_err(),
+                "invalid {field} admitted"
+            );
+        }
+
+        let admin_output =
+            serde_json::to_value(schema.methods["get_identity"].returns.as_ref().unwrap()).unwrap();
+        assert!(
+            jsonschema::Validator::new(&admin_output)
+                .unwrap()
+                .validate(&serde_json::json!({"identity": identity}))
+                .is_ok()
+        );
+        assert!(admin_output["properties"].get("principal_id").is_none());
+        assert!(
+            admin_output["properties"]
+                .get("held_capabilities")
+                .is_none()
+        );
     }
     #[test]
     fn physical_migration_methods_are_typed_and_separately_owner_granted() {
@@ -918,7 +1153,7 @@ mod tests {
     #[test]
     fn schema_has_method_surface() {
         let schema = identity_sled_schema();
-        assert_eq!(schema.version, "4.9.0");
+        assert_eq!(schema.version, "4.11.0");
         for method in [
             "get_identity",
             "get_own_identity",
@@ -932,6 +1167,7 @@ mod tests {
             "attach_btrfs_device",
             "touch_session",
             "record_session_event",
+            "finalize_session",
             "get_session_history",
         ] {
             assert!(schema.methods.contains_key(method), "missing {method}");
@@ -978,7 +1214,10 @@ mod tests {
     fn container_rename_uses_existing_write_grant_and_rejects_identity_inputs() {
         let schema = identity_sled_schema();
         let method = &schema.methods["rename_container"];
-        assert_eq!(method.required_capability.as_deref(), Some("identity_sled.write"));
+        assert_eq!(
+            method.required_capability.as_deref(),
+            Some("identity_sled.write")
+        );
         assert_eq!(method.side_effect, op_state_store::SideEffect::Mutation);
         assert!(method.idempotent);
         let args_schema = serde_json::to_value(&method.args).unwrap();

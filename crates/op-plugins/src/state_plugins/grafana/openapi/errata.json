@@ -1,0 +1,40 @@
+{
+  "_comment": "Upstream spec defects, each proven by a live 13.3.1 response captured in grafana/fixtures. Applied by prepare.py as JSON-pointer replacements on the vendored document before selection. Remove an entry once upstream fixes it.",
+  "patches": [
+    {
+      "pointer": "/paths/~1datasources~1uid~1{uid}~1health/get/responses/200",
+      "expect": {
+        "$ref": "#/components/responses/okResponse"
+      },
+      "value": {
+        "description": "Data source health check result.",
+        "content": {
+          "application/json": {
+            "schema": {
+              "type": "object",
+              "required": [
+                "status",
+                "message"
+              ],
+              "properties": {
+                "status": {
+                  "type": "string",
+                  "description": "Health status reported by the data source plugin (OK, ERROR, UNKNOWN)."
+                },
+                "message": {
+                  "type": "string"
+                },
+                "details": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "description": "Plugin-specific JSON details."
+                }
+              }
+            }
+          }
+        }
+      },
+      "evidence": "datasource_health.json: {\"details\":{...},\"message\":\"Successfully queried the Prometheus API.\",\"status\":\"OK\"} - the spec's okResponse ({message}) drops status and details."
+    }
+  ]
+}

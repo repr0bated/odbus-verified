@@ -296,7 +296,11 @@ impl StatePlugin for ConfigPlugin {
     fn schema(&self) -> Option<op_state_store::PluginSchema> {
         let mut schema = config_plugin_schema();
         super::common::oscal::ensure_category_metadata_fields(&mut schema);
-        Some(schema)
+        Some(schema.subsidiary(|capability| matches!(
+            capability,
+            "config.invoke"
+                | "config.read"
+        )))
     }
 
     async fn calculate_diff(&self, current: &Value, desired: &Value) -> Result<StateDiff> {

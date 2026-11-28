@@ -1,10 +1,12 @@
 //! Core gRPC services, with an explicit TLS-only production door.
 
+use crate::chat_link::{ChatLinkService, MAX_CHUNK_PROTO_BYTES, MAX_REQUEST_PROTO_BYTES};
 use crate::core::BridgeCore;
+use crate::proto::FILE_DESCRIPTOR_SET;
+use crate::proto::chat_link_server::ChatLinkServer;
 use crate::proto::event_chain_service_server::EventChainServiceServer;
 use crate::proto::plugin_service_server::PluginServiceServer;
 use crate::proto::state_sync_server::StateSyncServer;
-use crate::proto::FILE_DESCRIPTOR_SET;
 use crate::service::BridgeService;
 use crate::tls_door::{PemIdentity, serve_upgradeable_tcp_with_shutdown};
 use axum::http::{HeaderName, HeaderValue, Method, StatusCode, Uri};
@@ -12,8 +14,8 @@ use std::net::SocketAddr;
 use std::sync::Arc;
 use std::time::Duration;
 use tokio::net::TcpListener;
-use tokio_stream::wrappers::TcpListenerStream;
 use tokio_rustls::rustls;
+use tokio_stream::wrappers::TcpListenerStream;
 use tower::Layer;
 use tower_http::cors::CorsLayer;
 
@@ -66,25 +68,78 @@ pub async fn bind_production(
 ) -> anyhow::Result<ProductionServer> {
     let tls = identity.server_config()?;
     // This deployed setting's historical name does not enable an MCP route.
-    let origins = parse_allowed_origins(
-        &std::env::var("OP_MCP_ALLOWED_ORIGINS").unwrap_or_default(),
-    )?;
+    let origins =
+        parse_allowed_origins(&std::env::var("OP_MCP_ALLOWED_ORIGINS").unwrap_or_default())?;
     let reflection = tonic_reflection::server::Builder::configure()
         .register_encoded_file_descriptor_set(FILE_DESCRIPTOR_SET)
         .build_v1()?;
+    let chat = ChatLinkService::from_env(service.clone()).await?;
+    // Exchange point (task 27.5): set variables / receive schema, zero logic.
+    let exchange_read = service.clone();
+    let exchange_set = service.clone();
+    // /compliance/api requires the verified door identity (owner, 2026-11-22).
+    let compliance_service = service.clone();
     let web = tonic_web::GrpcWebLayer::new();
     let app = tonic::service::Routes::new(web.layer(StateSyncServer::new(service.clone())))
         .add_service(web.layer(PluginServiceServer::new(service.clone())))
         .add_service(web.layer(EventChainServiceServer::new(service)))
+        .add_service(
+            web.layer(
+                ChatLinkServer::new(chat)
+                    .max_decoding_message_size(MAX_REQUEST_PROTO_BYTES)
+                    .max_encoding_message_size(MAX_CHUNK_PROTO_BYTES),
+            ),
+        )
         .add_service(web.layer(reflection))
         .prepare()
+        // tonic 0.14's router is axum 0.8 while this crate uses axum 0.7, so the
+        // gRPC router is finished here (CORS + 404 fallback, as before) and then
+        // mounted as a plain tower service under the axum 0.7 app.
         .into_axum_router()
         .layer(grpc_cors(origins))
-        .route("/mqtt", axum::routing::get(crate::mqtt_doorbell_relay::upgrade))
         .fallback(|| async { StatusCode::NOT_FOUND });
+    // Compliance SPA + Cozo API proxy on the door (same paths as the former
+    // op-web mount). Matched before the gRPC-Web fallback.
+    let compliance_dir = crate::compliance_http::compliance_static_dir(
+        &std::env::var("OP_WEB_STATIC_DIR")
+            .unwrap_or_else(|_| "/usr/local/share/op-dbus/dashboard-release".to_string()),
+    );
+    let compliance_static = crate::compliance_http::compliance_static_service(&compliance_dir);
+    let compliance_service = compliance_service.clone();
+    let compliance_api = axum::Router::new().fallback(move |request: axum::extract::Request| {
+        crate::compliance_http::authenticated_compliance_api_proxy(
+            compliance_service.clone(),
+            request,
+        )
+    });
+    let app = axum::Router::new()
+        .route(
+            "/mqtt",
+            axum::routing::get(crate::mqtt_doorbell_relay::upgrade),
+        )
+        .route(
+            crate::exchange_point::PATH,
+            axum::routing::get(move |headers: axum::http::HeaderMap| {
+                crate::exchange_point::read(exchange_read.clone(), headers)
+            })
+            .post(
+                move |headers: axum::http::HeaderMap, body: axum::Json<serde_json::Value>| {
+                    crate::exchange_point::set(exchange_set.clone(), headers, body)
+                },
+            ),
+        )
+        .nest_service("/compliance/api", compliance_api)
+        .nest_service("/compliance", compliance_static)
+        .fallback_service(app);
+    let app = crate::container_ui::mount(app)?;
     let listener = TcpListener::bind(addr).await?;
     let addr = listener.local_addr()?;
-    Ok(ProductionServer { listener, addr, tls, app })
+    Ok(ProductionServer {
+        listener,
+        addr,
+        tls,
+        app,
+    })
 }
 
 fn parse_allowed_origins(configured: &str) -> anyhow::Result<Vec<HeaderValue>> {
@@ -96,7 +151,9 @@ fn parse_allowed_origins(configured: &str) -> anyhow::Result<Vec<HeaderValue>> {
             let uri: Uri = origin.parse()?;
             anyhow::ensure!(
                 matches!(uri.scheme_str(), Some("http") | Some("https"))
-                    && uri.authority().is_some_and(|authority| !authority.as_str().contains('@'))
+                    && uri
+                        .authority()
+                        .is_some_and(|authority| !authority.as_str().contains('@'))
                     && (uri.path().is_empty() || uri.path() == "/")
                     && uri.query().is_none(),
                 "OP_MCP_ALLOWED_ORIGINS must contain exact HTTP(S) origins",
@@ -136,13 +193,16 @@ fn grpc_cors(origins: Vec<HeaderValue>) -> CorsLayer {
 mod tests {
     use super::*;
     use axum::body::Body;
-    use axum::http::{header, Request, StatusCode};
+    use axum::http::{Request, StatusCode, header};
     use tower::ServiceExt;
 
     #[tokio::test]
     async fn cors_preserves_exact_origins_identity_and_operation_headers() {
         let app = axum::Router::new()
-            .route("/operation.v1.PluginService/CallMethod", axum::routing::post(|| async {}))
+            .route(
+                "/operation.v1.PluginService/CallMethod",
+                axum::routing::post(|| async {}),
+            )
             .layer(grpc_cors(
                 parse_allowed_origins("http://10.0.0.2:8080").unwrap(),
             ));
@@ -171,11 +231,17 @@ mod tests {
                 .unwrap();
             assert_eq!(response.status(), StatusCode::OK);
             assert_eq!(
-                response.headers().get(header::ACCESS_CONTROL_ALLOW_ORIGIN).is_some(),
+                response
+                    .headers()
+                    .get(header::ACCESS_CONTROL_ALLOW_ORIGIN)
+                    .is_some(),
                 allowed,
             );
             if allowed {
-                assert_eq!(response.headers()[header::ACCESS_CONTROL_ALLOW_ORIGIN], origin);
+                assert_eq!(
+                    response.headers()[header::ACCESS_CONTROL_ALLOW_ORIGIN],
+                    origin
+                );
                 let headers = response.headers()[header::ACCESS_CONTROL_ALLOW_HEADERS]
                     .to_str()
                     .unwrap();
@@ -215,7 +281,10 @@ mod tests {
             .await
             .unwrap();
         assert_eq!(response.headers()["x-opdbus-operation-id"], "operation-123");
-        assert_eq!(response.headers()[header::ACCESS_CONTROL_ALLOW_CREDENTIALS], "true");
+        assert_eq!(
+            response.headers()[header::ACCESS_CONTROL_ALLOW_CREDENTIALS],
+            "true"
+        );
         let exposed = response.headers()[header::ACCESS_CONTROL_EXPOSE_HEADERS]
             .to_str()
             .unwrap();
@@ -233,7 +302,13 @@ mod tests {
 
     #[test]
     fn cors_rejects_wildcards_and_non_origin_urls() {
-        for origin in ["*", "null", "file:///tmp/ui", "https://ui.example/path", "https://ui.example?x=1"] {
+        for origin in [
+            "*",
+            "null",
+            "file:///tmp/ui",
+            "https://ui.example/path",
+            "https://ui.example?x=1",
+        ] {
             assert!(parse_allowed_origins(origin).is_err(), "{origin}");
         }
         assert!(parse_allowed_origins("").unwrap().is_empty());

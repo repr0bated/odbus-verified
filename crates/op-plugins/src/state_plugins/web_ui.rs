@@ -416,7 +416,11 @@ impl StatePlugin for WebUiPlugin {
     fn schema(&self) -> Option<op_state_store::PluginSchema> {
         let mut schema = web_ui_schema();
         super::common::oscal::ensure_category_metadata_fields(&mut schema);
-        Some(schema)
+        Some(schema.subsidiary(|capability| matches!(
+            capability,
+            "gemma.invoke"
+                | "gemma.read"
+        )))
     }
 
     fn is_available(&self) -> bool {

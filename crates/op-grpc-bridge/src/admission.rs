@@ -10,22 +10,33 @@ use std::path::{Path, PathBuf};
 /// The held descriptor prevents a pathname swap after the ownership check.
 pub(crate) fn read_grant_document() -> anyhow::Result<serde_json::Value> {
     use std::io::Read as _;
-    use std::os::unix::{fs::{MetadataExt as _, OpenOptionsExt as _}, fs::PermissionsExt as _};
+    use std::os::unix::{
+        fs::PermissionsExt as _,
+        fs::{MetadataExt as _, OpenOptionsExt as _},
+    };
     let path = std::env::var_os("OP_GRANTS_PATH")
         .map(PathBuf::from)
         .unwrap_or_else(|| "/dev/shm/opdbus/capability-grants.json".into());
-    let file = std::fs::OpenOptions::new().read(true)
-        .custom_flags(nix::libc::O_NOFOLLOW | nix::libc::O_NONBLOCK).open(path)?;
+    let file = std::fs::OpenOptions::new()
+        .read(true)
+        .custom_flags(nix::libc::O_NOFOLLOW | nix::libc::O_NONBLOCK)
+        .open(path)?;
     let metadata = file.metadata()?;
     anyhow::ensure!(
         metadata.is_file() && metadata.uid() == 0 && metadata.permissions().mode() & 0o022 == 0,
         "grant projection is not a protected root-owned file"
     );
     const MAX_BYTES: u64 = 8 * 1024 * 1024;
-    anyhow::ensure!(metadata.len() <= MAX_BYTES, "grant projection exceeds its byte bound");
+    anyhow::ensure!(
+        metadata.len() <= MAX_BYTES,
+        "grant projection exceeds its byte bound"
+    );
     let mut bytes = Vec::with_capacity(metadata.len() as usize);
     file.take(MAX_BYTES + 1).read_to_end(&mut bytes)?;
-    anyhow::ensure!(bytes.len() as u64 <= MAX_BYTES, "grant projection grew beyond its byte bound");
+    anyhow::ensure!(
+        bytes.len() as u64 <= MAX_BYTES,
+        "grant projection grew beyond its byte bound"
+    );
     crate::grant_document::validate_grant_document(&bytes).map_err(anyhow::Error::msg)?;
     Ok(serde_json::from_slice(&bytes)?)
 }

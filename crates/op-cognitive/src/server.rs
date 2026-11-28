@@ -129,7 +129,7 @@ impl CognitiveServer {
 
         // Code-RAG pipeline: optional, like qdrant_shuttle. Without a Voyage key
         // (env or ~/.ssh/mongo-voyage) the cognitive runtime still serves memory tools.
-        let rag_pipeline = match RagPipeline::from_env() {
+        let rag_pipeline = match RagPipeline::from_env(cozo_shuttle.clone()) {
             Ok(p) => Some(Arc::new(p)),
             Err(e) => {
                 tracing::warn!(

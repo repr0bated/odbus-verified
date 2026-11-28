@@ -29,9 +29,9 @@ use std::{
 mod private_directory;
 pub use private_directory::{
     PrivateDocumentCommit, PrivateDocumentPublication, PrivateProjectionDirectory,
-    pending_projection_publication_in,
     ProjectionBatchCommit, ProjectionBatchPublication, ProjectionDocuments,
-    commit_projection_batch_durable_in, recover_projection_batch_in,
+    commit_projection_batch_durable_in, pending_projection_publication_in,
+    recover_projection_batch_in,
 };
 
 const LOCK_NAME: &str = ".projection.lock";

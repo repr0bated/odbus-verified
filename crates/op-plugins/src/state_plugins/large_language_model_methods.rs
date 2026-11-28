@@ -38,8 +38,7 @@ fn decode<T: serde::de::DeserializeOwned>(args: &Value, method: &str) -> Result<
 pub fn plan_method(method: &str, args: &Value) -> Result<TargetPlan> {
     let (target_method, target_args) = match method {
         "stream_generate" => {
-            let input: super::chat_router::generation::StartGenerationInput =
-                decode(args, method)?;
+            let input: super::chat_router::generation::StartGenerationInput = decode(args, method)?;
             input.validate()?;
             ("start_generation", serde_json::to_value(input)?)
         }

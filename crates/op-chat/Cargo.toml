@@ -36,6 +36,7 @@ libc = { workspace = true }
 op-agents = { path = "../op-agents" }
 op-cognitive = { path = "../op-cognitive" }
 tonic = { workspace = true }
+tonic-prost = { workspace = true }
 tonic-web = { workspace = true }
 tonic-reflection = { workspace = true }
 tokio-stream = { workspace = true }
@@ -48,5 +49,4 @@ tokio-test = "0.4"
 qdrant-client = { workspace = true }
 
 [build-dependencies]
-tonic-build = "0.11"
-prost-build = "0.12"
+tonic-prost-build = { workspace = true }

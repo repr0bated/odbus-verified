@@ -126,19 +126,11 @@ fn example_query_scope() -> Option<String> {
 
 // ── Enums ────────────────────────────────────────────────────────────────────
 
-/// Operational category. Determines which additional fields are required.
-#[derive(Debug, Clone, Copy, Serialize, Deserialize, schemars::JsonSchema, PartialEq, Eq)]
-#[serde(rename_all = "kebab-case")]
-#[schemars(extend("x-oscal-subid" = "sch.standard.oscal-subid-registry.category@v1"))]
-pub enum OscalSubidCategory {
-    Src,
-    Prj,
-    Sch,
-    Mut,
-    Obs,
-    Evt,
-    Exp,
-}
+/// Operational category — owned by this plugin. Defined once in
+/// `op-oscal-subid` (the registry's taxonomy crate, shared with op-blob and
+/// op-plugin-lint without a dependency cycle) and re-exported here; serde
+/// values, schema description and `x-oscal-subid` are unchanged.
+pub use op_oscal_subid::OscalSubidCategory;
 
 /// OSCAL component-type vocabulary. Reuse OSCAL nouns — do not invent new types.
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, schemars::JsonSchema, PartialEq, Eq)]
@@ -526,7 +518,11 @@ impl StatePlugin for OscalSubidRegistryPlugin {
     }
 
     fn schema(&self) -> Option<op_state_store::PluginSchema> {
-        Some(oscal_subid_registry_schema())
+        Some(oscal_subid_registry_schema().subsidiary(|capability| matches!(
+            capability,
+            "cap.standard.oscal.field-classification.read@v1"
+                | "oscal.read"
+        )))
     }
 
     async fn calculate_diff(&self, _current: &Value, _desired: &Value) -> Result<StateDiff> {

@@ -1,0 +1,3 @@
+#!/bin/sh
+test "$(findmnt -rn -M /mnt/cozo-btrfs-lxd -o SOURCE,FSTYPE,UUID)" = \
+    '/dev/ublkb4 btrfs 1a24ac88-14cd-4682-9b53-4de108d93498'

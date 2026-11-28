@@ -1,4 +1,4 @@
-//! Prior name: tched_config_secret_policy.
+//! Prior name: _3tched_config_secret_policy.
 //! Secret classification from the exact manifest-pinned config schema.
 
 use std::sync::Arc;

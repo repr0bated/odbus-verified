@@ -619,7 +619,10 @@ impl StatePlugin for OciPlugin {
         "2.0.0"
     }
     fn schema(&self) -> Option<PluginSchema> {
-        Some(oci_schema())
+        Some(oci_schema().subsidiary(|capability| matches!(
+            capability,
+            "cap.container.oci.state.get@v1"
+        )))
     }
     async fn calculate_diff(&self, _current: &Value, _desired: &Value) -> Result<StateDiff> {
         Ok(StateDiff {

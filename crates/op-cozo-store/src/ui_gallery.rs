@@ -362,8 +362,8 @@ fn apply_backend(
     if relations.is_empty() || relations == "null" {
         return Ok(());
     }
-    let value: Value = serde_json::from_str(relations)
-        .map_err(|_| error("staged backend is not JSON"))?;
+    let value: Value =
+        serde_json::from_str(relations).map_err(|_| error("staged backend is not JSON"))?;
     let Some(relations) = value.as_object() else {
         return Err(error("staged backend is not a relation map"));
     };
@@ -396,7 +396,9 @@ fn apply_backend(
                 return Err(error("staged backend data row is not a list"));
             };
             if cells.len() != columns.len() {
-                return Err(error("staged backend data row width does not match its header"));
+                return Err(error(
+                    "staged backend data row width does not match its header",
+                ));
             }
             let mut params = BTreeMap::new();
             let mut placeholders = Vec::new();

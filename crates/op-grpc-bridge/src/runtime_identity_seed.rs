@@ -3,7 +3,6 @@
 
 use super::*;
 use anyhow::{Context, Result};
-use op_plugins::state_plugins::identity_sled::SledBtrfsDevice;
 use op_plugins::state_plugins::incus::IncusRootRepairBackend;
 use serde::Deserialize;
 use std::path::{Path, PathBuf};
@@ -16,6 +15,10 @@ const PROVISION_CAPABILITY: &str = "identity_sled.write";
 pub(super) struct ProvisionInput {
     pub wireguard_pubkey: String,
     pub plan_sha256: String,
+    #[serde(default)]
+    pub creation_mode: op_plugins::state_plugins::identity_sled::ContainerCreationMode,
+    #[serde(default)]
+    pub parent_principal_id: Option<String>,
 }
 
 #[derive(Clone, Debug, Deserialize)]
@@ -36,9 +39,6 @@ struct SeedProvisionPlan {
     image_fingerprint: String,
     instance: IncusInstance,
 }
-
-
-
 
 impl SeedProvisionPlan {
     fn pool_source(&self) -> PathBuf {
@@ -67,7 +67,6 @@ pub(super) struct ProvisionSealPin {
     blob: op_blob::PluginObjectBlob,
 }
 
-
 pub(super) fn capture_method_seal(method: &str) -> Result<ProvisionSealPin> {
     crate::method_contract_admission::admit_compiled_method(
         "identity_sled",
@@ -82,21 +81,31 @@ pub(super) fn capture_method_seal(method: &str) -> Result<ProvisionSealPin> {
     })
 }
 
-pub(super) async fn admit(engine: &NativeOwner, store: &IdentitySledStore,
-    actor: &str, actor_session_id: &str, actor_genesis: &str, original: &ProvisionSealPin) -> Result<()> {
+pub(super) async fn admit(
+    engine: &NativeOwner,
+    store: &IdentitySledStore,
+    actor: &str,
+    actor_session_id: &str,
+    actor_genesis: &str,
+    original: &ProvisionSealPin,
+) -> Result<()> {
     engine.require_actor(actor)?;
-    anyhow::ensure!(engine.method == original.method
-        && engine.caller.session_id == actor_session_id
-        && engine.caller.session_genesis == actor_genesis,
-        "provisioning caller or method changed while queued");
+    anyhow::ensure!(
+        engine.method == original.method
+            && engine.caller.session_id == actor_session_id
+            && engine.caller.session_genesis == actor_genesis,
+        "provisioning caller or method changed while queued"
+    );
     engine.revalidate().await?;
     let current = strict_identity_contract()?;
-    anyhow::ensure!(current.schema_hash == original.schema_hash
-        && current.blob.manifest == original.blob.manifest
-        && current.blob.schema_json == original.blob.schema_json
-        && current.blob.descriptor_set == original.blob.descriptor_set
-        && current.blob.meta_json == original.blob.meta_json,
-        "identity provision seal changed");
+    anyhow::ensure!(
+        current.schema_hash == original.schema_hash
+            && current.blob.manifest == original.blob.manifest
+            && current.blob.schema_json == original.blob.schema_json
+            && current.blob.descriptor_set == original.blob.descriptor_set
+            && current.blob.meta_json == original.blob.meta_json,
+        "identity provision seal changed"
+    );
     let sled = revision_sled(&load_revision(store, actor_session_id).await?)?
         .context("provisioning caller identity is absent")?;
     engine.verify_own(&sled).await
@@ -150,6 +159,30 @@ async fn completed_plan(
             && uuid::Uuid::parse_str(&binding.btrfs_uuid).is_ok(),
         "completed seeded binding differs from trusted plan"
     );
+    let leaf_bytes = std::fs::metadata(&plan.new_leaf_image_path)
+        .map(|metadata| metadata.len())
+        .unwrap_or(0);
+    anyhow::ensure!(
+        plan.leaf_size_bytes > 0 && leaf_bytes >= plan.leaf_size_bytes,
+        "completed seed leaf image is smaller than the trusted plan size"
+    );
+    anyhow::ensure!(
+        plan.instance.name == plan.session_id
+            && plan.instance.instance_type == "container"
+            && plan
+                .instance
+                .storage_pool
+                .as_deref()
+                .is_none_or(|pool| pool == plan.pool_name),
+        "completed seed plan instance does not match the trusted leaf"
+    );
+    if let Some(pinned) = sled.instance.as_ref() {
+        anyhow::ensure!(
+            pinned.name == plan.instance.name
+                && pinned.instance_type == plan.instance.instance_type,
+            "committed Incus instance diverges from the trusted seed plan"
+        );
+    }
     Ok(Some(plan))
 }
 
@@ -339,5 +372,3 @@ pub(super) async fn observe_power(
     engine.observe_incus(&snapshot).await?;
     Ok(Some(observed))
 }
-
-

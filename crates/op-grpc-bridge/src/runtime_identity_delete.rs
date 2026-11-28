@@ -1,4 +1,4 @@
-//! Explicit retirement of the configured chatbot's current record before fresh provisioning.
+//! Retire the configured chatbot record or a human caller's own stopped native binding.
 //! Keys, grants, native storage and historical audit records remain owned by their owners.
 use super::*;
 use op_plugins::state_plugins::incus::IncusRootRepairBackend;
@@ -91,6 +91,9 @@ pub(super) async fn delete(
         "noncanonical public key"
     );
     let sid = op_identity::session::derive_session_id(&input.wireguard_pubkey);
+    if actor.session_id == sid {
+        return retire_own_native(engine, store, actor, input, seal, sid).await;
+    }
     anyhow::ensure!(
         configured_chatbot_key().as_deref() == Some(input.wireguard_pubkey.as_str())
             && control_plane_chatbot_session_id().as_deref() == Some(sid.as_str())
@@ -187,3 +190,57 @@ pub(super) async fn delete(
     commit_cas(engine, store, operation, sid, expected, None, None, result).await
 }
 
+async fn retire_own_native(
+    engine: &NativeOwner,
+    store: &IdentitySledStore,
+    actor: VerifiedIdentityActor<'_>,
+    input: DeleteInput,
+    seal: seed_provision::ProvisionSealPin,
+    sid: String,
+) -> anyhow::Result<JsonValue> {
+    ensure!(actor.actor_id == op_identity::session::derive_principal_id(&input.wireguard_pubkey)
+        && input.expected_revision > 0 && !input.expected_revision_operation_id.is_empty(),
+        "native retirement requires the exact human caller and revision");
+    engine.retain(store.lifecycle_lock(&sid).await.lock_owned().await);
+    seed_provision::admit(engine, store, actor.actor_id, actor.session_id, actor.genesis, &seal).await?;
+    let expected = load_revision(store, &sid).await?;
+    let owner = revision_sled(&expected)?.context("human native retirement identity absent")?;
+    ensure!(owner.principal_kind.as_deref() == Some("human")
+        && owner.wireguard_pubkey == input.wireguard_pubkey,
+        "native retirement requires the verified human owner");
+    engine.verify_own(&owner).await?;
+    let operation = format!("retire-native-{sid}-{}", input.expected_revision);
+    let result = |revision, replayed| serde_json::json!({
+        "session_id": sid, "operation_id": operation, "committed_revision": revision,
+        "record_present": true, "replayed": replayed,
+    });
+    if expected.operation_id == operation
+        && input.expected_revision.checked_add(1) == Some(expected.revision)
+        && owner.instance.is_none() && !owner.active
+    {
+        require_published_identity(store).await?;
+        return Ok(result(expected.revision, true));
+    }
+    ensure!(expected.revision == input.expected_revision
+        && expected.operation_id == input.expected_revision_operation_id,
+        "human native retirement revision changed");
+    let bound = owner.instance.as_ref().context("human native binding is absent")?;
+    ensure!(owner.btrfs_device.is_none(), "native retirement cannot retire an external physical root");
+    let stopped = retirement_native(bound).await?.context("stop the bound native container before retirement")?;
+    native_attachment::validate_instance(&stopped.0, &sid, &input.wireguard_pubkey, None)?;
+    preflight_native_identity_effect().await?;
+    engine.verify_own(&owner).await?;
+    ensure!(retirement_native(bound).await?.as_ref() == Some(&stopped),
+        "native definition changed before human retirement");
+    seed_provision::admit(engine, store, actor.actor_id, actor.session_id, actor.genesis, &seal).await?;
+    let value = result(expected.revision.checked_add(1).context("identity revision overflow")?, false);
+    let cozo = store.cozo.clone();
+    let commit_operation = operation.clone();
+    let publication = engine.commit_identity_intent(operation, move |_| {
+        let committed = cozo.apply_identity_intent(&sid, &commit_operation,
+            IdentityIntent::RetireOwnNativeContainer { expected: Box::new(expected) })?;
+        let snapshot = cozo.read_identity_recovery_state(MAX_EVENTS_IN_STATE)?;
+        Ok((Some(state_value(&snapshot)?), DurableResult { value, replayed: committed.replayed }))
+    }).await?;
+    publication_value(publication)
+}

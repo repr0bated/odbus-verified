@@ -284,7 +284,11 @@ impl StatePlugin for SessDeclPlugin {
     }
 
     fn schema(&self) -> Option<PluginSchema> {
-        Some(sess_decl_schema())
+        Some(sess_decl_schema().subsidiary(|capability| matches!(
+            capability,
+            "sess_decl.read"
+                | "sess_decl.write"
+        )))
     }
 
     async fn calculate_diff(&self, _current: &Value, _desired: &Value) -> Result<StateDiff> {

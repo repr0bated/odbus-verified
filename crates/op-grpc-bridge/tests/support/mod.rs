@@ -125,6 +125,7 @@ pub fn provision_identity_record(
             cozo_id: session_id.clone(),
             attached: false,
         }),
+        org_relation: None,
         instance: Some(IncusInstance {
             name: session_id.clone(),
             status: "Stopped".to_owned(),
@@ -163,6 +164,7 @@ pub fn provision_identity_record(
                 vector_id: sled.vector_id.clone(),
                 sealed_id: String::new(),
                 principal_kind: sled.principal_kind.clone(),
+                org_relation_json: String::new(),
                 btrfs_device_json: serde_json::to_string(
                     sled.btrfs_device.as_ref().expect("fixture btrfs device"),
                 )?,
