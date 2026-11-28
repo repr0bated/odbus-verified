@@ -149,20 +149,10 @@ pub(crate) async fn read(service: BridgeService, headers: HeaderMap) -> Reply {
     }
 }
 
-/// POST: set variables, then receive the schema. Each variable group is one
-/// existing sealed call; the bridge, not this endpoint, validates it.
-pub(crate) async fn set(
-    service: BridgeService,
-    headers: HeaderMap,
-    Json(body): Json<Value>,
-) -> Reply {
-    let (runtime, caller) = match verified(&service, headers).await {
-        Ok(verified) => verified,
-        Err(reply) => return reply,
-    };
-    let Some(fields) = body.as_object() else {
-        return refuse(StatusCode::BAD_REQUEST, "variables must be one object");
-    };
+/// Map selection variables to the same sealed calls on both doors.
+pub(crate) fn selection_calls(
+    fields: &serde_json::Map<String, Value>,
+) -> Vec<(&'static str, &'static str, Value)> {
     let mut calls = Vec::new();
     if fields.contains_key("mode") {
         let mut args = serde_json::Map::new();
@@ -182,6 +172,24 @@ pub(crate) async fn set(
         }
         calls.push(("chat_router", "SetSelection", Value::Object(args)));
     }
+    calls
+}
+
+/// POST: set variables, then receive the schema. Each variable group is one
+/// existing sealed call; the bridge, not this endpoint, validates it.
+pub(crate) async fn set(
+    service: BridgeService,
+    headers: HeaderMap,
+    Json(body): Json<Value>,
+) -> Reply {
+    let (runtime, caller) = match verified(&service, headers).await {
+        Ok(verified) => verified,
+        Err(reply) => return reply,
+    };
+    let Some(fields) = body.as_object() else {
+        return refuse(StatusCode::BAD_REQUEST, "variables must be one object");
+    };
+    let calls = selection_calls(fields);
     for (plugin, method, args) in calls {
         if let Err(error) = runtime
             .call(caller.clone(), plugin, method, args, uuid::Uuid::new_v4())

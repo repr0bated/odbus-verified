@@ -675,6 +675,58 @@ impl StateSync for UiService {
     }
 }
 
+/// Submit one selection through the bound FUSE mount.
+async fn exchange_selection(
+    service: UiService,
+    headers: axum::http::HeaderMap,
+    axum::Json(body): axum::Json<Value>,
+) -> (axum::http::StatusCode, axum::Json<Value>) {
+    use axum::http::StatusCode;
+    let mut request = Request::new(());
+    *request.metadata_mut() = tonic::metadata::MetadataMap::from_headers(headers);
+    let error = |status, message: &str| (status, axum::Json(json!({ "error": message })));
+    if let Err(status) = refuse_identity(request) {
+        return error(StatusCode::UNAUTHORIZED, status.message());
+    }
+    let Some(fields) = body.as_object() else {
+        return error(StatusCode::BAD_REQUEST, "selection must be an object");
+    };
+    let calls = crate::exchange_point::selection_calls(fields);
+    let [(plugin, method, arguments)] = calls.as_slice() else {
+        return error(StatusCode::BAD_REQUEST, "submit one mode or model selection");
+    };
+    let response = service.call_method(Request::new(CallMethodRequest {
+        plugin_id: (*plugin).into(),
+        method_name: (*method).into(),
+        arguments: vec![json_to_proto_value(arguments)],
+        ..Default::default()
+    })).await;
+    match response {
+        Ok(response) => {
+            let operation_id = response.metadata().get("x-opdbus-operation-id")
+                .and_then(|value| value.to_str().ok()).map(str::to_owned);
+            let receipt = response.into_inner();
+            let status = if receipt.success { StatusCode::OK } else { StatusCode::UNPROCESSABLE_ENTITY };
+            (status, axum::Json(json!({
+                "success": receipt.success,
+                "result": receipt.result.as_ref().map(proto_value_to_json),
+                "event_id": receipt.event_id,
+                "event_hash": receipt.event_hash,
+                "operation_id": operation_id,
+            })))
+        }
+        Err(status) => {
+            let code = match status.code() {
+                tonic::Code::InvalidArgument => StatusCode::BAD_REQUEST,
+                tonic::Code::PermissionDenied => StatusCode::FORBIDDEN,
+                tonic::Code::NotFound => StatusCode::NOT_FOUND,
+                _ => StatusCode::SERVICE_UNAVAILABLE,
+            };
+            error(code, status.message())
+        }
+    }
+}
+
 /// Every other gRPC path gets tonic's `UNIMPLEMENTED` fallback.
 pub(crate) fn router(service: UiService) -> axum::Router {
     let web = tonic_web::GrpcWebLayer::new();
@@ -683,13 +735,18 @@ pub(crate) fn router(service: UiService) -> axum::Router {
         refuse_identity,
     )))
     .add_service(web.layer(PluginServiceServer::with_interceptor(
-        service,
+        service.clone(),
         refuse_identity,
     )))
     .prepare()
     .into_axum_router();
     // tonic's router is axum 0.8; mount it as a plain service under axum 0.7.
-    axum::Router::new().fallback_service(app)
+    axum::Router::new()
+        .route(
+            crate::exchange_point::PATH,
+            axum::routing::post(move |headers, body| exchange_selection(service.clone(), headers, body)),
+        )
+        .fallback_service(app)
 }
 
 /// The container's UI door: its own TLS listener with the container's
