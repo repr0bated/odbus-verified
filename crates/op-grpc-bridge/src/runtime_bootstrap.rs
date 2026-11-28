@@ -150,8 +150,8 @@ pub async fn run_from_env() -> anyhow::Result<()> {
     // The browser UI door may present its own certificate (the wildcard for
     // the identity UI domain); without one it uses the identity door's.
     let ui_identity = match (
-        std::env::var_os("OP_UI_TLS_CERT_FILE").map(PathBuf::from),
-        std::env::var_os("OP_UI_TLS_KEY_FILE").map(PathBuf::from),
+        crate::container_ui::setting("OP_UI_TLS_CERT_FILE")?.map(PathBuf::from),
+        crate::container_ui::setting("OP_UI_TLS_KEY_FILE")?.map(PathBuf::from),
     ) {
         (Some(cert), Some(key)) => PemIdentity::from_root_owned_files(cert, key)?,
         (None, None) => identity.clone(),
