@@ -1,68 +1,45 @@
-//! Pre-TLS transfer of a login-owned browser socket to its committed identity.
+//! The shared `:8080` browser entry.
+//!
+//! Each accepted socket names its identity in the TLS ClientHello
+//! `server_name`: `<label>.<domain>`, where the label is the identity's
+//! `session_id` under the host key. The host peeks that one field without
+//! consuming a byte, decrypts the label, and pushes the untouched socket to
+//! that identity's lungs connection. TLS ends in the container.
 
 use std::path::PathBuf;
 use std::sync::Arc;
+use std::time::Duration;
 
-use anyhow::{Context, Result, ensure};
-use op_network::browser_ingress::{BrowserIngressMap, socket_cookie};
-use op_network::browser_route::{BrowserRouteHandle, CommittedBrowserIdentity, derive_route_handle};
+use anyhow::{Context, Result};
+use op_network::browser_label::{self, LabelKey};
 use tokio::sync::Semaphore;
 
-use crate::runtime::Runtime;
 use crate::runtime_lungs::BrowserHandoff;
 
-const ROUTE_TTL_NS: u64 = 10_000_000_000;
-const MAX_HANDOFFS: usize = 128;
-
-struct RouteEntryGuard {
-    map: Arc<BrowserIngressMap>,
-    key: op_network::browser_route::BrowserConnectionKey,
-}
-
-impl Drop for RouteEntryGuard {
-    fn drop(&mut self) {
-        let _ = self.map.remove(self.key);
-    }
-}
+const MAX_IN_FLIGHT: usize = 128;
+const CLIENT_HELLO_DEADLINE: Duration = Duration::from_secs(5);
 
 #[derive(Clone)]
 pub(crate) struct BrowserIngress {
-    runtime: Arc<Runtime>,
-    map: Arc<BrowserIngressMap>,
+    key: Arc<LabelKey>,
+    domain: Arc<str>,
     lungs: BrowserHandoff,
-    handoffs: Arc<Semaphore>,
 }
 
 impl BrowserIngress {
-    pub(crate) fn from_env(runtime: Arc<Runtime>, lungs: BrowserHandoff) -> Result<Self> {
-        let path = std::env::var_os("OP_BROWSER_INGRESS_MAP")
+    pub(crate) fn from_env(lungs: BrowserHandoff) -> Result<Self> {
+        let key_path = std::env::var_os("OP_BROWSER_LABEL_KEY")
             .map(PathBuf::from)
-            .unwrap_or_else(|| PathBuf::from("/sys/fs/bpf/opdbus/browser-ingress/browser_routes"));
+            .unwrap_or_else(|| PathBuf::from(browser_label::DEFAULT_LABEL_KEY));
+        let domain = std::env::var("OP_BROWSER_UI_DOMAIN")
+            .ok()
+            .filter(|value| !value.trim().is_empty())
+            .unwrap_or_else(|| browser_label::DEFAULT_UI_DOMAIN.to_owned());
         Ok(Self {
-            runtime,
-            map: Arc::new(BrowserIngressMap::open(&path)?),
+            key: Arc::new(LabelKey::from_root_file(&key_path)?),
+            domain: domain.trim().to_ascii_lowercase().into(),
             lungs,
-            handoffs: Arc::new(Semaphore::new(MAX_HANDOFFS)),
         })
-    }
-
-    /// Consume the exact socket accepted by login. No application byte is read.
-    pub(crate) async fn handoff(
-        &self,
-        stream: tokio::net::TcpStream,
-        identity: &crate::identity_receiver::VerifiedSid1,
-    ) -> Result<()> {
-        let committed_session_id = &identity.claims().session_id;
-        let _permit = self.handoffs.clone().try_acquire_owned()
-            .context("browser handoff bound reached")?;
-        let key = socket_cookie(&stream)?;
-        let route = self.resolve(committed_session_id).await?;
-        self.map.bind(key, route, ROUTE_TTL_NS)?;
-        let _entry = RouteEntryGuard { map: self.map.clone(), key };
-        let current = self.resolve(committed_session_id).await?;
-        ensure!(current == route, "committed browser identity changed during handoff");
-        self.map.verify(key, route)?;
-        self.lungs.offer(committed_session_id, stream).await
     }
 
     /// The shared raw browser entry, when this host owns it.
@@ -75,12 +52,9 @@ impl BrowserIngress {
         }
     }
 
-    /// Own the shared `:8080` socket. Each accepted connection belongs to the
-    /// identity whose container is waiting for it; its committed sled is
-    /// verified and the untouched socket is handed over before any TLS byte
-    /// is read. No owner, or more than one waiting identity: the socket closes.
+    /// Own the shared `:8080` socket and push every connection to its identity.
     pub(crate) async fn serve(self, listener: tokio::net::TcpListener) -> Result<()> {
-        let in_flight = Arc::new(Semaphore::new(MAX_HANDOFFS));
+        let in_flight = Arc::new(Semaphore::new(MAX_IN_FLIGHT));
         loop {
             let (stream, _) = listener.accept().await.context("browser ingress accept failed")?;
             let Ok(permit) = in_flight.clone().try_acquire_owned() else {
@@ -91,57 +65,20 @@ impl BrowserIngress {
             tokio::spawn(async move {
                 let _permit = permit;
                 if let Err(error) = ingress.deliver(stream).await {
-                    tracing::debug!(%error, "browser connection closed without an owner");
+                    tracing::debug!(%error, "browser connection closed");
                 }
             });
         }
     }
 
     async fn deliver(&self, stream: tokio::net::TcpStream) -> Result<()> {
-        let session_id = self.lungs.sole_waiting_session()
-            .context("no single identity is waiting for a browser connection")?;
-        let identity = self.verified(&session_id).await?;
-        crate::tls_door::handoff_authenticated_browser(stream, &identity, self).await
+        let server_name = op_network::tls_sni::peek_server_name(&stream, CLIENT_HELLO_DEADLINE).await?;
+        let session_id = self.session_id(&server_name).context("server_name names no identity")?;
+        self.lungs.push(&session_id, stream).await
     }
 
-    async fn verified(&self, session_id: &str) -> Result<crate::identity_receiver::VerifiedSid1> {
-        let catalog = self.runtime.catalog_dir().to_path_buf();
-        let state = op_core::projection_shm::shm_state_dir();
-        let session_id = session_id.to_owned();
-        let bound = tokio::task::spawn_blocking(move || {
-            crate::identity_receiver::bound_session_for_id_in(
-                &catalog, &state, &session_id, chrono::Utc::now().timestamp(),
-            )
-        }).await??;
-        crate::identity_receiver::verify_bound_registry(bound).await
-    }
-
-    async fn resolve(&self, session_id: &str) -> Result<BrowserRouteHandle> {
-        let catalog = self.runtime.catalog_dir().to_path_buf();
-        let state = op_core::projection_shm::shm_state_dir();
-        let session_id = session_id.to_owned();
-        tokio::task::spawn_blocking(move || {
-            let mut matches = crate::identity_receiver::committed_sessions_in(&catalog, &state)?
-                .into_iter()
-                .filter(|sled| sled.session_id == session_id);
-            let sled = matches.next().context("committed browser identity is absent")?;
-            ensure!(matches.next().is_none(), "committed browser identity is ambiguous");
-            let instance = sled.instance.as_ref().context("committed browser container is absent")?;
-            ensure!(crate::identity_binding::identity_instance_matches(&sled, instance),
-                "committed browser container binding is invalid");
-            let native_uuid = instance.config.as_ref()
-                .and_then(|config| config.get("volatile.uuid"))
-                .context("committed browser native UUID is absent")?;
-            let identity = CommittedBrowserIdentity {
-                session_id: &sled.session_id,
-                genesis: sled.genesis.as_deref().unwrap_or_default(),
-                native_name: &instance.name,
-                native_uuid,
-                active: sled.active,
-                anchored: sled.is_anchored(),
-                expires_at: sled.expires_at,
-            };
-            derive_route_handle(&identity, chrono::Utc::now().timestamp()).map_err(anyhow::Error::from)
-        }).await?
+    fn session_id(&self, server_name: &str) -> Option<String> {
+        let label = browser_label::label_of(server_name, &self.domain)?;
+        self.key.session_id(label)
     }
 }

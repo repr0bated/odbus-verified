@@ -176,7 +176,7 @@ pub async fn run_from_env() -> anyhow::Result<()> {
         let browser_ingress = match crate::runtime_browser_ingress::BrowserIngress::listen_addr_from_env()? {
             Some(listen) => {
                 let ingress = crate::runtime_browser_ingress::BrowserIngress::from_env(
-                    runtime.clone(), lungs.browser_handoff(),
+                    lungs.browser_handoff(),
                 )?;
                 let listener = tokio::net::TcpListener::bind(listen).await
                     .with_context(|| format!("binding shared browser ingress {listen}"))?;

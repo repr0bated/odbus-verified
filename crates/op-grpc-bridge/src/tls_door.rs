@@ -116,17 +116,6 @@ impl ConnectionShutdown {
     }
 }
 
-/// Carry the login-owned accepted socket forward before any TLS byte is read.
-/// `identity` is the server-authored value returned by committed login;
-/// browser-controlled fields never enter this boundary.
-pub(crate) async fn handoff_authenticated_browser(
-    stream: tokio::net::TcpStream,
-    identity: &crate::identity_receiver::VerifiedSid1,
-    ingress: &crate::runtime_browser_ingress::BrowserIngress,
-) -> anyhow::Result<()> {
-    ingress.handoff(stream, identity).await
-}
-
 /// Serve `app` over TLS, retaining the existing indefinitely-running API.
 pub async fn serve_upgradeable_tcp(
     listener: tokio::net::TcpListener,
