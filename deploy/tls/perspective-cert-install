@@ -1,0 +1,16 @@
+#!/bin/sh
+# lego renew hook: copy the renewed *.perspective.3tched.com pair into every
+# Incus identity container that already carries it (37-browser-receiver.sh).
+# The container UI door loads it at its next start.
+set -eu
+CERT_DIR=/etc/op-dbus/secrets/perspective/certificates
+CRT=$CERT_DIR/_.perspective.3tched.com.crt
+KEY=$CERT_DIR/_.perspective.3tched.com.key
+POOL_DIR=/var/lib/incus/storage-pools/${OP_CONTAINER_POOL:-3tched-pool}
+for tls in "$POOL_DIR"/containers/*/rootfs/etc/op-dbus/tls; do
+  [ -f "$tls/perspective.crt" ] || continue
+  install -m 0644 -o 0 -g 0 "$CRT" "$tls/perspective.crt.new" && mv "$tls/perspective.crt.new" "$tls/perspective.crt"
+  install -m 0600 -o 0 -g 0 "$KEY" "$tls/perspective.key.new" && mv "$tls/perspective.key.new" "$tls/perspective.key"
+  name=${tls#"$POOL_DIR"/containers/}
+  echo "perspective certificate refreshed in ${name%%/*}"
+done

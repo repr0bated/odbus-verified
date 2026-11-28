@@ -1,0 +1,26 @@
+#!/bin/sh
+# runit: renew the *.perspective.3tched.com wildcard when it is within 30 days
+# of expiry, then sleep 12 h (runit restarts this script: the timer).
+# The Cloudflare DNS token is read from a root-only file and handed to lego
+# through the environment; it is never logged.
+exec 2>&1
+set -u
+D=/etc/op-dbus/secrets/perspective
+TOKEN_FILE=$D/cloudflare-dns-token
+ACCOUNTS=$D/accounts/acme-v02.api.letsencrypt.org
+if [ -s "$TOKEN_FILE" ] && [ -d "$ACCOUNTS" ]; then
+  EMAIL=$(ls "$ACCOUNTS" | head -n1)
+  CLOUDFLARE_DNS_API_TOKEN=$(cat "$TOKEN_FILE")
+  EXEC_PATH=/usr/local/libexec/op-dbus/cf-dns01
+  EXEC_PROPAGATION_TIMEOUT=300
+  EXEC_POLLING_INTERVAL=10
+  export CLOUDFLARE_DNS_API_TOKEN EXEC_PATH EXEC_PROPAGATION_TIMEOUT EXEC_POLLING_INTERVAL
+  umask 077
+  lego --accept-tos --email "$EMAIL" --dns exec --dns.resolvers 1.1.1.1:53 \
+    --domains '*.perspective.3tched.com' --path "$D" \
+    renew --days 30 --renew-hook /usr/local/libexec/op-dbus/perspective-cert-install \
+    2>&1 | grep -vE 'TOKEN|Bearer'
+else
+  echo "perspective-cert-renew: token or ACME account absent; nothing to renew"
+fi
+exec sleep 43200
