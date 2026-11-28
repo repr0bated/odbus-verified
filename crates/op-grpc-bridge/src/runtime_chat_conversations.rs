@@ -832,19 +832,32 @@ impl ConversationBackend {
         ctx.runtime.authorize_nested(&owner, "chat_router", "Chat").await?;
         let admission = PendingGenerationAdmission::for_turn(ctx, owner).await?;
         let _selection = crate::chat_router_runtime::ChatRouterRuntimeClient::selection_guard().await;
-        let client = super::native_client(ctx, &continuation.request.native_agent_alias).await?;
+        let alias = &continuation.request.native_agent_alias;
+        let client = super::native_client(ctx, alias).await?;
         let schema = super::sealed_schema(ctx, "chat_router")?;
-        let observation = client.observe_config_and_state(&super::config_secrets(&schema)?).await?;
-        ensure!(crate::core::BridgeCore::method_value_digest(&observation.native_config)?
-            == continuation.request.native_config_digest,
-            "selected native route changed while queued; generation refused without replay");
+        let selection = crate::chat_router_runtime::ChatRouterRuntimeClient::for_agent_alias(alias)
+            .with_sealed_identity(Some(super::original_payload(&admission.owner)?))
+            .with_trace_id(&admission.owner.trace_id);
+        let observation = selection.observe_config_and_state(&super::config_secrets(&schema)?)
+            .await.inspect_err(|_| {
+                tracing::warn!(operation_id = %ctx.operation_id, "could not verify the requesting container's native route");
+            })?;
+        let unchanged_route = crate::core::BridgeCore::method_value_digest(&observation.native_config)?
+            == continuation.request.native_config_digest;
+        if !unchanged_route {
+            tracing::warn!(operation_id = %ctx.operation_id, "requesting container's native route changed before generation");
+        }
+        ensure!(unchanged_route, "selected native route changed while queued; generation refused without replay");
         let output = client.complete_under_guard(ChatInput {
             messages: input.messages,
             provider: continuation.request.provider,
             model: continuation.request.model,
             conversation_id: Some(continuation.request.conversation_id),
             ..ChatInput::default()
-        }, admission).await.map_err(RuntimeError::unknown)?;
+        }, admission).await.map_err(|error| {
+            tracing::warn!(operation_id = %ctx.operation_id, "native completion did not return a confirmed reply");
+            RuntimeError::unknown(error)
+        })?;
         // A failed/ambiguous call leaves generating=true. It must never silently
         // become a fresh model attempt when the wake is delivered twice.
         let mut pending = self.continuations.lock()
