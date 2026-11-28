@@ -874,7 +874,7 @@ impl ConversationBackend {
                         .remove(&input.turn_id);
                     tracing::warn!(operation_id = %ctx.operation_id, "released reply after pre-prompt identity acknowledgment failure");
                 }
-                return Err(RuntimeError::unknown(error));
+                return Err(RuntimeError::unknown(error).into());
             }
         };
         // A failed/ambiguous call leaves generating=true. It must never silently
