@@ -817,7 +817,7 @@ impl ConversationBackend {
         -> Result<BackendOutcome>
     {
         let continuation = self.pending(ctx, &input.turn_id).await?;
-        {
+        let first_generation = {
             let mut pending = self.continuations.lock()
                 .map_err(|_| anyhow::anyhow!("pending continuation lock poisoned"))?;
             let current = pending.get_mut(&input.turn_id).context("pending request disappeared")?;
@@ -825,7 +825,8 @@ impl ConversationBackend {
             ensure!(!current.generating && current.steps < 32, "pending generation already started or exhausted");
             current.generating = true;
             current.steps += 1;
-        }
+            current.steps == 1
+        };
         let (owner, _) = self.owners.lock()
             .map_err(|_| anyhow::anyhow!("pending owner lock poisoned"))?
             .get(&input.turn_id).cloned().context("pending owner authority absent")?;
@@ -858,7 +859,7 @@ impl ConversationBackend {
             Ok(output) => output,
             Err(error) => {
                 use crate::chat_router_generation::NativeGenerationError;
-                if continuation.steps == 0 && matches!(
+                if first_generation && matches!(
                     error.downcast_ref::<NativeGenerationError>(),
                     Some(NativeGenerationError::IdentityAcknowledgmentMissing)
                 ) {
