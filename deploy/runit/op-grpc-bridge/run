@@ -89,6 +89,15 @@ if [ -e "$lungs_owner" ] || [ -L "$lungs_owner" ]; then
     OPDBUS_LUNGS_OWNER=$(cat "$lungs_owner")
     export OPDBUS_LUNGS_OWNER
 fi
+# The shared raw browser entry (spec ui-networking-authoritative-2026-11-27):
+# accepted sockets go, unread, to the identity container waiting on lungs.
+ingress_listen=/etc/op-dbus/env/OP_BROWSER_INGRESS_LISTEN
+if [ -e "$ingress_listen" ] || [ -L "$ingress_listen" ]; then
+    [ -f "$ingress_listen" ] && [ ! -L "$ingress_listen" ] &&
+        [ "$(stat -c %u:%g:%a "$ingress_listen")" = 0:0:600 ] || exit 78
+    OP_BROWSER_INGRESS_LISTEN=$(cat "$ingress_listen")
+    export OP_BROWSER_INGRESS_LISTEN
+fi
 
 # The native router's provider-only generation protocol requires a real paired
 # subject. Consume the operator-provisioned token from a root-only file; never
