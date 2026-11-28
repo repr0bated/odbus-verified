@@ -94,6 +94,17 @@ impl BrowserBroker {
         }
     }
 
+    /// The committed session of the one identity container that is waiting for
+    /// a browser socket. Zero or several waiting identities give `None`: the
+    /// accepted socket then has no owner and is closed, never guessed.
+    pub(crate) fn sole_waiting_session(&self) -> Option<String> {
+        let mut waiters = self.waiters.lock().ok()?;
+        Self::remove_closed(&mut waiters);
+        let mut sessions = waiters.by_session.keys();
+        let session = sessions.next()?.clone();
+        sessions.next().is_none().then_some(session)
+    }
+
     fn remove(&self, session_id: &str, id: u64) {
         let Ok(mut waiters) = self.waiters.lock() else { return; };
         let mut removed = false;

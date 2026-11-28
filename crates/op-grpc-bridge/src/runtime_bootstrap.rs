@@ -173,7 +173,27 @@ pub async fn run_from_env() -> anyhow::Result<()> {
         } else {
             None
         };
+        let browser_ingress = match crate::runtime_browser_ingress::BrowserIngress::listen_addr_from_env()? {
+            Some(listen) => {
+                let ingress = crate::runtime_browser_ingress::BrowserIngress::from_env(
+                    runtime.clone(), lungs.browser_handoff(),
+                )?;
+                let listener = tokio::net::TcpListener::bind(listen).await
+                    .with_context(|| format!("binding shared browser ingress {listen}"))?;
+                Some((ingress, listener))
+            }
+            None => None,
+        };
         ready = Some(ReadyReceipt::publish(door.local_addr(), lungs.socket_path(), exhook_addr)?);
+        if let Some((ingress, listener)) = browser_ingress {
+            let ingress_stop = receive.clone();
+            spawn_owner(&mut workers, "shared browser ingress", async move {
+                tokio::select! {
+                    result = ingress.serve(listener) => result,
+                    _ = stopping(ingress_stop) => Ok(()),
+                }
+            });
+        }
         spawn_owner(&mut workers, "TLS door", door.serve(stopping(receive.clone())));
         if let Some(ui_door) = ui_door {
             spawn_owner(&mut workers, "container UI door", ui_door.serve(stopping(receive.clone())));

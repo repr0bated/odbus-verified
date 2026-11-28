@@ -213,6 +213,12 @@ impl BrowserHandoff {
         let fd: std::os::fd::OwnedFd = stream.into();
         self.broker.offer(session_id, fd).await
     }
+
+    /// The committed session of the single identity container waiting for a
+    /// browser socket, or `None` when zero or several are waiting.
+    pub(crate) fn sole_waiting_session(&self) -> Option<String> {
+        self.broker.sole_waiting_session()
+    }
 }
 
 /// Main owns this guard for the listener's entire lifetime. Creation returns

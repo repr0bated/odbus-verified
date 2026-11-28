@@ -65,6 +65,57 @@ impl BrowserIngress {
         self.lungs.offer(committed_session_id, stream).await
     }
 
+    /// The shared raw browser entry, when this host owns it.
+    pub(crate) fn listen_addr_from_env() -> Result<Option<std::net::SocketAddr>> {
+        match std::env::var("OP_BROWSER_INGRESS_LISTEN") {
+            Ok(value) if !value.trim().is_empty() => Ok(Some(
+                value.trim().parse().context("OP_BROWSER_INGRESS_LISTEN is not host:port")?,
+            )),
+            _ => Ok(None),
+        }
+    }
+
+    /// Own the shared `:8080` socket. Each accepted connection belongs to the
+    /// identity whose container is waiting for it; its committed sled is
+    /// verified and the untouched socket is handed over before any TLS byte
+    /// is read. No owner, or more than one waiting identity: the socket closes.
+    pub(crate) async fn serve(self, listener: tokio::net::TcpListener) -> Result<()> {
+        let in_flight = Arc::new(Semaphore::new(MAX_HANDOFFS));
+        loop {
+            let (stream, _) = listener.accept().await.context("browser ingress accept failed")?;
+            let Ok(permit) = in_flight.clone().try_acquire_owned() else {
+                drop(stream);
+                continue;
+            };
+            let ingress = self.clone();
+            tokio::spawn(async move {
+                let _permit = permit;
+                if let Err(error) = ingress.deliver(stream).await {
+                    tracing::debug!(%error, "browser connection closed without an owner");
+                }
+            });
+        }
+    }
+
+    async fn deliver(&self, stream: tokio::net::TcpStream) -> Result<()> {
+        let session_id = self.lungs.sole_waiting_session()
+            .context("no single identity is waiting for a browser connection")?;
+        let identity = self.verified(&session_id).await?;
+        crate::tls_door::handoff_authenticated_browser(stream, &identity, self).await
+    }
+
+    async fn verified(&self, session_id: &str) -> Result<crate::identity_receiver::VerifiedSid1> {
+        let catalog = self.runtime.catalog_dir().to_path_buf();
+        let state = op_core::projection_shm::shm_state_dir();
+        let session_id = session_id.to_owned();
+        let bound = tokio::task::spawn_blocking(move || {
+            crate::identity_receiver::bound_session_for_id_in(
+                &catalog, &state, &session_id, chrono::Utc::now().timestamp(),
+            )
+        }).await??;
+        crate::identity_receiver::verify_bound_registry(bound).await
+    }
+
     async fn resolve(&self, session_id: &str) -> Result<BrowserRouteHandle> {
         let catalog = self.runtime.catalog_dir().to_path_buf();
         let state = op_core::projection_shm::shm_state_dir();
