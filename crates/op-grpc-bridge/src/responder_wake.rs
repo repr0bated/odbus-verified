@@ -1,16 +1,5 @@
-//! Responder wake: notifies designated responders of pending requests.
-//!
-//! When a human opens a chat turn (or any request via RequestRegistry),
-//! the designated responder principal needs to be notified so it can claim
-//! and fulfill the request. This module provides that notification channel.
-//!
-//! The responder wake is separate from the human's doorbell wake:
-//! - Human doorbell: `opdbus/wake/<sha256(principal)>` — notifies the human
-//!   that their scope has new content (e.g., an agent's response)
-//! - Responder wake: `opdbus/responder-wake/<sha256(responder_principal)>` —
-//!   notifies an agent that a request awaits their response
-//!
-//! Payload includes the request_id so the responder can claim it.
+//! Queue a turn identifier for the designated container's FUSE responder.
+//! The datagram carries no message, selection or identity credential.
 
 use serde::{Deserialize, Serialize};
 
@@ -29,19 +18,24 @@ pub(crate) struct ResponderWake {
     pub conversation_id: Option<String>,
 }
 
-/// Publish on the responder's existing authenticated owner topic. Failure is
-/// returned after input commit and must never trigger a submit replay.
+/// Notify the provisioned responder after the human turn is committed.
 pub(crate) async fn publish_responder_wake(wake: ResponderWake,
     responder: &op_identity::sealed_id::SealedId) -> anyhow::Result<()> {
-    let owner_key = crate::runtime_mqtt::owner_key_for_claims(responder)?;
-    op_plugins::state_plugins::emqx::dispatch_emqx_method("publish_responder_wake",
-        &serde_json::json!({
-            "responder_owner_key": owner_key,
-            "request_id": wake.request_id,
-            "owner_key": wake.owner_key,
-            "owner_principal_id": wake.owner_principal_id,
-            "conversation_id": wake.conversation_id,
-        })).await?;
+    use anyhow::{Context, ensure};
+    let principal = std::env::var("OP_CONTROL_PLANE_CHATBOT_PRINCIPAL_ID")
+        .context("designated responder is not configured")?;
+    ensure!(responder.principal_id == principal, "responder is not the provisioned service identity");
+    let turn = uuid::Uuid::parse_str(&wake.request_id)?;
+    ensure!(turn.to_string() == wake.request_id, "invalid responder turn identifier");
+
+    let socket = tokio::net::UnixDatagram::unbound()?;
+    let bytes = wake.request_id.as_bytes();
+    let sent = tokio::time::timeout(
+        std::time::Duration::from_secs(2),
+        socket.send_to(bytes, "/run/opdbus/lungs/chat-responder.sock"),
+    ).await.context("responder queue deadline")?
+        .context("container responder queue is unavailable")?;
+    ensure!(sent == bytes.len(), "responder queue accepted a partial identifier");
     Ok(())
 }
 
