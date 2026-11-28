@@ -49,6 +49,8 @@ rovs-ext = "=0.2.0"
 # Bytes for wire-protocol encoding in controller.rs
 bytes = "1"
 blake3 = { workspace = true }
+# One-block AES-128 for the identity UI label (session_id under the host key)
+aes = "0.8"
 
 # D-Bus proxy for the OVSDB JSON-RPC passthrough interface
 zbus = { workspace = true, features = ["p2p"] }

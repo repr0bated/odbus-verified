@@ -12,7 +12,9 @@
 
 pub mod btrfs;
 pub mod browser_ingress;
+pub mod browser_label;
 pub mod browser_route;
+pub mod tls_sni;
 pub mod controller;
 pub mod datapath_safe;
 pub mod dbus_tls;
