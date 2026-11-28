@@ -12,7 +12,6 @@ use tokio::net::TcpStream;
 pub const MAX_CLIENT_HELLO: usize = 16 * 1024;
 const RECORD_HEADER: usize = 5;
 const EXT_SERVER_NAME: u16 = 0x0000;
-const EXT_ENCRYPTED_CLIENT_HELLO: u16 = 0xfe0d;
 
 #[derive(Debug, PartialEq, Eq)]
 pub enum ClientHello {
@@ -45,7 +44,9 @@ impl<'a> Cursor<'a> {
 }
 
 /// Parse the first TLS record. Refuses anything that is not a single-record
-/// ClientHello with one host_name, and refuses ECH.
+/// ClientHello with one visible host_name. All other extensions are left for
+/// the destination TLS server, including the ECH extension that browsers
+/// may send as GREASE.
 pub fn parse_client_hello(buffer: &[u8]) -> Result<ClientHello> {
     if buffer.len() < RECORD_HEADER {
         return Ok(ClientHello::Incomplete(RECORD_HEADER));
@@ -73,7 +74,6 @@ pub fn parse_client_hello(buffer: &[u8]) -> Result<ClientHello> {
         let kind = extensions.u16()? as u16;
         let data = extensions.vec16()?;
         match kind {
-            EXT_ENCRYPTED_CLIENT_HELLO => bail!("encrypted ClientHello is not accepted"),
             EXT_SERVER_NAME => {
                 ensure!(server_name.is_none(), "duplicate server_name extension");
                 let mut list = Cursor(Cursor(data).vec16()?);
@@ -210,11 +210,21 @@ mod tests {
     }
 
     #[test]
-    fn refuses_no_sni_ech_and_non_tls() {
+    fn reads_visible_server_name_with_ech_grease() {
+        let hostname = "abc.perspective.3tched.com";
+        let grease = [0xfe, 0x0d, 0x00, 0x01, 0x00];
+        let mut extensions = sni(hostname);
+        extensions.extend(grease);
+        assert_eq!(
+            parse_client_hello(&hello(&extensions)).unwrap(),
+            ClientHello::ServerName(hostname.into())
+        );
+        assert!(parse_client_hello(&hello(&grease)).is_err());
+    }
+
+    #[test]
+    fn refuses_no_sni_and_non_tls() {
         assert!(parse_client_hello(&hello(&[])).is_err());
-        let mut ech = sni("abc.perspective.3tched.com");
-        ech.extend([0xfe, 0x0d, 0x00, 0x00]);
-        assert!(parse_client_hello(&hello(&ech)).is_err());
         assert!(parse_client_hello(b"GET / HTTP/1.1\r\n").is_err());
     }
 
