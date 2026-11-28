@@ -20,6 +20,8 @@ pub mod memory_store;
 pub mod method_receipt;
 pub mod metrics;
 pub mod plugin_schema;
+pub mod public_link;
+pub mod public_record;
 pub mod public_state;
 pub mod schema_projection;
 pub mod schema_validator;

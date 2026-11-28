@@ -249,17 +249,10 @@ pub struct LedgerPoint {
     pub payload: serde_json::Map<String, serde_json::Value>,
 }
 
-/// Namespace for session-ledger points: keyed by event hash, so a retried
-/// end-of-session vectorization overwrites in place. Fixed forever.
-const LEDGER_POINT_NAMESPACE: uuid::Uuid =
-    uuid::Uuid::from_u128(0x3c0b_91e4_5a27_4d6f_8b12_e6f4_09d3_a751);
-
-pub fn ledger_point_id(event_hash: &str) -> uuid::Uuid {
-    uuid::Uuid::new_v5(
-        &LEDGER_POINT_NAMESPACE,
-        format!("ledger:{event_hash}").as_bytes(),
-    )
-}
+/// Session-ledger point ids (UUIDv5 over the event hash, fixed namespace) are
+/// defined once in op-state-store, beside the public-record link that names
+/// them, so the link and the upserts below can never disagree.
+pub use op_state_store::public_link::ledger_point_id;
 
 /// End-of-session vectorization of a sled ledger (owner 2026-11-02: the
 /// snowball is a session ledger vectorized once at the end). The admitted
