@@ -42,6 +42,22 @@ struct PendingGenerationAdmission {
     credential: String,
 }
 
+impl PendingGenerationAdmission {
+    async fn for_turn(ctx: &BackendContext<'_>, owner: VerifiedCaller) -> Result<Arc<Self>> {
+        // The FUSE caller is authenticated by Lungs, so it has no inbound
+        // gRPC identity header. Forward its own authored credential to native
+        // generation after revalidating the mounted caller.
+        let wire = ctx.runtime.identity_wire(ctx.caller).await?;
+        let credential = base64::Engine::encode(&base64::engine::general_purpose::URL_SAFE_NO_PAD, wire);
+        Ok(Arc::new(Self {
+            owner,
+            responder: ctx.caller.for_background(),
+            runtime: ctx.runtime.clone(),
+            credential,
+        }))
+    }
+}
+
 impl crate::chat_router_generation::NativeGenerationAdmission for PendingGenerationAdmission {
     fn sealed_identity(&self) -> Option<&str> { Some(&self.credential) }
     fn trace_id(&self) -> Option<&str> { Some(&self.owner.trace_id) }
@@ -814,10 +830,7 @@ impl ConversationBackend {
             .map_err(|_| anyhow::anyhow!("pending owner lock poisoned"))?
             .get(&input.turn_id).cloned().context("pending owner authority absent")?;
         ctx.runtime.authorize_nested(&owner, "chat_router", "Chat").await?;
-        let admission = Arc::new(PendingGenerationAdmission {
-            owner, responder: ctx.caller.for_background(), runtime: ctx.runtime.clone(),
-            credential: super::original_payload(ctx.caller)?.to_owned(),
-        });
+        let admission = PendingGenerationAdmission::for_turn(ctx, owner).await?;
         let _selection = crate::chat_router_runtime::ChatRouterRuntimeClient::selection_guard().await;
         let client = super::native_client(ctx, &continuation.request.native_agent_alias).await?;
         let schema = super::sealed_schema(ctx, "chat_router")?;
@@ -895,10 +908,7 @@ impl ConversationBackend {
                 let bytes = serde_json::to_vec(&question)?;
                 ensure!(crate::cockpit::secret_guard::SecretGuard::new().check_item(&bytes).is_clean(),
                     "message review withheld credential-bearing context");
-                let admission = Arc::new(PendingGenerationAdmission {
-                    owner, responder: ctx.caller.for_background(), runtime: ctx.runtime.clone(),
-                    credential: super::original_payload(ctx.caller)?.to_owned(),
-                });
+                let admission = PendingGenerationAdmission::for_turn(ctx, owner).await?;
                 let _selection = crate::chat_router_runtime::ChatRouterRuntimeClient::selection_guard().await;
                 let schema = super::sealed_schema(ctx, "chat_router")?;
                 let reviewer = super::native_client(ctx, "judgment").await?;
